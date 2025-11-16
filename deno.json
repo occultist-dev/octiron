@@ -1,4 +1,5 @@
 {
+  "version": "0.0.3",
   "name": "@octiron/octiron",
   "nodeModulesDir": "manual",
   "exports": "./lib/octiron.ts",
