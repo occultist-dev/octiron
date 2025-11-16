@@ -18,6 +18,7 @@
     "jsr:@std/path@~0.213.1": "0.213.1",
     "jsr:@std/testing@^1.0.14": "1.0.14",
     "npm:@faker-js/faker@^9.8.0": "9.8.0",
+    "npm:@longform/longform@^0.0.2": "0.0.2",
     "npm:@types/mithril@^2.2.7": "2.2.7",
     "npm:@types/node@*": "22.15.15",
     "npm:esbuild@~0.25.5": "0.25.5",
@@ -244,6 +245,9 @@
     },
     "@fastify/busboy@2.1.1": {
       "integrity": "sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA=="
+    },
+    "@longform/longform@0.0.2": {
+      "integrity": "sha512-LwYk4s28et3fIzlJJa4UlJr101b2y9SeQXcxr0TroBlkb3pz8Av0JSKWjyKKx1maUg1+sZg/UciImChR1kg1Iw=="
     },
     "@types/mithril@2.2.7": {
       "integrity": "sha512-uetxoYizBMHPELl6DSZUfO6Q/aOm+h0NUCv9bVAX2iAxfrdBSOvU9KKFl+McTtxR13F+BReYLY814pJsZvnSxg=="
