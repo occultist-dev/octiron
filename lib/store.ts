@@ -1,6 +1,6 @@
-import type { AlternativesState, Context, PrimaryState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases, EntitySelectionResult, ValueSelectionResult } from "./types/store.ts";
+import type { AlternativesState, Context, PrimaryState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases, EntitySelectionResult, ValueSelectionResult, IntegrationState, AlternativeSelectionResult } from "./types/store.ts";
 import { HTMLFragmentsIntegration } from "./alternatives/htmlFragments.ts";
-import { HTMLIntegration } from "./alternatives/html.ts";
+// import { HTMLIntegration } from "./alternatives/html.ts";
 import { isBrowserRender } from "./consts.ts";
 import type { JSONObject } from "./types/common.ts";
 import { HTTPFailure } from "./failures.ts";
@@ -9,15 +9,16 @@ import { getSelection } from './utils/getSelection.ts';
 import type { FailureEntityState, SuccessEntityState } from "./types/store.ts";
 import { mithrilRedraw } from "./utils/mithrilRedraw.ts";
 
-const defaultAccept = 'application/problem+json, application/ld+json, text/lf';
+const defaultAccept = 'application/problem+json, application/ld+json';
 const integrationClasses = {
-  [HTMLIntegration.type]: HTMLIntegration,
+  // [HTMLIntegration.type]: HTMLIntegration,
   [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
 };
 
 type StateInfo = {
   primary: Record<string, EntityState>;
   alternatives: Record<string, IntegrationStateInfo[]>;
+  acceptMap: Record<string, Array<[string, string]>>;
 };
 
 type Dependencies = Map<string, Set<symbol>>;
@@ -26,6 +27,8 @@ type ListenerDetails = {
   key: symbol;
   selector?: string;
   value?: JSONObject;
+  fragment?: string;
+  accept?: string;
   required: string[];
   dependencies: string[];
   listener: Listener;
@@ -118,6 +121,8 @@ export type StoreArgs = {
    */
   primary?: Record<string, EntityState>;
 
+  acceptMap?: Record<string, Array<[string, string]>>;
+
   /**
    * Alternatives initial state.
    */
@@ -149,7 +154,7 @@ export class Store {
     #aliases: Map<string, string>;
     #primary: PrimaryState = new Map();
     #loading: Set<string> = new Set();
-    #alternatives: AlternativesState = new Map();
+    #integrations: AlternativesState = new Map();
     #handlers: Map<string, Handler>;
     #keys: Set<string> = new Set();
     #context: Context;
@@ -159,6 +164,9 @@ export class Store {
     #dependencies: Dependencies = new Map();
     #listeners: Listeners = new Map();
 
+    // iri => accept => [loading, contentType]
+    #acceptMap: Map<string, Map<string, string>> = new Map();
+
     constructor(args: StoreArgs) {
       this.#rootIRI = args.rootIRI;
       this.#rootOrigin = new URL(args.rootIRI).origin;
@@ -167,7 +175,7 @@ export class Store {
       this.#responseHook = args.responseHook;
 
       [this.#headers, this.#origins] = getInternalHeaderValues(args.headers, args.origins);
-      [this.#aliases, this.#context] = getJSONLdValues(args.vocab, args.aliases);
+      [this.#aliases,this.#context] = getJSONLdValues(args.vocab, args.aliases);
 
       this.#handlers = new Map(args.handlers?.map?.((handler) => [handler.contentType, handler]));
 
@@ -184,14 +192,77 @@ export class Store {
           origin.set('accept', defaultAccept);
         }
       }
+
+      if (args.acceptMap != null) {
+        for (const [accept, entries] of Object.entries(args.acceptMap)) {
+          this.#acceptMap.set(accept, new Map(entries));
+        }
+      }
+
+      if (args.alternatives != null) {
+        this.#integrations = args.alternatives;
+      }
     }
 
     public get rootIRI() {
       return this.#rootIRI;
     }
 
-    public entity(iri: string) {
-      return this.#primary.get(iri);
+    /**
+     * Retrieves an entity state object relating to an IRI.
+     */
+    public entity(iri: string, accept?: string): EntityState | null {
+      if (accept == null) {
+        return this.#primary.get(iri) ?? null;
+      }
+
+      const key = this.#getLoadingKey(iri, 'get', accept);
+      const loading = this.#loading.has(key);
+
+      if (loading) {
+        return {
+          type: 'entity-loading',
+          iri,
+          loading: true,
+        };
+      }
+
+      const contentType = this.#acceptMap.get(iri)?.get?.(accept);
+
+      if (contentType == null) {
+        return null;
+      }
+
+      const integration = this.#integrations.get(contentType)?.get(iri);
+
+      if (integration == null) {
+        return null;
+      }
+    
+      return {
+        type: 'alternative-success',
+        iri,
+        loading: false,
+        ok: true,
+        integration,
+      };
+    }
+
+    /**
+     * Retrieves a text representation of a value in the store
+     * if it is supported by the integration.
+     */
+    public text(iri: string, accept?: string): string | undefined {
+      const [key, fragment] = iri.split('#');
+      const entity = this.entity(key, accept);
+
+      if (entity == null) {
+        return;
+      }
+    
+      if (entity?.type === 'alternative-success') {
+        return entity.integration.text(fragment);
+      }
     }
 
     public get vocab(): string | undefined {
@@ -246,10 +317,15 @@ export class Store {
       return expanded ?? termOrType;
     }
 
-    public select(selector: string, value?: JSONObject): SelectionDetails {
+    public select(selector: string, value?: JSONObject, {
+      accept,
+    }: {
+      accept?: string;
+    } = {}): SelectionDetails {
       return getSelection({
         selector,
         value,
+        accept,
         store: this,
       });
     }
@@ -326,9 +402,11 @@ export class Store {
           continue;
         }
 
-        const details = getSelection<EntitySelectionResult | ValueSelectionResult>({
+        const details = getSelection<EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult>({
           selector: listenerDetails.selector,
           value: listenerDetails.value,
+          fragment: listenerDetails.fragment,
+          accept: listenerDetails.accept,
           store: this,
         } as Parameters<typeof getSelection>[0]);
         const cleanup = this.#makeCleanupFn(key, details);
@@ -363,6 +441,7 @@ export class Store {
 
       if (res.ok) {
         this.#primary.set(iri, {
+          type: 'entity-success',
           iri,
           loading: false,
           ok: true,
@@ -372,6 +451,7 @@ export class Store {
         const reason = new HTTPFailure(res.status, res);
 
         this.#primary.set(iri, {
+          type: 'entity-failure',
           iri,
           loading: false,
           ok: false,
@@ -387,6 +467,7 @@ export class Store {
         }
 
         this.#primary.set(entity['@id'], {
+          type: 'entity-success',
           iri: entity['@id'],
           loading: false,
           ok: true,
@@ -399,7 +480,10 @@ export class Store {
       }
     }
 
-    async handleResponse(res: Response, iri: string = res.url.toString()) {
+    async handleResponse(
+      res: Response,
+      iri: string = res.url.toString(),
+    ) {
       const contentType = res.headers.get('content-type')?.split?.(';')?.[0];
 
       if (contentType == null) {
@@ -425,44 +509,42 @@ export class Store {
         });
       } else if (handler.integrationType === 'problem-details') {
         throw new Error('Problem details response types not supported yet');
-      } else if (handler.integrationType === 'html') {
-        const output = await handler.handler({
-          res,
-          store: this,
-        });
-        let integrations = this.#alternatives.get(contentType);
+      //} else if (handler.integrationType === 'html') {
+      //  const output = await handler.handler({
+      //    res,
+      //    store: this,
+      //  });
+      //  let integrations = this.#integrations.get(contentType);
 
-        if (integrations == null) {
-          integrations = new Map();
+      //  if (integrations == null) {
+      //    integrations = new Map();
 
-          this.#alternatives.set(contentType, integrations);
-        }
+      //    this.#integrations.set(contentType, integrations);
+      //  }
 
-        integrations.set(iri, new HTMLIntegration(handler, {
-          iri,
-          contentType,
-          html: output.html,
-          id: output.id,
-        }));
+      //  integrations.set(iri, new HTMLIntegration(handler, {
+      //    iri,
+      //    contentType,
+      //    html: output.html,
+      //    id: output.id,
+      //  }));
       } else if (handler.integrationType === 'html-fragments') {
         const output = await handler.handler({
           res,
           store: this,
         });
-        let integrations = this.#alternatives.get(contentType);
+        let integrations = this.#integrations.get(contentType);
 
         if (integrations == null) {
           integrations = new Map();
 
-          this.#alternatives.set(contentType, integrations);
+          this.#integrations.set(contentType, integrations);
         }
 
         integrations.set(iri, new HTMLFragmentsIntegration(handler, {
           iri,
           contentType,
-          root: output.html,
-          ided: output.ided,
-          anon: output.anon,
+          output,
         }));
       }
 
@@ -481,7 +563,11 @@ export class Store {
       const url = new URL(iri);
       const method = args.method || 'get';
       const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
-      const loadingKey = this.#getLoadingKey(iri, method, args.accept);
+
+      url.hash = '';
+      const dispatchURL = url.toString();
+      const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
+
 
       if (url.origin === this.#rootOrigin) {
         headers = new Headers(this.#headers);
@@ -511,17 +597,23 @@ export class Store {
           let res: Response;
 
           if (this.#fetcher != null) {
-            res =  await this.#fetcher(iri, {
+            res =  await this.#fetcher(dispatchURL, {
               method,
               headers,
               body: args.body,
             });
           } else {
-            res = await fetch(iri, {
+            res = await fetch(dispatchURL, {
               method,
               headers,
               body: args.body,
             });
+          }
+
+          if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
+            this.#acceptMap.get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
+          } else if (args.accept != null) {
+            this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type') as string]]));
           }
 
           await this.handleResponse(res, iri);
@@ -544,20 +636,25 @@ export class Store {
     public subscribe({
       key,
       selector,
+      fragment,
+      accept,
       value,
       listener,
     }: {
       key: symbol;
       selector: string;
+      fragment?: string;
+      accept?: string;
       value?: JSONObject;
       listener: SelectionListener;
     }) {
       const details = getSelection<ReadonlySelectionResult>({
         selector,
+        fragment,
+        accept,
         value,
         store: this,
       });
-
       const cleanup = this.#makeCleanupFn(key, details);
 
       for (const dependency of details.dependencies) {
@@ -574,6 +671,8 @@ export class Store {
         key,
         selector,
         value,
+        fragment,
+        accept,
         required: details.required,
         dependencies: details.dependencies,
         listener,
@@ -587,8 +686,8 @@ export class Store {
       this.#listeners.get(key)?.cleanup();
     }
 
-    public async fetch(iri: string): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri);
+    public async fetch(iri: string, accept?: string): Promise<SuccessEntityState | FailureEntityState> {
+      await this.#callFetcher(iri, { accept });
 
       return this.#primary.get(iri) as SuccessEntityState | FailureEntityState;
     }
@@ -596,7 +695,7 @@ export class Store {
     /**
      * Submits an action. Like fetch this will overwrite
      * entities in the store with any entities returned
-     * in the reponse.
+     * in the response.
      *
      * @param {string} iri                The iri of the request.
      * @param {SubmitArgs} [args]         Arguments to pass to the fetch call.
@@ -647,6 +746,7 @@ export class Store {
       origins?: Record<string, Record<string, string>>;
       handlers?: Handler[];
     }): Store {
+      performance.mark('octiron:from-initial-state:start')
       const storeArgs = {
         rootIRI,
         vocab,
@@ -702,18 +802,26 @@ export class Store {
           }
         }
 
-        return new Store({
+        const store = new Store({
           ...storeArgs,
           alternatives,
           primary: stateInfo.primary,
+          acceptMap: stateInfo.acceptMap,
         });
+        performance.mark('octiron:from-initial-state:end')
+        performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
+
+        return store;
       } catch (err) {
         if (!disableLogs) {
           console.warn('Failed to construct Octiron state from initial state');
           console.error(err)
         }
 
-        return new Store(storeArgs);
+        const store = new Store(storeArgs);
+        performance.mark('octiron:from-initial-state:end')
+        performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
+        return store;
       }
     }
 
@@ -728,9 +836,14 @@ export class Store {
       const stateInfo: StateInfo = {
         primary: Object.fromEntries(this.#primary),
         alternatives: {},
+        acceptMap: {},
       };
 
-      for (const alternative of this.#alternatives.values()) {
+      for (const [accept, map] of this.#acceptMap.entries()) {
+        stateInfo.acceptMap[accept] = Array.from(map.entries());
+      }
+
+      for (const alternative of this.#integrations.values()) {
         for (const integration of alternative.values()) {
           if (stateInfo.alternatives[integration.integrationType] == null) {
             stateInfo.alternatives[integration.integrationType] = [

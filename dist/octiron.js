@@ -90,9 +90,9 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 
-// node_modules/.deno/uri-templates@0.2.0/node_modules/uri-templates/uri-templates.js
+// node_modules/.pnpm/uri-templates@0.2.0/node_modules/uri-templates/uri-templates.js
 var require_uri_templates = __commonJS({
-  "node_modules/.deno/uri-templates@0.2.0/node_modules/uri-templates/uri-templates.js"(exports, module) {
+  "node_modules/.pnpm/uri-templates@0.2.0/node_modules/uri-templates/uri-templates.js"(exports, module) {
     (function(global, factory) {
       if (typeof define === "function" && define.amd) {
         define("uri-templates", [], factory);
@@ -539,44 +539,12 @@ var require_uri_templates = __commonJS({
   }
 });
 
-// lib/factories/rootFactory.ts
-import m6 from "mithril";
+// lib/factories/octironFactory.ts
+import m7 from "mithril";
 
-// lib/renderers/SelectionRenderer.ts
-import m5 from "mithril";
-
-// lib/factories/selectionFactory.ts
-import m4 from "mithril";
-
-// lib/utils/getComponent.ts
-function getComponent({
-  style,
-  datatype,
-  type,
-  firstPickComponent,
-  typeDefs,
-  fallbackComponent
-}) {
-  var _a, _b, _c;
-  if (firstPickComponent != null) {
-    return firstPickComponent;
-  }
-  if (datatype != null && ((_a = typeDefs[datatype]) == null ? void 0 : _a[style]) != null) {
-    return typeDefs[datatype][style];
-  }
-  if (typeof type === "string" && ((_b = typeDefs[type]) == null ? void 0 : _b[style]) != null) {
-    return typeDefs[type][style];
-  }
-  if (Array.isArray(type)) {
-    for (const item of type) {
-      if (((_c = typeDefs[item]) == null ? void 0 : _c[style]) != null) {
-        return typeDefs[item][style];
-      }
-    }
-  }
-  if (typeof fallbackComponent !== "undefined") {
-    return fallbackComponent;
-  }
+// lib/utils/isJSONObject.ts
+function isJSONObject(value) {
+  return typeof value === "object" && !Array.isArray(value) && value !== null;
 }
 
 // lib/utils/unravelArgs.ts
@@ -600,7 +568,7 @@ function unravelArgs(arg1, arg2, arg3) {
     view = arg3;
   }
   if (typeof view === "undefined") {
-    view = (o) => o.default(args);
+    view = ((o) => o.default(args));
   }
   return [
     selector,
@@ -609,9 +577,266 @@ function unravelArgs(arg1, arg2, arg3) {
   ];
 }
 
-// lib/utils/isJSONObject.ts
-function isJSONObject(value) {
-  return typeof value === "object" && !Array.isArray(value) && value !== null;
+// lib/renderers/SelectionRenderer.ts
+import m2 from "mithril";
+
+// lib/factories/selectionFactory.ts
+function selectionFactory(args, parentArgs, rendererArgs) {
+  const factoryArgs = Object.assign({}, args);
+  const childArgs = {
+    // value: parentArgs.value,
+    value: rendererArgs.value
+  };
+  const self = octironFactory(
+    "selection",
+    factoryArgs,
+    parentArgs,
+    rendererArgs,
+    childArgs
+  );
+  return self;
+}
+
+// lib/utils/mithrilRedraw.ts
+import m from "mithril";
+
+// lib/consts.ts
+var isBrowserRender = typeof window !== "undefined";
+
+// lib/utils/mithrilRedraw.ts
+function mithrilRedraw() {
+  if (isBrowserRender) {
+    m.redraw();
+  }
+}
+
+// lib/renderers/SelectionRenderer.ts
+var preKey = Symbol.for("@pre");
+var postKey = Symbol.for("@post");
+function shouldReselect(next, prev) {
+  return next.parentArgs.store !== prev.parentArgs.store || next.selector !== prev.selector || next.parentArgs.value !== prev.parentArgs.value;
+}
+var SelectionRenderer = (vnode) => {
+  const key = Symbol(`SelectionRenderer`);
+  let currentAttrs = vnode.attrs;
+  let details;
+  const instances = {};
+  function createInstances() {
+    let hasChanges = false;
+    let initialDetails = details == null;
+    const nextKeys = [];
+    if (details == null) {
+      const prevKeys2 = Reflect.ownKeys(instances);
+      for (const key2 of prevKeys2) {
+        if (!nextKeys.includes(key2)) {
+          hasChanges = true;
+          delete instances[key2];
+        }
+      }
+      if (hasChanges) {
+        mithrilRedraw();
+      }
+      return;
+    }
+    for (let index = 0; index < details.result.length; index++) {
+      const selectionResult = details.result[index];
+      const key2 = Symbol.for(selectionResult.pointer);
+      nextKeys.push(key2);
+      if (Object.hasOwn(instances, key2)) {
+        const next = selectionResult;
+        const prev = instances[key2].selectionResult;
+        if (prev.type === "value" && next.type === "value" && next.value === prev.value) {
+          continue;
+        } else if (prev.type === "entity" && next.type === "entity" && (next.ok !== prev.ok || next.status !== prev.status || next.value !== prev.value)) {
+          continue;
+        }
+      }
+      hasChanges = true;
+      const rendererArgs = {
+        index,
+        value: selectionResult.value,
+        propType: selectionResult.type === "entity" ? void 0 : selectionResult.propType
+      };
+      const octiron2 = selectionFactory(
+        currentAttrs.args,
+        currentAttrs.parentArgs,
+        rendererArgs
+      );
+      instances[key2] = {
+        octiron: octiron2,
+        selectionResult
+      };
+    }
+    const prevKeys = Reflect.ownKeys(instances);
+    for (const key2 of prevKeys) {
+      if (!nextKeys.includes(key2)) {
+        hasChanges = true;
+        delete instances[key2];
+      }
+    }
+    if (!initialDetails && hasChanges) {
+      mithrilRedraw();
+    }
+  }
+  function fetchRequired(required, accept) {
+    return __async(this, null, function* () {
+      if (required.length === 0) {
+        return;
+      }
+      const promises = [];
+      for (const iri of required) {
+        promises.push(currentAttrs.parentArgs.store.fetch(iri, accept));
+      }
+      yield Promise.allSettled(promises);
+    });
+  }
+  function listener(next) {
+    let required = [];
+    if (typeof details === "undefined") {
+      required = next.required;
+    } else {
+      for (const iri of next.required) {
+        if (!details.required.includes(iri)) {
+          required.push(iri);
+        }
+      }
+    }
+    details = next;
+    if (required.length > 0) {
+      fetchRequired(required, details.accept);
+    }
+    createInstances();
+  }
+  function subscribe() {
+    const { entity, selector, parentArgs: { value, store }, args: { accept, fragment } } = currentAttrs;
+    if (!entity && !isJSONObject(value)) {
+      store.unsubscribe(key);
+      createInstances();
+      return;
+    }
+    details = store.subscribe({
+      key,
+      selector,
+      fragment,
+      accept,
+      value: entity ? void 0 : value,
+      listener
+    });
+    fetchRequired(details.required, accept);
+    createInstances();
+  }
+  return {
+    oninit: ({ attrs }) => {
+      currentAttrs = attrs;
+      subscribe();
+    },
+    onbeforeupdate: ({ attrs }) => {
+      const reselect = shouldReselect(attrs, currentAttrs);
+      currentAttrs = attrs;
+      if (reselect) {
+        attrs.parentArgs.store.unsubscribe(key);
+        subscribe();
+      }
+    },
+    onbeforeremove: ({ attrs }) => {
+      currentAttrs = attrs;
+      attrs.parentArgs.store.unsubscribe(key);
+    },
+    view: ({ attrs }) => {
+      if (details == null || !details.complete) {
+        return attrs.args.loading;
+      } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== "function") {
+        return attrs.args.fallback;
+      } else if (details.result[0].type === "alternative") {
+        return details.result[0].integration.render(null, attrs.args.fragment);
+      }
+      const view = currentAttrs.view;
+      const {
+        pre,
+        sep,
+        post,
+        start,
+        end,
+        predicate,
+        fallback
+      } = currentAttrs.args;
+      const children = [];
+      let list = Reflect.ownKeys(instances).map(((key2) => {
+        const instance = instances[key2];
+        instance.octiron.position = -1;
+        return instance;
+      }));
+      if (start != null || end != null) {
+        list = list.slice(
+          start != null ? start : 0,
+          end
+        );
+      }
+      if (predicate != null) {
+        list = list.filter(({ octiron: octiron2 }) => predicate(octiron2));
+      }
+      if (pre != null) {
+        children.push(m2.fragment({ key: preKey }, [pre]));
+      }
+      for (let index = 0; index < list.length; index++) {
+        const { selectionResult, octiron: octiron2 } = list[index];
+        const { key: key2 } = selectionResult;
+        octiron2.position = index + 1;
+        if (index !== 0) {
+          children.push(m2.fragment({ key: `@${Symbol.keyFor(key2)}` }, [sep]));
+        }
+        if (selectionResult.type === "value") {
+          children.push(m2.fragment({ key: key2 }, [view(octiron2)]));
+        } else if (!selectionResult.ok && typeof fallback === "function") {
+          children.push(
+            m2.fragment({ key: key2 }, [fallback(octiron2, selectionResult.reason)])
+          );
+        } else if (!selectionResult.ok) {
+          children.push(m2.fragment({ key: key2 }, [fallback]));
+        } else {
+          children.push(m2.fragment({ key: key2 }, [view(octiron2)]));
+        }
+      }
+      if (post != null) {
+        children.push(m2.fragment({ key: postKey }, [post]));
+      }
+      return children;
+    }
+  };
+};
+
+// lib/renderers/PresentRenderer.ts
+import m3 from "mithril";
+
+// lib/utils/getComponent.ts
+function getComponent({
+  style,
+  propType,
+  type,
+  firstPickComponent,
+  typeDefs,
+  fallbackComponent
+}) {
+  var _a, _b, _c;
+  if (firstPickComponent != null) {
+    return firstPickComponent;
+  }
+  if (propType != null && ((_a = typeDefs[propType]) == null ? void 0 : _a[style]) != null) {
+    return typeDefs[propType][style];
+  }
+  if (!Array.isArray(type) && type != null && ((_b = typeDefs[type]) == null ? void 0 : _b[style]) != null) {
+    return typeDefs[type][style];
+  }
+  if (Array.isArray(type)) {
+    for (const item of type) {
+      if (((_c = typeDefs[item]) == null ? void 0 : _c[style]) != null) {
+        return typeDefs[item][style];
+      }
+    }
+  }
+  if (fallbackComponent != null) {
+    return fallbackComponent;
+  }
 }
 
 // lib/utils/isTypedObject.ts
@@ -632,16 +857,99 @@ function isTypeObject(value) {
 }
 
 // lib/utils/getValueType.ts
-function getValueType(value) {
+function getDataType(value) {
   if (isTypeObject(value)) {
     return value["@type"];
   }
 }
 
-// lib/factories/actionFactory.ts
-import m3 from "mithril";
+// lib/utils/selectComponentFromArgs.ts
+var selectComponentFromArgs = (style, parentArgs, rendererArgs, args, factoryArgs) => {
+  var _a, _b, _c, _d;
+  const attrs = Object.assign({}, (_a = args == null ? void 0 : args.attrs) != null ? _a : factoryArgs == null ? void 0 : factoryArgs.attrs);
+  const firstPickComponent = (_b = args == null ? void 0 : args.component) != null ? _b : (args == null ? void 0 : args.component) !== null ? factoryArgs == null ? void 0 : factoryArgs.component : null;
+  const fallbackComponent = (_c = args == null ? void 0 : args.fallbackComponent) != null ? _c : (args == null ? void 0 : args.component) !== null ? factoryArgs == null ? void 0 : factoryArgs.fallbackComponent : null;
+  const component = getComponent({
+    style,
+    propType: rendererArgs == null ? void 0 : rendererArgs.propType,
+    type: getDataType(rendererArgs.value),
+    firstPickComponent,
+    fallbackComponent,
+    typeDefs: (_d = args == null ? void 0 : args.typeDefs) != null ? _d : parentArgs.typeDefs
+  });
+  return [attrs, component];
+};
 
-// node_modules/.deno/json-ptr@3.1.1/node_modules/json-ptr/dist/esm/index.js
+// lib/renderers/PresentRenderer.ts
+var PresentRenderer = ({
+  attrs: {
+    args,
+    factoryArgs,
+    parentArgs,
+    rendererArgs
+  }
+}) => {
+  let [attrs, component] = selectComponentFromArgs(
+    "present",
+    parentArgs,
+    rendererArgs,
+    args,
+    factoryArgs
+  );
+  return {
+    //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
+    // [attrs, component] = selectComponentFromArgs(
+    //   'present',
+    //   parentArgs,
+    //   rendererArgs,
+    //   args,
+    //   factoryArgs,
+    // );
+    //},
+    view({ attrs: { o, rendererArgs: rendererArgs2 }, children }) {
+      if (component == null) {
+        return null;
+      }
+      return m3(component, {
+        o,
+        renderType: "present",
+        value: rendererArgs2.value,
+        attrs
+      }, children);
+    }
+  };
+};
+
+// lib/utils/isIterable.ts
+function isIterable(value) {
+  if (Array.isArray(value)) {
+    return true;
+  } else if (isJSONObject(value)) {
+    if (Array.isArray(value["@list"])) {
+      return true;
+    } else if (Array.isArray(value["@set"])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// lib/utils/getIterableValue.ts
+function getIterableValue(value) {
+  if (Array.isArray(value)) {
+    return value;
+  } else if (Array.isArray(value["@list"])) {
+    return value["@list"];
+  } else if (Array.isArray(value["@set"])) {
+    return value["@set"];
+  }
+  return [];
+}
+
+// lib/factories/actionFactory.ts
+import m6 from "mithril";
+
+// node_modules/.pnpm/json-ptr@3.1.1/node_modules/json-ptr/dist/esm/index.js
 function replace(source, find, repl) {
   let res = "";
   let rem = source;
@@ -1379,16 +1687,20 @@ var ActionStateRenderer = () => {
   let submitResult;
   let o;
   function setInstance(attrs) {
-    if (typeof attrs.refs.submitResult === "undefined") {
+    if (attrs.submitResult == null) {
       submitResult = void 0;
       o = void 0;
-    } else if (typeof submitResult === "undefined" || attrs.refs.submitResult.ok !== submitResult.ok || attrs.refs.submitResult.status !== submitResult.status || attrs.refs.submitResult.value !== submitResult.value) {
-      submitResult = attrs.refs.submitResult;
-      o = selectionFactory({
-        value: submitResult.value,
-        store: attrs.refs.store,
-        typeDefs: attrs.refs.typeDefs
-      });
+    } else if (submitResult == null || attrs.submitResult.ok !== submitResult.ok || attrs.submitResult.status !== submitResult.status || attrs.submitResult.value !== submitResult.value) {
+      submitResult = attrs.submitResult;
+      const rendererArgs = {
+        index: 0,
+        value: attrs.submitResult.value
+      };
+      o = selectionFactory(
+        attrs.args,
+        attrs.parentArgs,
+        rendererArgs
+      );
     }
   }
   return {
@@ -1398,20 +1710,26 @@ var ActionStateRenderer = () => {
     onbeforeupdate: ({ attrs }) => {
       setInstance(attrs);
     },
-    view: ({ attrs: { type, selector, args, view }, children }) => {
-      if (type === "initial" && typeof submitResult === "undefined") {
+    view: (_a) => {
+      var _b = _a, { attrs: _c } = _b, _d = _c, { type, selector, args, view } = _d, attrs = __objRest(_d, ["type", "selector", "args", "view"]), { children } = _b;
+      if (type === "initial" && submitResult == null) {
         return children;
-      } else if (typeof submitResult === "undefined" || typeof o !== "function") {
+      } else if (submitResult == null || o == null) {
         return null;
       }
-      const shouldRender = type === "success" && submitResult.ok || type === "failure" && !submitResult.ok;
-      if (shouldRender && selector != null && args != null && view != null) {
+      let shouldRender = type === "success" && submitResult.ok || type === "failure" && !submitResult.ok;
+      if (attrs.not) {
+        shouldRender = !shouldRender;
+      }
+      o.position = 1;
+      if (shouldRender && selector != null) {
         return o.select(selector, args, view);
-      } else if (shouldRender && typeof view === "function") {
+      } else if (shouldRender && view != null) {
         return view(o);
-      } else if (shouldRender && typeof args !== "undefined") {
+      } else if (shouldRender && args != null) {
         return o.present(args);
       }
+      o.position = -1;
       return null;
     }
   };
@@ -1421,8 +1739,7 @@ var ActionStateRenderer = () => {
 var import_uri_templates = __toESM(require_uri_templates());
 function getSubmitDetails({
   payload,
-  action,
-  store
+  action
 }) {
   let urlTemplate;
   let body;
@@ -1460,13 +1777,23 @@ function getSubmitDetails({
   if (typeof urlTemplate !== "string") {
     throw new Error("Action has invalid https://schema.org/target");
   }
-  const template = (0, import_uri_templates.default)(urlTemplate);
-  const url = template.fill(payload);
-  if (method !== "get" && method !== "delete") {
-    const json = {};
-    for (const [key, value] of Object.entries(payload)) {
-      json[store.expand(key)] = value;
+  const fillArgs = {};
+  const submitBody = Object.assign({}, payload);
+  for (const [type, value] of Object.entries(action)) {
+    if (!isTypeObject(value) || value["@type"] !== "https://schema.org/PropertyValueSpecification") {
+      continue;
     }
+    const valueName = value["https://schema.org/valueName"];
+    if (valueName != null) {
+      const propType = type.replace(/-input$/, "");
+      fillArgs[valueName] = payload[propType];
+      delete submitBody[valueName];
+    }
+  }
+  const template = (0, import_uri_templates.default)(urlTemplate);
+  const url = template.fill(fillArgs);
+  if (method !== "get" && method !== "delete") {
+    body = JSON.stringify(submitBody);
   }
   return {
     url,
@@ -1477,69 +1804,77 @@ function getSubmitDetails({
   };
 }
 
-// lib/utils/mithrilRedraw.ts
-import m from "mithril";
+// lib/factories/actionSelectionFactory.ts
+import m5 from "mithril";
 
-// lib/consts.ts
-var isBrowserRender = typeof window !== "undefined";
-
-// lib/utils/mithrilRedraw.ts
-function mithrilRedraw() {
-  if (isBrowserRender) {
-    m.redraw();
+// lib/renderers/EditRenderer.ts
+import m4 from "mithril";
+var EditRenderer = ({
+  attrs: {
+    args,
+    factoryArgs,
+    parentArgs,
+    rendererArgs
   }
-}
+}) => {
+  const [attrs, component] = selectComponentFromArgs(
+    "edit",
+    parentArgs,
+    rendererArgs,
+    args,
+    factoryArgs
+  );
+  return {
+    //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
+    // [attrs, component] = selectComponentFromArgs(
+    //   'present',
+    //   parentArgs,
+    //   rendererArgs,
+    //   args,
+    //   factoryArgs,
+    // );
+    //},
+    view({ attrs: { o, rendererArgs: rendererArgs2 }, children }) {
+      if (component == null) {
+        return null;
+      }
+      return m4(component, {
+        o,
+        attrs,
+        renderType: "edit",
+        name: o.inputName,
+        value: rendererArgs2.value,
+        spec: rendererArgs2.spec,
+        onchange: rendererArgs2.update,
+        onChange: rendererArgs2.update
+      }, children);
+    }
+  };
+};
 
 // lib/factories/actionSelectionFactory.ts
-import m2 from "mithril";
-
-// lib/factories/octironFactory.ts
-function octironFactory() {
-  const self = function(predicate, children) {
-    const passes = predicate(self);
-    if (passes) {
-      return children;
-    }
-    return null;
-  };
-  self.isOctiron = true;
-  self.not = function(predicate, children) {
-    if (self == null) {
-      return null;
-    }
-    const passes = predicate(self);
-    if (!passes) {
-      return children;
-    }
-    return null;
-  };
-  return self;
-}
-
-// lib/factories/actionSelectionFactory.ts
-function actionSelectionFactory(internals, args) {
-  var _a;
+function actionSelectionFactory(args, parentArgs, rendererArgs) {
+  var _a, _b, _c;
   const factoryArgs = Object.assign({}, args);
-  const uniqueId = internals.store.key();
-  const refs = Object.assign({}, args);
-  function onUpdate(value) {
-    return internals.onUpdate(internals.pointer, value, {
-      throttle: refs.throttle,
-      debounce: refs.debounce,
-      submitOnChange: refs.submitOnChange
-    });
-  }
-  const self = octironFactory();
-  self.octironType = "action-selection";
-  self.readonly = internals.spec == null ? true : internals.spec.readonlyValue || false;
-  self.store = internals.store;
-  self.id = uniqueId;
-  self.inputName = internals.datatype;
-  self.submitting = internals.submitting;
-  self.value = (_a = internals.value) != null ? _a : args.initialValue;
-  self.action = internals.action;
-  function onSelectionUpdate(pointer, value, args2, interceptor) {
-    const prev = self.value;
+  const childArgs = {
+    action: parentArgs.action,
+    submitting: parentArgs.submitting,
+    value: rendererArgs.value
+  };
+  const self = octironFactory(
+    "action-selection",
+    factoryArgs,
+    parentArgs,
+    rendererArgs,
+    childArgs
+  );
+  self.readonly = rendererArgs.spec == null ? true : (_a = rendererArgs.spec.readonly) != null ? _a : false;
+  self.inputName = ((_b = rendererArgs.spec) == null ? void 0 : _b.name) != null ? (_c = rendererArgs.spec) == null ? void 0 : _c.name : rendererArgs.propType;
+  self.submitting = parentArgs.submitting;
+  self.action = parentArgs.action;
+  childArgs.updatePointer = (pointer, value, args2, interceptor = factoryArgs.interceptor) => {
+    var _a2;
+    const prev = rendererArgs.value;
     if (!isJSONObject(prev)) {
       console.warn(`Non object action change intercepted.`);
       return;
@@ -1552,233 +1887,121 @@ function actionSelectionFactory(internals, args) {
       ptr.set(next, value, true);
     }
     if (typeof interceptor === "function") {
-      next = interceptor(next, prev, internals.actionValue);
+      next = interceptor(next, prev, (_a2 = rendererArgs.actionValue) == null ? void 0 : _a2.value);
     }
-    internals.onUpdate(internals.pointer, next, args2);
-  }
-  self.update = function(arg1, args2) {
-    return __async(this, null, function* () {
-      const value = self.value;
-      if (!isJSONObject(value)) {
-        throw new Error(`Cannot call update on a non object selection instance`);
-      }
-      if (typeof arg1 === "function") {
-        onUpdate(arg1(value));
-      } else if (arg1 != null) {
-        onUpdate(arg1);
-      }
-      if ((args2 == null ? void 0 : args2.submit) || (args2 == null ? void 0 : args2.submitOnChange)) {
-        yield internals.onSubmit();
-      } else {
-        mithrilRedraw();
-      }
-    });
+    parentArgs.updatePointer(rendererArgs.pointer, next, args2);
   };
-  self.submit = function() {
-    return internals.onSubmit();
-  };
-  self.root = function(arg1, arg2, arg3) {
-    let selector;
-    const [childSelector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    if (childSelector == null) {
-      selector = internals.store.rootIRI;
+  self.update = (arg1, args2) => __async(null, null, function* () {
+    const value = rendererArgs.value;
+    if (!isJSONObject(value)) {
+      throw new Error(`Cannot call update on a non object selection instance`);
+    }
+    if (typeof arg1 === "function") {
+      rendererArgs.update(arg1(value));
+    } else if (arg1 != null) {
+      rendererArgs.update(arg1);
+    }
+    if ((args2 == null ? void 0 : args2.submit) || (args2 == null ? void 0 : args2.submitOnChange)) {
+      yield parentArgs.submit();
     } else {
-      selector = `${internals.store.rootIRI} ${childSelector}`;
+      mithrilRedraw();
     }
-    return m2(SelectionRenderer, {
-      selector,
-      args: args2,
-      view,
-      internals: {
-        store: internals.store,
-        typeDefs: (args2 == null ? void 0 : args2.typeDefs) || (factoryArgs == null ? void 0 : factoryArgs.typeDefs) || internals.typeDefs,
-        parent: self
-      }
-    });
+  });
+  self.submit = () => {
+    return parentArgs.submit();
   };
-  self.select = function(arg1, arg2, arg3) {
-    if (!isJSONObject(self.value)) {
+  self.select = (arg1, arg2, arg3) => {
+    if (!isJSONObject(rendererArgs.value)) {
       return null;
     }
     const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    const onUpdate2 = (pointer, value, updateArgs) => {
-      onSelectionUpdate(
-        pointer,
-        value,
-        updateArgs,
-        args2.interceptor
-      );
-    };
-    return m2(
+    return m5(
       ActionSelectionRenderer,
       {
-        internals: {
-          submitting: internals.submitting,
-          entity: internals.entity,
-          action: internals.action,
-          parent: self,
-          store: internals.store,
-          typeDefs: internals.typeDefs,
-          onSubmit: internals.onSubmit,
-          onUpdate: onUpdate2
-        },
+        parentArgs: childArgs,
         selector,
-        value: self.value,
-        actionValue: internals.actionValue,
+        value: rendererArgs.value,
+        actionValue: rendererArgs.actionValue.value,
         args: args2,
         view
       }
     );
   };
-  self.enter = function(arg1, arg2, arg3) {
-    const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m2(SelectionRenderer, {
-      selector,
-      args: args2,
-      view,
-      internals: {
-        store: internals.store,
-        typeDefs: (args2 == null ? void 0 : args2.typeDefs) || (factoryArgs == null ? void 0 : factoryArgs.typeDefs) || internals.typeDefs,
-        parent: self
-      }
-    });
-  };
-  self.present = (args2) => {
-    let attrs = {};
-    let firstPickComponent;
-    let fallbackComponent;
-    if ((args2 == null ? void 0 : args2.attrs) != null) {
-      attrs = args2.attrs;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.attrs) != null) {
-      attrs = factoryArgs.attrs;
-    }
-    if ((args2 == null ? void 0 : args2.component) != null) {
-      firstPickComponent = args2.component;
-    } else if ((args2 == null ? void 0 : args2.component) !== null && (factoryArgs == null ? void 0 : factoryArgs.component) != null) {
-      firstPickComponent = factoryArgs.component;
-    }
-    if ((args2 == null ? void 0 : args2.fallbackComponent) != null) {
-      fallbackComponent = args2.fallbackComponent;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.fallbackComponent) != null) {
-      fallbackComponent = factoryArgs.fallbackComponent;
-    }
-    const component = getComponent({
-      style: "present",
-      type: getValueType(internals.value),
-      firstPickComponent,
-      fallbackComponent,
-      typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs || {}
-    });
-    if (component == null) {
-      return null;
-    }
-    return m2(component, {
-      o: self,
-      renderType: "present",
-      value: self.value,
-      attrs
-    });
-  };
-  self.edit = function(args2) {
+  self.edit = (args2) => {
     if (self.readonly) {
       return self.present(args2);
     }
-    let attrs = {};
-    let firstPickComponent;
-    let fallbackComponent;
-    if ((args2 == null ? void 0 : args2.attrs) != null) {
-      attrs = args2.attrs;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.attrs) != null) {
-      attrs = factoryArgs.attrs;
-    }
-    if ((args2 == null ? void 0 : args2.component) != null) {
-      firstPickComponent = args2.component;
-    } else if ((args2 == null ? void 0 : args2.component) !== null && (factoryArgs == null ? void 0 : factoryArgs.component) != null) {
-      firstPickComponent = factoryArgs.component;
-    }
-    if ((args2 == null ? void 0 : args2.fallbackComponent) != null) {
-      fallbackComponent = args2.fallbackComponent;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.fallbackComponent) != null) {
-      fallbackComponent = factoryArgs.fallbackComponent;
-    }
-    const component = getComponent({
-      style: "edit",
-      datatype: internals.datatype,
-      type: getValueType(self.value),
-      firstPickComponent,
-      fallbackComponent,
-      typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs || {}
+    return m5(EditRenderer, {
+      o: self,
+      args: args2,
+      factoryArgs,
+      parentArgs,
+      rendererArgs
     });
+    const [attrs, component] = selectComponentFromArgs(
+      "edit",
+      parentArgs,
+      rendererArgs,
+      args2,
+      factoryArgs
+    );
     if (component == null) {
       return null;
     }
-    const onChange = (value, args3) => {
-      return internals.onUpdate(internals.pointer, value, args3);
-    };
-    return m2(component, {
+    return m5(component, {
       o: self,
-      required: true,
-      readonly: false,
+      spec: rendererArgs.spec,
       renderType: "edit",
       name: self.inputName,
-      value: self.value,
+      value: rendererArgs.value,
       attrs,
-      onchange: onChange,
-      onChange
+      onchange: rendererArgs.update,
+      onChange: rendererArgs.update
     });
   };
-  self.default = function(args2) {
+  self.default = (args2) => {
     return self.edit(Object.assign({ component: null }, args2));
   };
-  self.initial = function(children) {
-    return internals.action.initial(children);
+  self.initial = parentArgs.action.initial;
+  self.success = parentArgs.action.success;
+  self.failure = parentArgs.action.failure;
+  self.remove = (_args = {}) => {
+    if (rendererArgs.propType == null) {
+      return;
+    }
+    const parentValue = parentArgs.parent.value;
+    const value = parentValue[rendererArgs.propType];
+    if (isIterable(value)) {
+      const arrValue = getIterableValue(value);
+      arrValue.splice(self.index, 1);
+      if (arrValue.length === 0) {
+        delete parentValue[rendererArgs.propType];
+      }
+    } else if (isJSONObject(value)) {
+      delete parentValue[rendererArgs.propType];
+    }
+    mithrilRedraw();
   };
-  self.success = function(arg1, arg2, arg3) {
-    return internals.action.success(
-      arg1,
-      arg2,
-      arg3
-    );
-  };
-  self.failure = function(arg1, arg2, arg3) {
-    return internals.action.failure(
-      arg1,
-      arg2,
-      arg3
-    );
-  };
-  self.remove = function(args2 = {}) {
-    internals.onUpdate(
-      internals.pointer,
-      null,
+  self.append = (termOrType, value = {}, args2 = {}) => {
+    if (!isJSONObject(rendererArgs.value)) {
+      console.warn(`Attempt to append to non object octiron selection ${termOrType}`);
+      return;
+    }
+    let nextValue;
+    const type = parentArgs.store.expand(termOrType);
+    const lastValue = rendererArgs.value[type];
+    if (lastValue == null) {
+      nextValue = value;
+    } else if (Array.isArray(lastValue)) {
+      nextValue = [...lastValue, value];
+    } else {
+      nextValue = [lastValue, value];
+    }
+    return parentArgs.updatePointer(
+      rendererArgs.pointer,
+      Object.assign({}, rendererArgs.value, { [type]: nextValue }),
       args2
     );
-  };
-  self.append = function(termOrType, value = {}, args2 = {}) {
-    const type = internals.store.expand(termOrType);
-    if (isJSONObject(self.value)) {
-      const prevValue = self.value[type];
-      let nextValue = [];
-      if (prevValue != null && !Array.isArray(prevValue)) {
-        nextValue.push(prevValue);
-      } else if (Array.isArray(prevValue)) {
-        nextValue = [...prevValue];
-      }
-      nextValue.push(value);
-      return internals.onUpdate(internals.pointer, __spreadProps(__spreadValues({}, self.value), {
-        [type]: nextValue
-      }), args2);
-    }
-  };
-  self._updateInternals = function(incomming) {
-    for (const [key, value] of Object.entries(incomming)) {
-      internals[key] = value;
-    }
-  };
-  self._updateArgs = function(args2) {
-    for (const [key, value] of Object.entries(args2)) {
-      factoryArgs[key] = value;
-    }
   };
   return self;
 }
@@ -1789,35 +2012,9 @@ function escapeJSONPointerParts(...parts) {
   return `${escaped}`;
 }
 
-// lib/utils/getIterableValue.ts
-function getIterableValue(value) {
-  if (Array.isArray(value)) {
-    return value;
-  } else if (Array.isArray(value["@list"])) {
-    return value["@list"];
-  } else if (Array.isArray(value["@set"])) {
-    return value["@set"];
-  }
-  return [];
-}
-
 // lib/utils/isIRIObject.ts
 function isIRIObject(value) {
   return isJSONObject(value) && typeof value["@id"] === "string" && value["@id"] !== "";
-}
-
-// lib/utils/isIterable.ts
-function isIterable(value) {
-  if (Array.isArray(value)) {
-    return true;
-  } else if (isJSONObject(value)) {
-    if (Array.isArray(value["@list"])) {
-      return true;
-    } else if (Array.isArray(value["@set"])) {
-      return true;
-    }
-  }
-  return false;
 }
 
 // lib/utils/isMetadataObject.ts
@@ -1904,7 +2101,18 @@ function resolvePropertyValueSpecification({
       pvs[result.groups.term] = value;
     }
   }
-  return pvs;
+  return {
+    readonly: pvs.readonlyValue,
+    required: pvs.valueRequired,
+    name: pvs.valueName,
+    min: pvs.minValue,
+    max: pvs.maxValue,
+    step: pvs.stepValue,
+    pattern: pvs.valuePattern,
+    multiple: pvs.multipleValues,
+    minLength: pvs.valueMinLength,
+    maxLength: pvs.valueMaxLength
+  };
 }
 
 // lib/utils/getSelection.ts
@@ -1921,7 +2129,10 @@ function transformProcessedDetails(processing) {
 function getSelection({
   selector: selectorStr,
   value,
+  fragment,
+  accept,
   actionValue,
+  defaultValue,
   store
 }) {
   const details = {
@@ -1934,11 +2145,14 @@ function getSelection({
     result: []
   };
   if (value == null) {
-    const [{ subject: iri, filter }, ...selector2] = parseSelectorString(selectorStr, store);
+    const [{ subject, filter }, ...selector2] = parseSelectorString(selectorStr, store);
+    const [iri, iriFragment] = subject.split("#");
     selectEntity({
       keySource: "",
       pointer: "",
       iri,
+      fragment: iriFragment != null ? iriFragment : fragment,
+      accept,
       filter,
       selector: selector2.length > 0 ? selector2 : void 0,
       store,
@@ -1955,7 +2169,8 @@ function getSelection({
     actionValue,
     selector,
     store,
-    details
+    details,
+    defaultValue
   });
   details.complete = details.required.length === 0;
   for (let index = 0; index < details.result.length; index++) {
@@ -1986,7 +2201,7 @@ function resolveValue({
   keySource,
   pointer,
   value,
-  datatype,
+  propType,
   filter,
   spec,
   actionValue,
@@ -1996,6 +2211,12 @@ function resolveValue({
   if (value === void 0) {
     details.hasMissing = true;
     return;
+  } else if (value === null && isJSONObject(actionValue)) {
+    for (const item of Object.values(actionValue)) {
+      if (isTypeObject(item) && item["@type"] === "https://schema.org/PropertyValueSpecification") {
+        return;
+      }
+    }
   }
   if (spec != null && // hit the for loop below if the action value
   // has editable properties and the value is an
@@ -2012,11 +2233,11 @@ function resolveValue({
       keySource: pointer,
       pointer,
       type: "action-value",
-      datatype,
+      propType,
       value,
       actionValue,
       spec: pvs,
-      readonly: pvs.readonlyValue
+      readonly: pvs.readonly
     });
     return;
   }
@@ -2025,7 +2246,7 @@ function resolveValue({
       keySource: pointer,
       pointer,
       type: "value",
-      datatype,
+      propType,
       value
     });
     return;
@@ -2042,7 +2263,7 @@ function resolveValue({
         value: item,
         spec,
         actionValue,
-        datatype,
+        propType,
         filter,
         store,
         details
@@ -2061,7 +2282,7 @@ function resolveValue({
       keySource,
       pointer,
       value: value["@value"],
-      datatype,
+      propType,
       store,
       details
     });
@@ -2093,21 +2314,21 @@ function resolveValue({
     keySource,
     pointer,
     type: "value",
-    datatype,
+    propType,
     value
   });
 }
 function selectTypedValue({
   keySource,
   pointer,
-  type,
+  propType,
   value,
   actionValue,
   filter,
   store,
   details
 }) {
-  pointer = makePointer(pointer, type);
+  pointer = makePointer(pointer, propType);
   if (!isTraversable(value)) {
     return;
   }
@@ -2121,7 +2342,7 @@ function selectTypedValue({
       selectTypedValue({
         keySource,
         pointer: makePointer(pointer, index),
-        type,
+        propType,
         value: item,
         actionValue,
         filter,
@@ -2139,7 +2360,7 @@ function selectTypedValue({
       keySource,
       pointer,
       iri: value["@id"],
-      selector: [{ subject: type, filter }],
+      selector: [{ subject: propType, filter }],
       store,
       details
     });
@@ -2148,18 +2369,18 @@ function selectTypedValue({
     return;
   }
   let spec;
-  if (isJSONObject(actionValue) && actionValue[`${type}-input`] == null) {
+  if (isJSONObject(actionValue) && actionValue[`${propType}-input`] == null) {
     return;
   } else if (isJSONObject(actionValue)) {
-    spec = actionValue[`${type}-input`];
+    spec = actionValue[`${propType}-input`];
   }
   resolveValue({
     keySource,
     pointer,
-    value: value[type],
+    value: value[propType],
     spec,
-    actionValue: actionValue == null ? void 0 : actionValue[type],
-    datatype: type,
+    actionValue: actionValue == null ? void 0 : actionValue[propType],
+    propType,
     filter,
     store,
     details
@@ -2172,7 +2393,8 @@ function traverseSelector({
   value,
   actionValue,
   store,
-  details
+  details,
+  defaultValue
 }) {
   if (selector.length === 0) {
     return;
@@ -2193,7 +2415,8 @@ function traverseSelector({
         value: item,
         actionValue,
         store,
-        details
+        details,
+        defaultValue
       });
       if (details.hasErrors || details.hasMissing) {
         return;
@@ -2208,7 +2431,8 @@ function traverseSelector({
       value: value["@value"],
       actionValue,
       store,
-      details
+      details,
+      defaultValue
     });
   }
   if (isMetadataObject(value) && isIRIObject(value)) {
@@ -2223,25 +2447,25 @@ function traverseSelector({
     return;
   }
   if (isJSONObject(value) && actionValue !== void 0 && value[selector[0].subject] == null) {
-    value = { [selector[0].subject]: null };
+    value = { [selector[0].subject]: defaultValue != null ? defaultValue : null };
   }
   const [next, ...rest] = selector;
-  const { subject: type, filter } = next;
-  if (value[type] === void 0) {
+  const { subject: propType, filter } = next;
+  if (value[propType] === void 0) {
     details.hasMissing = true;
     return;
   }
-  if (rest.length === 0 && isJSONObject(actionValue == null ? void 0 : actionValue[type])) {
-    pointer = makePointer(pointer, type);
+  if (rest.length === 0 && isJSONObject(actionValue == null ? void 0 : actionValue[propType])) {
+    pointer = makePointer(pointer, propType);
     resolveValue({
       keySource: pointer,
       pointer,
-      value: value[type],
-      datatype: type,
+      value: value[propType],
+      propType,
       details,
       store,
-      actionValue: actionValue == null ? void 0 : actionValue[type],
-      spec: actionValue[`${type}-input`],
+      actionValue: actionValue == null ? void 0 : actionValue[propType],
+      spec: actionValue[`${propType}-input`],
       filter
     });
     return;
@@ -2249,7 +2473,7 @@ function traverseSelector({
     selectTypedValue({
       keySource,
       pointer,
-      type,
+      propType,
       filter,
       value,
       actionValue,
@@ -2262,14 +2486,14 @@ function traverseSelector({
     return;
   }
   let traversedActionValue;
-  if (isJSONObject(actionValue == null ? void 0 : actionValue[type])) {
-    traversedActionValue = actionValue[type];
+  if (isJSONObject(actionValue == null ? void 0 : actionValue[propType])) {
+    traversedActionValue = actionValue[propType];
   }
   traverseSelector({
-    keySource: makePointer(keySource, type),
-    pointer: makePointer(pointer, type),
+    keySource: makePointer(keySource, propType),
+    pointer: makePointer(pointer, propType),
     selector: rest,
-    value: value[type],
+    value: value[propType],
     actionValue: traversedActionValue,
     store,
     details
@@ -2279,6 +2503,8 @@ function selectEntity({
   keySource,
   pointer,
   iri,
+  fragment,
+  accept,
   filter,
   selector,
   store,
@@ -2287,11 +2513,13 @@ function selectEntity({
 }) {
   keySource = makePointer(keySource, iri);
   pointer = makePointer(pointer, iri);
-  const cache = store.entity(iri);
+  const cache = store.entity(iri, accept);
   details.dependencies.push(iri);
   if (cache == null || cache.loading) {
     if (!details.required.includes(iri)) {
       details.required.push(iri);
+      details.accept = accept;
+      details.fragment = fragment;
     }
     return;
   }
@@ -2309,6 +2537,16 @@ function selectEntity({
       status: cache.status,
       value: cache.value,
       reason: cache.reason
+    });
+    return;
+  }
+  if (cache.type === "alternative-success") {
+    details.result.push({
+      keySource,
+      pointer,
+      type: "alternative",
+      contentType: cache.integration.contentType,
+      integration: cache.integration
     });
     return;
   }
@@ -2364,51 +2602,60 @@ var ActionSelectionRenderer = (vnode) => {
   const instances = {};
   function createInstances() {
     let hasChanges = false;
+    const { parentArgs, selectionArgs } = currentAttrs;
     const nextKeys = [];
-    for (const selectionResult of details.result) {
+    for (let index = 0; index < details.result.length; index++) {
+      const selectionResult = details.result[index];
       nextKeys.push(selectionResult.pointer);
       if (instances[selectionResult.pointer] != null) {
-        const next = selectionResult;
-        const prev = instances[selectionResult.pointer].selectionResult;
-        if (next.value === prev.value) {
-          continue;
-        }
-        const internals2 = Object.assign({}, instances[selectionResult.pointer].internals);
-        internals2.name = selectionResult.datatype;
-        internals2.type = selectionResult.type;
-        internals2.datatype = selectionResult.datatype;
-        internals2.pointer = selectionResult.pointer;
-        internals2.value = selectionResult.value;
-        internals2.actionValue = selectionResult.actionValue;
-        if (selectionResult.spec != null) {
-          internals2.spec = selectionResult.spec;
-        }
-        instances[selectionResult.pointer].octiron._updateInternals(internals2);
+        const { rendererArgs: rendererArgs2, octiron: octiron2 } = instances[selectionResult.pointer];
+        const update2 = (value) => {
+          return parentArgs.updatePointer(
+            selectionResult.pointer,
+            value,
+            selectionArgs
+          );
+        };
+        rendererArgs2.value = octiron2.value = selectionResult.value;
+        rendererArgs2.spec = selectionResult.spec;
+        rendererArgs2.update = update2;
+        continue;
       }
       hasChanges = true;
-      const selection = selectionFactory({
-        store: currentAttrs.internals.store,
-        typeDefs: currentAttrs.internals.typeDefs,
-        datatype: selectionResult.datatype,
-        value: selectionResult.value
-      });
-      const internals = __spreadProps(__spreadValues({}, currentAttrs.internals), {
-        octiron: selection,
-        name: selectionResult.datatype,
-        type: selectionResult.type,
-        datatype: selectionResult.datatype,
+      const update = (value) => {
+        return parentArgs.updatePointer(
+          selectionResult.pointer,
+          value,
+          selectionArgs
+        );
+      };
+      const actionValueRendererArgs = {
+        index,
+        value: selectionResult.actionValue,
+        propType: selectionResult.propType
+      };
+      const actionValue = selectionFactory(
+        currentAttrs.args,
+        parentArgs,
+        actionValueRendererArgs
+      );
+      const rendererArgs = {
+        index,
+        update,
+        actionValue,
         pointer: selectionResult.pointer,
-        spec: selectionResult.spec,
+        propType: selectionResult.propType,
         value: selectionResult.value,
-        actionValue: selectionResult.actionValue
-      });
+        spec: selectionResult.spec
+      };
       const actionSelection = actionSelectionFactory(
-        internals,
-        currentAttrs.args
+        currentAttrs.args,
+        parentArgs,
+        rendererArgs
       );
       instances[selectionResult.pointer] = {
-        internals,
-        selection,
+        rendererArgs,
+        selection: actionValue,
         octiron: actionSelection,
         selectionResult
       };
@@ -2426,7 +2673,7 @@ var ActionSelectionRenderer = (vnode) => {
   }
   function updateSelection() {
     const { selector, value, actionValue } = currentAttrs;
-    const { store } = currentAttrs.internals;
+    const { store } = currentAttrs.parentArgs;
     if (!isJSONObject(value)) {
       return;
     }
@@ -2434,7 +2681,8 @@ var ActionSelectionRenderer = (vnode) => {
       selector,
       store,
       actionValue,
-      value
+      value,
+      defaultValue: currentAttrs.args.initialValue
     });
     createInstances();
   }
@@ -2446,8 +2694,7 @@ var ActionSelectionRenderer = (vnode) => {
     onbeforeupdate: ({ attrs }) => {
       currentAttrs = attrs;
       for (const instance of Object.values(instances)) {
-        instance.octiron._updateArgs(attrs.args);
-        instance.octiron._updateInternals(attrs.internals);
+        instance.octiron._updateArgs("args", attrs.args);
       }
       updateSelection();
     },
@@ -2468,6 +2715,7 @@ var ActionSelectionRenderer = (vnode) => {
       const children = [pre];
       for (let index = 0; index < list.length; index++) {
         const { octiron: octiron2, selectionResult } = list[index];
+        octiron2.position = index + 1;
         if (index !== 0) {
           children.push(sep);
         }
@@ -2486,296 +2734,186 @@ var ActionSelectionRenderer = (vnode) => {
 };
 
 // lib/factories/actionFactory.ts
-function actionFactory(internals, args) {
-  const factoryArgs = Object.assign({}, args);
-  let payload = {};
+function actionFactory(args, parentArgs, rendererArgs) {
+  const factoryArgs = Object.assign(/* @__PURE__ */ Object.create(null), args);
+  let payload = /* @__PURE__ */ Object.create(null);
   let submitResult;
   if (isJSONObject(args.initialPayload)) {
     for (const [key, value] of Object.entries(args.initialPayload)) {
-      payload[internals.store.expand(key)] = value;
+      payload[parentArgs.store.expand(key)] = value;
     }
   }
-  const { url, method, body } = getSubmitDetails({
-    payload,
-    action: internals.octiron.value,
-    store: internals.store
-  });
-  if (body == null) {
-    submitResult = internals.store.entity(url);
-  }
-  const refs = {
-    url,
-    method,
-    submitting: false,
-    payload,
-    store: internals.store,
-    typeDefs: internals.typeDefs,
-    submitResult
-  };
-  function onSubmit() {
+  function submit() {
     return __async(this, null, function* () {
-      const { url: url2, method: method2, body: body2, contentType, encodingType } = getSubmitDetails({
+      const { url, method, body, contentType, encodingType } = getSubmitDetails({
         payload,
-        action: internals.octiron.value,
-        store: internals.store
+        action: rendererArgs.value,
+        store: parentArgs.store
       });
+      self.submitting = true;
+      self.url = new URL(url, self.store.rootIRI);
+      mithrilRedraw();
       try {
-        refs.submitting = true;
-        mithrilRedraw();
-        refs.submitResult = yield internals.store.submit(url2, {
-          method: method2,
-          body: body2,
+        submitResult = yield parentArgs.store.submit(url, {
+          method,
+          body,
           contentType,
           encodingType
         });
       } catch (err) {
         console.error(err);
       }
-      refs.submitting = false;
+      self.submitting = false;
       mithrilRedraw();
     });
   }
-  function onUpdate(value) {
+  function update(value) {
     const prev = payload;
     const next = __spreadValues(__spreadValues({}, prev), value);
     if (typeof args.interceptor === "function") {
       payload = args.interceptor(
         next,
         prev,
-        internals.octiron.value
+        parentArgs.parent.value
       );
     } else {
       payload = next;
     }
-    self.value = refs.payload = value;
+    childArgs.value = self.value = value;
     mithrilRedraw();
   }
-  function onPointerUpdate(pointer, value) {
+  const updatePointer = (pointer, value, _args) => {
     const next = Object.assign({}, payload);
     const ptr = JsonPointer.create(pointer);
-    if (typeof value === "undefined" || value === null) {
+    if (value == null) {
       ptr.unset(next);
     } else {
       ptr.set(next, value, true);
     }
-    onUpdate(next);
-  }
-  const self = function self2(predicate, children) {
-    const passes = predicate(self2);
-    if (passes) {
-      return children;
-    }
-    return null;
+    update(next);
   };
-  self.isOctiron = true;
-  self.octironType = "action";
-  self.readonly = false;
-  self.value = refs.payload;
-  self.action = internals.octiron;
-  self.actionValue = internals.octiron;
-  self.submit = function(arg1) {
-    return __async(this, null, function* () {
-      if (typeof arg1 === "function") {
-        onUpdate(arg1(payload));
-      } else if (arg1 != null) {
-        onUpdate(arg1);
-      }
-      return yield onSubmit();
-    });
+  const childArgs = {
+    value: payload,
+    submitting: false,
+    submit,
+    updatePointer
   };
-  self.update = function(arg1, args2) {
-    return __async(this, null, function* () {
-      if (typeof arg1 === "function") {
-        onUpdate(arg1(payload));
-      } else if (arg1 != null) {
-        onUpdate(arg1);
-      }
-      if ((args2 == null ? void 0 : args2.submit) || (args2 == null ? void 0 : args2.submitOnChange)) {
-        yield onSubmit();
-      } else {
-        mithrilRedraw();
-      }
-    });
-  };
-  self.not = function(predicate, children) {
-    if (self == null) {
-      return null;
-    }
-    const passes = predicate(self);
-    if (!passes) {
-      return children;
-    }
-    return null;
-  };
-  self.root = function(arg1, arg2, arg3) {
-    let selector;
-    const [childSelector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    if (childSelector == null) {
-      selector = internals.store.rootIRI;
-    } else {
-      selector = `${internals.store.rootIRI} ${childSelector}`;
-    }
-    return m3(SelectionRenderer, {
-      selector,
-      args: args2,
-      view,
-      internals: {
-        store: internals.store,
-        typeDefs: (args2 == null ? void 0 : args2.typeDefs) || (factoryArgs == null ? void 0 : factoryArgs.typeDefs) || internals.typeDefs,
-        parent: self
-      }
-    });
-  };
-  self.enter = function(arg1, arg2, arg3) {
+  const self = octironFactory(
+    "action",
+    factoryArgs,
+    parentArgs,
+    rendererArgs,
+    childArgs
+  );
+  self.value = payload;
+  self.action = parentArgs.parent;
+  self.actionValue = rendererArgs.actionValue;
+  childArgs.action = self;
+  childArgs.submitting = self.submitting;
+  self.select = (arg1, arg2, arg3) => {
     const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m3(SelectionRenderer, {
-      selector,
-      args: args2,
-      view,
-      internals: {
-        store: internals.store,
-        typeDefs: (args2 == null ? void 0 : args2.typeDefs) || (factoryArgs == null ? void 0 : factoryArgs.typeDefs) || internals.typeDefs,
-        parent: self
-      }
-    });
-  };
-  self.present = function(args2) {
-    let attrs = {};
-    let firstPickComponent;
-    let fallbackComponent;
-    if ((args2 == null ? void 0 : args2.attrs) != null) {
-      attrs = args2.attrs;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.attrs) != null) {
-      attrs = factoryArgs.attrs;
-    }
-    if ((args2 == null ? void 0 : args2.component) != null) {
-      firstPickComponent = args2.component;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.component) != null) {
-      firstPickComponent = factoryArgs.component;
-    }
-    if ((args2 == null ? void 0 : args2.fallbackComponent) != null) {
-      fallbackComponent = args2.fallbackComponent;
-    } else if ((factoryArgs == null ? void 0 : factoryArgs.fallbackComponent) != null) {
-      fallbackComponent = factoryArgs.fallbackComponent;
-    }
-    const component = getComponent({
-      style: "present",
-      type: getValueType(internals.octiron.value),
-      firstPickComponent,
-      fallbackComponent,
-      typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs || {}
-    });
-    if (component == null) {
-      return null;
-    }
-    const { pre, sep, post, start, end, predicate } = Object.assign(
-      {},
-      factoryArgs,
-      args2
-    );
-    return m3(component, {
-      o: self,
-      renderType: "present",
-      value: self.value,
-      attrs,
-      pre,
-      sep,
-      post,
-      start,
-      end,
-      predicate
-    });
-  };
-  self.default = function(args2) {
-    return self.present(args2);
-  };
-  self.initial = function(children) {
-    return m3(
-      ActionStateRenderer,
-      {
-        type: "initial",
-        refs
-      },
-      children
-    );
-  };
-  self.success = function(arg1, arg2, arg3) {
-    const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m3(ActionStateRenderer, {
-      type: "success",
-      selector,
-      args: args2,
-      view,
-      refs
-    });
-  };
-  self.failure = function(arg1, arg2, arg3) {
-    const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m3(ActionStateRenderer, {
-      type: "failure",
-      selector,
-      args: args2,
-      view,
-      refs
-    });
-  };
-  self.select = function(arg1, arg2, arg3) {
-    const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m3(
+    return m6(
       ActionSelectionRenderer,
       {
-        internals: {
-          action: self,
-          parent: self,
-          entity: internals.octiron,
-          store: internals.store,
-          typeDefs: internals.typeDefs,
-          onSubmit,
-          onUpdate: onPointerUpdate,
-          submitting: refs.submitting
-        },
+        parentArgs: childArgs,
         selector,
         value: self.value,
-        actionValue: internals.octiron.value,
+        actionValue: parentArgs.parent.value,
         args: args2,
         view
       }
     );
   };
-  self.perform = function(arg1, arg2, arg3) {
-    const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-    return m3(PerformRenderer, {
-      selector,
-      args: args2,
-      view,
-      internals: {
-        octiron: self,
-        store: internals.store,
-        typeDefs: internals.typeDefs
+  self.submit = function(arg1) {
+    return __async(this, null, function* () {
+      if (typeof arg1 === "function") {
+        update(arg1(payload));
+      } else if (arg1 != null) {
+        update(arg1);
+      }
+      return yield submit();
+    });
+  };
+  self.update = function(arg1, args2) {
+    return __async(this, null, function* () {
+      if (typeof arg1 === "function") {
+        update(arg1(payload));
+      } else if (arg1 != null) {
+        update(arg1);
+      }
+      if ((args2 == null ? void 0 : args2.submit) || (args2 == null ? void 0 : args2.submitOnChange)) {
+        yield submit();
+      } else {
+        mithrilRedraw();
       }
     });
   };
-  self.append = function(termOrType, value = {}, args2 = {}) {
-    const type = internals.store.expand(termOrType);
-    if (isJSONObject(self.value)) {
-      const prevValue = self.value[type];
-      let nextValue = [];
-      if (prevValue != null && !Array.isArray(prevValue)) {
-        nextValue.push(prevValue);
-      } else if (Array.isArray(prevValue)) {
-        nextValue = [...prevValue];
-      }
-      nextValue.push(value);
-      return self.update(__spreadProps(__spreadValues({}, self.value), {
-        [type]: nextValue
-      }), args2);
+  self.append = (termOrType, value = {}, args2 = {}) => {
+    const type = parentArgs.store.expand(termOrType);
+    if (!isJSONObject(self.value)) {
+      return;
     }
-  };
-  self._updateArgs = function(args2) {
-    for (const [key, value] of Object.entries(args2)) {
-      factoryArgs[key] = value;
+    const prevValue = self.value[type];
+    let nextValue = [];
+    if (prevValue != null && !Array.isArray(prevValue)) {
+      nextValue.push(prevValue);
+    } else if (Array.isArray(prevValue)) {
+      nextValue = [...prevValue.filter((value2) => value2 != void 0)];
     }
+    nextValue.push(value);
+    return self.update(__spreadProps(__spreadValues({}, self.value), {
+      [type]: nextValue
+    }), args2);
   };
+  const makeInitialStateMethod = (not) => {
+    return (children) => {
+      return m6(
+        ActionStateRenderer,
+        {
+          not,
+          type: "initial",
+          args: {},
+          submitResult,
+          parentArgs: childArgs
+        },
+        children
+      );
+    };
+  };
+  const makeActionStateMethod = (type, not) => {
+    return (arg1, arg2, arg3) => {
+      const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
+      return m6(ActionStateRenderer, {
+        not,
+        type,
+        selector,
+        args: args2,
+        view,
+        submitResult,
+        parentArgs: childArgs
+      });
+    };
+  };
+  self.initial = makeInitialStateMethod();
+  self.not.initial = makeInitialStateMethod(true);
+  self.success = makeActionStateMethod("success");
+  self.not.success = makeActionStateMethod("success", true);
+  self.failure = makeActionStateMethod("failure");
+  self.not.failure = makeActionStateMethod("failure", true);
+  try {
+    const submitDetails = getSubmitDetails({
+      payload: self.value,
+      action: rendererArgs.value,
+      store: parentArgs.store
+    });
+    self.url = new URL(submitDetails.url);
+    self.method = submitDetails.method;
+  } catch (err) {
+    console.error(err);
+  }
+  if (self.url != null) {
+    submitResult = parentArgs.store.entity(self.url.toString());
+  }
   if (typeof window === "undefined" && args.submitOnInit && submitResult == null) {
     self.submit();
   } else if (typeof window !== "undefined" && args.submitOnInit) {
@@ -2786,14 +2924,16 @@ function actionFactory(internals, args) {
 
 // lib/renderers/PerformRenderer.ts
 var PerformRenderer = ({ attrs }) => {
-  const key = Symbol();
+  const key = Symbol("PerformRenderer");
   let currentAttrs = attrs;
   let details;
   const instances = {};
   function createInstances() {
     let hasChanges = false;
+    const { args, parentArgs } = currentAttrs;
     const nextKeys = [];
-    for (const selectionResult of details.result) {
+    for (let index = 0; index < details.result.length; index++) {
+      const selectionResult = details.result[index];
       nextKeys.push(selectionResult.pointer);
       if (Object.hasOwn(instances, selectionResult.pointer)) {
         const next = selectionResult;
@@ -2803,17 +2943,31 @@ var PerformRenderer = ({ attrs }) => {
         } else if (prev.type === "entity" && next.type === "entity" && (next.ok !== prev.ok || next.status !== prev.status || next.value !== prev.value)) {
           continue;
         }
+        continue;
       }
       hasChanges = true;
-      const octiron2 = selectionFactory({
-        store: currentAttrs.internals.store,
-        typeDefs: currentAttrs.internals.typeDefs,
+      const actionValueRendererArgs = {
+        index,
         value: selectionResult.value
-      });
-      const action = actionFactory(currentAttrs.internals, currentAttrs.args);
+      };
+      const actionValue = selectionFactory(
+        args,
+        parentArgs,
+        actionValueRendererArgs
+      );
+      const rendererArgs = {
+        index,
+        value: selectionResult.value,
+        actionValue
+      };
+      const action = actionFactory(
+        args,
+        parentArgs,
+        rendererArgs
+      );
       instances[selectionResult.pointer] = {
         action,
-        octiron: octiron2,
+        octiron: actionValue,
         selectionResult
       };
     }
@@ -2835,7 +2989,7 @@ var PerformRenderer = ({ attrs }) => {
       }
       const promises = [];
       for (const iri of required) {
-        promises.push(currentAttrs.internals.store.fetch(iri));
+        promises.push(currentAttrs.parentArgs.store.fetch(iri));
       }
       yield Promise.allSettled(promises);
     });
@@ -2858,24 +3012,24 @@ var PerformRenderer = ({ attrs }) => {
     createInstances();
   }
   function subscribe() {
-    const { selector, internals } = currentAttrs;
-    if (typeof selector === "undefined") {
+    const { selector, parentArgs } = currentAttrs;
+    if (selector == null) {
       let result;
-      if (isIRIObject(internals.octiron.value)) {
+      if (isIRIObject(parentArgs.parent.value)) {
         result = {
           pointer: "/local",
           key: Symbol.for("/local"),
           type: "entity",
-          iri: internals.octiron.value["@id"],
+          iri: parentArgs.parent.value["@id"],
           ok: true,
-          value: internals.octiron.value
+          value: parentArgs.parent.value
         };
       } else {
         result = {
           pointer: "/local",
           key: Symbol.for("/local"),
           type: "value",
-          value: internals.octiron.value
+          value: parentArgs.parent.value
         };
       }
       details = {
@@ -2888,10 +3042,10 @@ var PerformRenderer = ({ attrs }) => {
         result: [result]
       };
     } else {
-      details = internals.store.subscribe({
+      details = parentArgs.store.subscribe({
         key,
         selector,
-        value: internals.octiron.value,
+        value: parentArgs.parent.value,
         listener
       });
       fetchRequired(details.required);
@@ -2905,17 +3059,17 @@ var PerformRenderer = ({ attrs }) => {
     },
     onbeforeupdate: ({ attrs: attrs2 }) => {
       if (attrs2.selector !== currentAttrs.selector) {
-        attrs2.internals.store.unsubscribe(key);
+        attrs2.parentArgs.store.unsubscribe(key);
         subscribe();
       }
       currentAttrs = attrs2;
       for (const instance of Object.values(instances)) {
-        instance.action._updateArgs(attrs2.args);
+        instance.action._updateArgs("args", attrs2.args);
       }
     },
     onbeforeremove: ({ attrs: attrs2 }) => {
       currentAttrs = attrs2;
-      attrs2.internals.store.unsubscribe(key);
+      attrs2.parentArgs.store.unsubscribe(key);
     },
     view: ({ attrs: { view, args } }) => {
       if (details == null || !details.complete) {
@@ -2934,6 +3088,7 @@ var PerformRenderer = ({ attrs }) => {
       const children = [pre];
       for (let index = 0; index < list.length; index++) {
         const { selectionResult, action, octiron: octiron2 } = list[index];
+        action.position = index + 1;
         if (index !== 0) {
           children.push(sep);
         }
@@ -2953,411 +3108,135 @@ var PerformRenderer = ({ attrs }) => {
   };
 };
 
-// lib/factories/selectionFactory.ts
-function selectionFactory(internals, args) {
-  const factoryArgs = Object.assign({}, args);
-  const type = getValueType(internals.value);
-  const refs = {
-    isOctiron: true,
-    octironType: "selection",
-    value: internals.value
-  };
-  const self = Object.assign(
-    (predicate, children) => {
-      const passes = predicate(self);
-      if (passes) {
-        return children;
-      }
+// lib/factories/octironFactory.ts
+var TypeKeys = {
+  "root": 0,
+  "selection": 1,
+  "action": 2,
+  "action-selection": 3
+};
+function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {}, childArgs = {}) {
+  var _a, _b, _c, _d, _e, _f;
+  const typeKey = TypeKeys[octironType];
+  const name = isIRIObject(rendererArgs.value) ? rendererArgs.value["@id"] : (_a = rendererArgs.propType) != null ? _a : "octiron";
+  const self = { [name]: (predicate, children) => {
+    const passes = predicate(self);
+    if (passes) {
+      return children;
+    }
+    return null;
+  } }[name];
+  self.id = parentArgs.store.key();
+  self.isOctiron = true;
+  self.octironType = octironType;
+  self.readonly = true;
+  self.value = (_b = rendererArgs.value) != null ? _b : null;
+  self.store = parentArgs.store;
+  self.index = (_c = rendererArgs.index) != null ? _c : 0;
+  self.position = -1;
+  childArgs.parent = self;
+  childArgs.store = (_d = factoryArgs.store) != null ? _d : parentArgs.store;
+  childArgs.typeDefs = (_e = factoryArgs.typeDefs) != null ? _e : parentArgs.typeDefs;
+  if (typeKey !== TypeKeys["root"]) {
+    self.propType = rendererArgs.propType;
+    self.dataType = getDataType(rendererArgs.value);
+  }
+  self.not = (predicate, children) => {
+    if (self == null) {
       return null;
-    },
-    {
-      isOctiron: true,
-      octironType: "selection",
-      readonly: true,
-      id: internals.datatype,
-      get value() {
-        return refs.value;
-      },
-      get store() {
-        return internals.store;
-      },
-      not: (predicate, children) => {
-        const passes = predicate(self);
-        if (!passes) {
-          return children;
-        }
-        return null;
-      },
-      root: (arg1, arg2, arg3) => {
-        let selector;
-        const [childSelector, args2, view] = unravelArgs(arg1, arg2, arg3);
-        if (childSelector == null) {
-          selector = internals.store.rootIRI;
-        } else {
-          selector = `${internals.store.rootIRI} ${childSelector}`;
-        }
-        return m4(SelectionRenderer, {
-          selector,
-          args: args2,
-          view,
-          internals: {
-            store: internals.store,
-            typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs,
-            parent: self
-          }
-        });
-      },
-      enter(arg1, arg2, arg3) {
-        const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-        return m4(SelectionRenderer, {
-          selector,
-          args: args2,
-          view,
-          internals: {
-            store: internals.store,
-            typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs,
-            parent: self
-          }
-        });
-      },
-      select: (arg1, arg2, arg3) => {
-        const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-        if (!isJSONObject(internals.value)) {
+    }
+    const passes = predicate(self);
+    if (!passes) {
+      return children;
+    }
+    return null;
+  };
+  self.get = (termOrType) => {
+    var _a2, _b2;
+    if (!isJSONObject(self.value)) {
+      return null;
+    }
+    if (termOrType.startsWith("@")) {
+      return self.value[termOrType];
+    }
+    const type = self.store.expand(termOrType);
+    const value = (_a2 = self.value[type]) != null ? _a2 : null;
+    if (isIterable(value)) {
+      return getIterableValue(value);
+    }
+    return (_b2 = self.value[type]) != null ? _b2 : null;
+  };
+  self.enter = (arg1, arg2, arg3) => {
+    const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+    return m7(SelectionRenderer, {
+      entity: true,
+      selector,
+      args,
+      view,
+      parentArgs: childArgs
+    });
+  };
+  const rootChildArgs = __spreadProps(__spreadValues({}, childArgs), {
+    value: (_f = parentArgs.store.entity(parentArgs.store.rootIRI)) == null ? void 0 : _f.value
+  });
+  self.root = (arg1, arg2, arg3) => {
+    let selector;
+    const [childSelector, args, view] = unravelArgs(arg1, arg2, arg3);
+    if (childSelector == null) {
+      selector = parentArgs.store.rootIRI;
+    } else {
+      selector = `${parentArgs.store.rootIRI} ${childSelector}`;
+    }
+    return m7(SelectionRenderer, {
+      entity: true,
+      selector,
+      args,
+      view,
+      parentArgs: rootChildArgs
+    });
+  };
+  switch (typeKey) {
+    case TypeKeys["root"]:
+      self.select = self.root;
+      break;
+    case TypeKeys["selection"]:
+      self.select = (arg1, arg2, arg3) => {
+        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        if (!isJSONObject(rendererArgs.value)) {
           return null;
         }
-        return m4(
+        return m7(
           SelectionRenderer,
           {
             selector,
-            args: args2,
+            args,
             view,
-            internals: {
-              store: internals.store,
-              typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs,
-              value: internals.value,
-              parent: self
-            }
+            parentArgs: childArgs
           }
         );
-      },
-      present(args2) {
-        let attrs = {};
-        let firstPickComponent;
-        let fallbackComponent;
-        if ((args2 == null ? void 0 : args2.attrs) != null) {
-          attrs = args2.attrs;
-        } else if ((factoryArgs == null ? void 0 : factoryArgs.attrs) != null) {
-          attrs = factoryArgs.attrs;
-        }
-        if ((args2 == null ? void 0 : args2.component) != null) {
-          firstPickComponent = args2.component;
-        } else if ((factoryArgs == null ? void 0 : factoryArgs.component) != null) {
-          firstPickComponent = factoryArgs.component;
-        }
-        if ((args2 == null ? void 0 : args2.fallbackComponent) != null) {
-          fallbackComponent = args2.fallbackComponent;
-        } else if ((factoryArgs == null ? void 0 : factoryArgs.fallbackComponent) != null) {
-          fallbackComponent = factoryArgs.fallbackComponent;
-        }
-        const component = getComponent({
-          style: "present",
-          datatype: internals.datatype,
-          type,
-          firstPickComponent,
-          fallbackComponent,
-          typeDefs: (args2 == null ? void 0 : args2.typeDefs) || internals.typeDefs || {}
-        });
-        if (component == null) {
-          return null;
-        }
-        const { pre, sep, post, start, end, predicate } = Object.assign(
-          {},
-          factoryArgs,
-          args2
-        );
-        return m4(component, {
-          o: self,
-          renderType: "present",
-          value: self.value,
-          attrs,
-          pre,
-          sep,
-          post,
-          start,
-          end,
-          predicate
-        });
-      },
-      default(arg1) {
-        return self.present(arg1);
-      },
-      perform: (arg1, arg2, arg3) => {
-        const [selector, args2, view] = unravelArgs(arg1, arg2, arg3);
-        return m4(PerformRenderer, {
-          selector,
-          args: args2,
-          view,
-          internals: {
-            octiron: self,
-            store: internals.store,
-            typeDefs: args2.typeDefs || internals.typeDefs
-          }
-        });
-      },
-      _updateArgs: (args2) => {
-        for (const [key, value] of Object.entries(args2)) {
-          factoryArgs[key] = value;
-        }
-      },
-      _updateValue: (value) => {
-        refs.value = value;
-      }
-    }
-  );
-  return self;
-}
-
-// lib/renderers/SelectionRenderer.ts
-var preKey = Symbol.for("@pre");
-var postKey = Symbol.for("@post");
-function shouldReselect(next, prev) {
-  return next.internals.store !== prev.internals.store || next.selector !== prev.selector || next.internals.value !== prev.internals.value;
-}
-var SelectionRenderer = (vnode) => {
-  const key = Symbol(`SelectionRenderer`);
-  let currentAttrs = vnode.attrs;
-  let details;
-  const instances = {};
-  function createInstances() {
-    let hasChanges = false;
-    const {
-      store,
-      typeDefs,
-      parent
-    } = currentAttrs.internals;
-    const nextKeys = [];
-    if (details == null) {
-      const prevKeys2 = Reflect.ownKeys(instances);
-      for (const key2 of prevKeys2) {
-        if (!nextKeys.includes(key2)) {
-          hasChanges = true;
-          delete instances[key2];
-        }
-      }
-      if (hasChanges) {
-        mithrilRedraw();
-      }
-      return;
-    }
-    for (const selectionResult of details.result) {
-      const key2 = Symbol.for(selectionResult.pointer);
-      nextKeys.push(key2);
-      if (Object.hasOwn(instances, key2)) {
-        const next = selectionResult;
-        const prev = instances[key2].selectionResult;
-        if (prev.type === "value" && next.type === "value" && next.value === prev.value) {
-          continue;
-        } else if (prev.type === "entity" && next.type === "entity" && (next.ok !== prev.ok || next.status !== prev.status || next.value !== prev.value)) {
-          continue;
-        }
-      }
-      hasChanges = true;
-      let octiron2;
-      if (selectionResult.type === "entity") {
-        octiron2 = selectionFactory({
-          store,
-          typeDefs,
-          value: selectionResult.value,
-          parent
-        });
-      } else {
-        octiron2 = selectionFactory({
-          store,
-          typeDefs,
-          value: selectionResult.value,
-          datatype: selectionResult.datatype,
-          parent
-        });
-      }
-      instances[key2] = {
-        octiron: octiron2,
-        selectionResult
       };
-    }
-    const prevKeys = Reflect.ownKeys(instances);
-    for (const key2 of prevKeys) {
-      if (!nextKeys.includes(key2)) {
-        hasChanges = true;
-        delete instances[key2];
-      }
-    }
-    if (hasChanges) {
-      mithrilRedraw();
-    }
   }
-  function fetchRequired(required) {
-    return __async(this, null, function* () {
-      if (required.length === 0) {
-        return;
-      }
-      const promises = [];
-      for (const iri of required) {
-        promises.push(currentAttrs.internals.store.fetch(iri));
-      }
-      yield Promise.allSettled(promises);
-    });
-  }
-  function listener(next) {
-    let required = [];
-    if (typeof details === "undefined") {
-      required = next.required;
-    } else {
-      for (const iri of next.required) {
-        if (!details.required.includes(iri)) {
-          required.push(iri);
-        }
-      }
-    }
-    details = next;
-    if (required.length > 0) {
-      fetchRequired(required);
-    }
-    createInstances();
-  }
-  function subscribe() {
-    if (typeof currentAttrs.internals.value !== "undefined" && !isJSONObject(currentAttrs.internals.value)) {
-      currentAttrs.internals.store.unsubscribe(key);
-      createInstances();
-      return;
-    }
-    details = currentAttrs.internals.store.subscribe({
-      key,
-      selector: currentAttrs.selector,
-      value: currentAttrs.internals.value,
-      listener
-    });
-    fetchRequired(details.required);
-    createInstances();
-  }
-  return {
-    oninit: ({ attrs }) => {
-      currentAttrs = attrs;
-      subscribe();
-    },
-    onbeforeupdate: ({ attrs }) => {
-      const reselect = shouldReselect(attrs, currentAttrs);
-      currentAttrs = attrs;
-      if (reselect) {
-        attrs.internals.store.unsubscribe(key);
-        subscribe();
-      }
-    },
-    onbeforeremove: ({ attrs }) => {
-      currentAttrs = attrs;
-      attrs.internals.store.unsubscribe(key);
-    },
-    view: ({ attrs }) => {
-      if (details == null || !details.complete) {
-        return attrs.args.loading;
-      } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== "function") {
-        return attrs.args.fallback;
-      }
-      const view = currentAttrs.view;
-      const {
-        pre,
-        sep,
-        post,
-        start,
-        end,
-        predicate,
-        fallback
-      } = currentAttrs.args;
-      if (typeof view === "undefined") {
-        return;
-      }
-      const children = [];
-      let list = Reflect.ownKeys(instances).map((key2) => instances[key2]);
-      if (start != null || end != null) {
-        list = list.slice(
-          start != null ? start : 0,
-          end
-        );
-      }
-      if (predicate != null) {
-        list = list.filter(({ octiron: octiron2 }) => predicate(octiron2));
-      }
-      if (pre != null) {
-        children.push(m5.fragment({ key: preKey }, [pre]));
-      }
-      for (let index = 0; index < list.length; index++) {
-        const { selectionResult, octiron: octiron2 } = list[index];
-        const { key: key2 } = selectionResult;
-        if (index !== 0) {
-          children.push(m5.fragment({ key: `@${Symbol.keyFor(key2)}` }, [sep]));
-        }
-        if (selectionResult.type === "value") {
-          children.push(m5.fragment({ key: key2 }, [view(octiron2)]));
-        } else if (!selectionResult.ok && typeof fallback === "function") {
-          children.push(
-            m5.fragment({ key: key2 }, [fallback(octiron2, selectionResult.reason)])
-          );
-        } else if (!selectionResult.ok) {
-          children.push(m5.fragment({ key: key2 }, [fallback]));
-        } else {
-          children.push(m5.fragment({ key: key2 }, [view(octiron2)]));
-        }
-      }
-      if (post != null) {
-        children.push(m5.fragment({ key: postKey }, [post]));
-      }
-      return children;
-    }
-  };
-};
-
-// lib/factories/rootFactory.ts
-function rootFactory(internals) {
-  const self = Object.assign(
-    (predicate, children) => {
-      return self.root((o) => o(predicate, children));
-    },
-    {
-      octironType: "root",
-      isOctiron: true,
-      readonly: true,
-      value: null,
-      store: internals.store,
-      not(predicate, children) {
-        return self.root((o) => o.not(predicate, children));
-      },
-      root(arg1, arg2, arg3) {
-        let selector;
-        const [childSelector, args, view] = unravelArgs(arg1, arg2, arg3);
-        if (childSelector == null) {
-          selector = internals.store.rootIRI;
-        } else {
-          selector = `${internals.store.rootIRI} ${childSelector}`;
-        }
-        return m6(SelectionRenderer, {
-          selector,
+  switch (typeKey) {
+    case TypeKeys["root"]:
+      self.present = self.root;
+      break;
+    default:
+      self.present = (args) => {
+        return m7(PresentRenderer, {
+          o: self,
           args,
-          view,
-          internals: {
-            store: internals.store,
-            typeDefs: (args == null ? void 0 : args.typeDefs) || internals.typeDefs
-          }
+          factoryArgs,
+          parentArgs,
+          rendererArgs
         });
-      },
-      select(arg1, arg2, arg3) {
-        return self.root(arg1, arg2, arg3);
-      },
-      present(arg1, arg2) {
-        return self.root(arg1, arg2);
-      },
-      default(arg1) {
-        return self.root((o) => o.default(arg1));
-      },
-      perform(arg1, arg2, arg3) {
+      };
+  }
+  self.default = (args) => {
+    return self.present(Object.assign({ component: null }, args));
+  };
+  switch (typeKey) {
+    case TypeKeys["root"]:
+      self.perform = (arg1, arg2, arg3) => {
         if (typeof arg1 === "string") {
           return self.root(arg1, (o) => o.perform(
             arg2,
@@ -3368,51 +3247,169 @@ function rootFactory(internals) {
           arg2,
           arg3
         ));
-      }
+      };
+      break;
+    default: {
+      self.perform = (arg1, arg2, arg3) => {
+        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        return m7(PerformRenderer, {
+          selector,
+          args,
+          view,
+          parentArgs: childArgs
+        });
+      };
+      break;
     }
+  }
+  if (typeKey !== TypeKeys["root"]) {
+    const updateArgs = (type, args) => {
+      const currentArgs = type === "args" ? factoryArgs : type === "parent" ? parentArgs : rendererArgs;
+      for (const key of Object.keys(currentArgs)) {
+        delete currentArgs[key];
+      }
+      for (const [key, value] of Object.entries(args)) {
+        currentArgs[key] = value;
+      }
+    };
+    self._updateArgs = updateArgs;
+  }
+  return self;
+}
+
+// lib/factories/rootFactory.ts
+function rootFactory(parentArgs) {
+  const factoryArgs = {};
+  const self = octironFactory(
+    "root",
+    factoryArgs,
+    parentArgs
   );
   return self;
 }
 
 // lib/alternatives/htmlFragments.ts
-import m7 from "mithril";
+import m8 from "mithril";
+import { processTemplate } from "@longform/longform";
+function fragmentToHTML(fragment) {
+  let html = "";
+  for (let i = 0; i < fragment.children.length; i++) {
+    html += fragment.children[i].outerHTML;
+  }
+  return html;
+}
+function cloneFragment(fragment) {
+  const dom = document.createDocumentFragment();
+  for (let i = 0; i < fragment.children.length; i++) {
+    dom.appendChild(fragment.children[i].cloneNode(true));
+  }
+  return dom;
+}
 var HTMLFragmentsIntegrationComponent = () => {
-  return {
-    view({ attrs: { fragment, rootHTML, fragmentsHTML } }) {
-      const html = fragment == null ? rootHTML : fragmentsHTML[fragment];
-      if (html == null) {
-        return null;
+  let fragment;
+  let html;
+  function setDomServer(attrs) {
+    var _a;
+    if (fragment === attrs.fragment) {
+      return;
+    }
+    fragment = attrs.fragment;
+    if (attrs.fragment == null) {
+      html = attrs.output.root;
+      return;
+    }
+    const [id, rest] = attrs.fragment.split("?");
+    if (rest == null) {
+      html = (_a = attrs.output.fragments[id]) == null ? void 0 : _a.html;
+      return;
+    }
+    const template = attrs.output.templates[id];
+    if (template == null) {
+      return;
+    }
+    try {
+      const args = Object.fromEntries(new URLSearchParams(rest));
+      html = processTemplate(template, args, (fragment2) => {
+        var _a2;
+        return (_a2 = attrs.output.fragments[fragment2]) == null ? void 0 : _a2.html;
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  function setDomClient(attrs) {
+    if (attrs.fragment == null) {
+      html = attrs.output.dom;
+      return;
+    }
+    const [id, rest] = attrs.fragment.split("?");
+    if (rest == null) {
+      const fragment2 = attrs.output.fragments[id];
+      if (fragment2 == null) {
+        return;
+      } else if (fragment2.type === "text") {
+        html = fragment2.html;
+        return;
+      } else if (fragment2.dom == null) {
+        return;
       }
-      return m7.trust(html);
+      html = cloneFragment(fragment2.dom);
+      return;
+    }
+    const template = attrs.output.templates[id];
+    if (template == null) {
+      return;
+    }
+    try {
+      const args = Object.fromEntries(new URLSearchParams(rest));
+      html = processTemplate(template, args, (ref) => {
+        var _a;
+        if (attrs.output.fragments[ref] != null && attrs.output.fragments[ref].html == null && attrs.output.fragments[ref].dom != null) {
+          attrs.output.fragments[ref].html = fragmentToHTML(attrs.output.fragments[ref].dom);
+        }
+        return (_a = attrs.output.fragments[ref]) == null ? void 0 : _a.html;
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  return {
+    oninit({ attrs }) {
+      if (isBrowserRender) {
+        setDomClient(attrs);
+      } else {
+        setDomServer(attrs);
+      }
+    },
+    view() {
+      if (isBrowserRender && html instanceof DocumentFragment) {
+        return m8.dom(html);
+      } else if (html != null) {
+        return m8.trust(html);
+      }
+      return null;
     }
   };
 };
-var _handler, _rendered, _iri, _fragment, _contentType, _rootHTML, _idedHTML, _anonHTML, _fragmentsHTML;
+var _rootRendered, _rendered, _iri, _contentType, _handler, _output, _HTMLFragmentsIntegration_instances, fragmentHTML_fn;
 var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
   constructor(handler, {
     iri,
     contentType,
-    root,
-    ided,
-    anon
+    output
   }) {
+    __privateAdd(this, _HTMLFragmentsIntegration_instances);
     __publicField(this, "integrationType", "html-fragments");
-    __privateAdd(this, _handler);
+    __privateAdd(this, _rootRendered, false);
     __privateAdd(this, _rendered, /* @__PURE__ */ new Set());
     __privateAdd(this, _iri);
-    __privateAdd(this, _fragment);
     __privateAdd(this, _contentType);
-    __privateAdd(this, _rootHTML);
-    __privateAdd(this, _idedHTML);
-    __privateAdd(this, _anonHTML);
-    __privateAdd(this, _fragmentsHTML);
+    __privateAdd(this, _handler);
+    __privateAdd(this, _output);
     __privateSet(this, _handler, handler);
     __privateSet(this, _iri, iri);
     __privateSet(this, _contentType, contentType);
-    __privateSet(this, _rootHTML, root);
-    __privateSet(this, _idedHTML, ided != null ? ided : {});
-    __privateSet(this, _anonHTML, anon != null ? anon : {});
-    __privateSet(this, _fragmentsHTML, __spreadValues(__spreadValues({}, anon), ided));
+    __privateSet(this, _output, output);
   }
   get iri() {
     return __privateGet(this, _iri);
@@ -3420,222 +3417,232 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
   get contentType() {
     return __privateGet(this, _contentType);
   }
-  render(o) {
-    return m7(HTMLFragmentsIntegrationComponent, {
+  get output() {
+    return __privateGet(this, _output);
+  }
+  getFragment(fragment) {
+    var _a, _b, _c;
+    return fragment != null ? (_b = (_a = __privateGet(this, _output).fragments[fragment]) == null ? void 0 : _a.html) != null ? _b : null : (_c = __privateGet(this, _output).root) != null ? _c : null;
+  }
+  /**
+   * Returns a text representaion of a fragment.
+   */
+  text(fragment) {
+    if (fragment == null) {
+      if (this.output.root == null && __privateGet(this, _output).dom) {
+        this.output.root = __privateMethod(this, _HTMLFragmentsIntegration_instances, fragmentHTML_fn).call(this, __privateGet(this, _output).dom);
+      }
+      return this.output.root;
+    }
+    const [id, rest] = fragment.split("?");
+    if (rest == null) {
+      const fragment2 = __privateGet(this, _output).fragments[id];
+      if (fragment2 == null) {
+        return;
+      }
+      if (fragment2.html == null && fragment2.dom) {
+        fragment2.html = __privateMethod(this, _HTMLFragmentsIntegration_instances, fragmentHTML_fn).call(this, fragment2.dom);
+      }
+      return fragment2.html;
+    }
+    const template = __privateGet(this, _output).templates[id];
+    if (template == null) {
+      return;
+    }
+    try {
+      const args = Object.fromEntries(new URLSearchParams(rest));
+      return processTemplate(
+        template,
+        args,
+        (ref) => {
+          const fragment2 = __privateGet(this, _output).fragments[ref];
+          if (fragment2 == null) return;
+          if (fragment2.html == null && fragment2.dom != null) {
+            fragment2.html = __privateMethod(this, _HTMLFragmentsIntegration_instances, fragmentHTML_fn).call(this, fragment2.dom);
+          }
+          return fragment2.html;
+        }
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  render(o, fragment) {
+    if (fragment == null) {
+      __privateSet(this, _rootRendered, true);
+    } else {
+      __privateGet(this, _rendered).add(fragment);
+    }
+    return m8(HTMLFragmentsIntegrationComponent, {
       o,
-      rootHTML: __privateGet(this, _rootHTML),
-      fragmentsHTML: __privateGet(this, _fragmentsHTML)
+      integration: this,
+      fragment,
+      output: __privateGet(this, _output)
     });
   }
   getStateInfo() {
+    const texts = {};
+    const fragments = [];
+    const entries = Object.values(__privateGet(this, _output).fragments);
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].type === "text") {
+        texts[entries[i].id] = entries[i].html;
+      } else {
+        fragments.push({
+          id: entries[i].id,
+          type: entries[i].type,
+          selector: entries[i].selector,
+          rendered: __privateGet(this, _rendered).has(entries[i].id)
+        });
+      }
+    }
     return {
       iri: __privateGet(this, _iri),
       contentType: __privateGet(this, _contentType),
-      hasRoot: __privateGet(this, _rootHTML) != null,
-      ided: Object.keys(__privateGet(this, _idedHTML)),
-      anon: Object.keys(__privateGet(this, _anonHTML))
+      rendered: __privateGet(this, _rootRendered),
+      selector: __privateGet(this, _output).selector,
+      templates: __privateGet(this, _output).templates,
+      texts,
+      fragments
     };
   }
   toInitialState() {
     let html = "";
-    if (__privateGet(this, _rootHTML) != null) {
-      html += `<template id="htmlfrag:${__privateGet(this, _iri)}|${__privateGet(this, _contentType)}">${__privateGet(this, _rootHTML)}</template>
+    const entries = Object.values(__privateGet(this, _output).fragments);
+    if (__privateGet(this, _output).root != null && !__privateGet(this, _rootRendered)) {
+      html += `<template id="htmlfrag:${__privateGet(this, _iri)}|${__privateGet(this, _contentType)}">${__privateGet(this, _output).root}</template>
 `;
     }
-    for (const [fragment, fragmentHTML] of Object.entries(__privateGet(this, _idedHTML))) {
-      if (!__privateGet(this, _rendered).has(fragment)) {
-        html += `<template id="htmlfrag:${__privateGet(this, _iri)}|${__privateGet(this, _contentType)}|${fragment}">${fragmentHTML}</template>
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].type === "text") {
+        continue;
+      }
+      if (!__privateGet(this, _rendered).has(entries[i].id)) {
+        html += `<template data-htmlfrag="${entries[i].id}">${entries[i].html}</template>
 `;
       }
-    }
-    for (const [fragment, fragmentHTML] of Object.entries(__privateGet(this, _anonHTML))) {
-      html += `<template id="htmlfrag:${__privateGet(this, _iri)}#${fragment}|${__privateGet(this, _contentType)}">${fragmentHTML}</template>
-`;
     }
     return html;
   }
   static fromInitialState(handler, {
     iri,
     contentType,
-    hasRoot,
-    ided,
-    anon
+    rendered,
+    selector,
+    texts,
+    fragments,
+    templates
   }) {
-    let rootHTML;
-    const idedHTML = {};
-    const anonHTML = {};
-    if (hasRoot) {
-      const rootEl = document.getElementById(`htmlfrag:${iri}|${contentType}`);
-      if (rootEl) {
-        rootHTML = rootEl.outerHTML;
+    const output = /* @__PURE__ */ Object.create(null);
+    output.fragments = /* @__PURE__ */ Object.create(null);
+    output.templates = templates;
+    if (selector != null && rendered) {
+      const element = document.querySelector(selector);
+      if (element != null) {
+        output.root = element.outerHTML;
       }
+    } else if (selector != null) {
+      const template = document.getElementById(`htmlfrag:${iri}|${contentType}`);
+      output.root = template == null ? void 0 : template.textContent;
     }
-    for (const fragment of ided) {
-      const el = document.getElementById(fragment);
-      if (el instanceof HTMLTemplateElement) {
-        const dom = el.cloneNode(true);
-        idedHTML[fragment] = dom.innerHTML;
-      } else {
-        idedHTML[fragment] = el.innerHTML;
-      }
+    const textEntries = Object.entries(texts);
+    for (let i = 0; i < textEntries.length; i++) {
+      output.fragments[textEntries[i][0]] = {
+        id: textEntries[i][0],
+        type: "text",
+        html: textEntries[i][1],
+        selector: ""
+      };
     }
-    for (const fragment of anon) {
-      const el = document.getElementById(`htmlfrag:${iri}#${fragment}|${contentType}`);
-      if (el instanceof HTMLTemplateElement) {
-        const dom = el.cloneNode(true);
-        idedHTML[fragment] = dom.innerHTML;
+    for (let i = 0; i < fragments.length; i++) {
+      const fragment = fragments[i];
+      const dom = document.createDocumentFragment();
+      if (fragment.rendered) {
+        let element;
+        switch (fragment.type) {
+          case "embed": {
+            element = document.getElementById(fragment.id);
+            if (element == null) {
+              break;
+            }
+            performance.mark("octiron:clone-embed-start");
+            dom.appendChild(element.cloneNode(true));
+            performance.mark("octiron:clone-embed-end");
+            performance.measure(
+              "octiron:clone-embed-duration",
+              "octiron:clone-embed-start",
+              "octiron:clone-embed-end"
+            );
+            output.fragments[fragment.id] = {
+              id: fragment.id,
+              type: fragment.type,
+              dom,
+              selector: fragment.selector
+            };
+            break;
+          }
+          case "bare": {
+            element = document.querySelector(fragment.selector);
+            if (element == null) {
+              break;
+            }
+            dom.appendChild(element.cloneNode(true));
+            output.fragments[fragment.id] = {
+              id: fragment.id,
+              type: fragment.type,
+              dom,
+              selector: fragment.selector
+            };
+            break;
+          }
+          case "range": {
+            const elements = document.querySelectorAll(fragment.selector);
+            dom.append(...elements);
+            output.fragments[fragment.id] = {
+              id: fragment.id,
+              type: fragment.type,
+              selector: fragment.selector,
+              dom
+            };
+          }
+        }
       } else {
-        idedHTML[fragment] = el.innerHTML;
+        const template = document.querySelector(`[data-htmlfrag="${fragment.id}"]`);
+        if (template == null) {
+          continue;
+        }
+        dom.append(...template.content.children);
+        output.fragments[fragment.id] = {
+          id: fragment.id,
+          type: fragment.type,
+          dom,
+          selector: fragment.selector
+        };
       }
     }
     return new _HTMLFragmentsIntegration(handler, {
       contentType,
       iri,
-      root: rootHTML,
-      ided: idedHTML,
-      anon: anonHTML
+      output
     });
   }
 };
-_handler = new WeakMap();
+_rootRendered = new WeakMap();
 _rendered = new WeakMap();
 _iri = new WeakMap();
-_fragment = new WeakMap();
 _contentType = new WeakMap();
-_rootHTML = new WeakMap();
-_idedHTML = new WeakMap();
-_anonHTML = new WeakMap();
-_fragmentsHTML = new WeakMap();
+_handler = new WeakMap();
+_output = new WeakMap();
+_HTMLFragmentsIntegration_instances = new WeakSet();
+fragmentHTML_fn = function(fragment) {
+  let html = "";
+  for (let i = 0; i < fragment.children.length; i++) {
+    html += fragment.children[i].outerHTML;
+  }
+  return html;
+};
 __publicField(_HTMLFragmentsIntegration, "type", "html-fragments");
 var HTMLFragmentsIntegration = _HTMLFragmentsIntegration;
-
-// lib/alternatives/html.ts
-import m8 from "mithril";
-var HTMLIntegrationComponent = () => {
-  let onRemove;
-  return {
-    oncreate({ dom, attrs: { o, el, handler } }) {
-      if (el != null) {
-        dom.append(el);
-      }
-      if (handler.onCreate != null) {
-        onRemove = handler.onCreate({
-          o,
-          dom,
-          addFragmentListener: () => {
-          }
-        });
-      }
-    },
-    onbeforeremove() {
-      if (onRemove != null) {
-        onRemove();
-      }
-    },
-    view({ attrs: { html, el } }) {
-      if (el != null) {
-        return null;
-      }
-      return m8.trust(html);
-    }
-  };
-};
-var _handler2, _rendered2, _iri2, _contentType2, _html, _id, _el;
-var _HTMLIntegration = class _HTMLIntegration {
-  constructor(handler, {
-    iri,
-    contentType,
-    html,
-    id,
-    el
-  }) {
-    __publicField(this, "integrationType", "html");
-    __privateAdd(this, _handler2);
-    __privateAdd(this, _rendered2, false);
-    __privateAdd(this, _iri2);
-    __privateAdd(this, _contentType2);
-    __privateAdd(this, _html);
-    __privateAdd(this, _id);
-    __privateAdd(this, _el);
-    __privateSet(this, _handler2, handler);
-    __privateSet(this, _iri2, iri);
-    __privateSet(this, _contentType2, contentType);
-    __privateSet(this, _html, html);
-    __privateSet(this, _id, id);
-    __privateSet(this, _el, el);
-  }
-  get iri() {
-    return __privateGet(this, _iri2);
-  }
-  get contentType() {
-    return __privateGet(this, _contentType2);
-  }
-  render(o) {
-    if (!isBrowserRender && !__privateGet(this, _rendered2)) {
-      __privateSet(this, _rendered2, true);
-    }
-    return m8(HTMLIntegrationComponent, {
-      o,
-      html: __privateGet(this, _html),
-      el: __privateGet(this, _el),
-      handler: __privateGet(this, _handler2)
-    });
-  }
-  getStateInfo() {
-    return {
-      iri: __privateGet(this, _iri2),
-      contentType: __privateGet(this, _contentType2),
-      id: __privateGet(this, _id)
-    };
-  }
-  toInitialState() {
-    if (__privateGet(this, _id) != null && __privateGet(this, _rendered2)) {
-      return "";
-    }
-    return `<template id="html:${__privateGet(this, _iri2)}|${__privateGet(this, _contentType2)}">${__privateGet(this, _html)}</template>
-`;
-  }
-  static fromInitialState(handler, {
-    iri,
-    contentType,
-    id
-  }) {
-    let el = null;
-    if (id != null) {
-      el = document.getElementById(id);
-    }
-    if (el != null) {
-      return new _HTMLIntegration(handler, {
-        iri,
-        contentType,
-        html: el.outerHTML,
-        id,
-        el
-      });
-    }
-    el = document.getElementById(`html:${iri}|${contentType}`);
-    if (el instanceof HTMLTemplateElement) {
-      el = el.cloneNode(true);
-      return new _HTMLIntegration(handler, {
-        iri,
-        contentType,
-        html: el.outerHTML,
-        id,
-        el
-      });
-    }
-    return null;
-  }
-};
-_handler2 = new WeakMap();
-_rendered2 = new WeakMap();
-_iri2 = new WeakMap();
-_contentType2 = new WeakMap();
-_html = new WeakMap();
-_id = new WeakMap();
-_el = new WeakMap();
-__publicField(_HTMLIntegration, "type", "html");
-var HTMLIntegration = _HTMLIntegration;
 
 // lib/failures.ts
 var _status, _res;
@@ -3698,9 +3705,9 @@ function flattenIRIObjects(value, agg = []) {
 }
 
 // lib/store.ts
-var defaultAccept = "application/problem+json, application/ld+json, text/lf";
+var defaultAccept = "application/problem+json, application/ld+json";
 var integrationClasses = {
-  [HTMLIntegration.type]: HTMLIntegration,
+  // [HTMLIntegration.type]: HTMLIntegration,
   [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration
 };
 function getJSONLdValues(vocab, aliases) {
@@ -3737,7 +3744,7 @@ function getInternalHeaderValues(headers, origins) {
   }
   return [internalHeaders, internalOrigins];
 }
-var _rootIRI, _rootOrigin, _headers, _origins, _vocab, _aliases, _primary, _loading, _alternatives, _handlers, _keys, _context, _termExpansions, _fetcher, _responseHook, _dependencies, _listeners, _Store_instances, makeCleanupFn_fn, getLoadingKey_fn, publish_fn, handleJSONLD_fn, callFetcher_fn;
+var _rootIRI, _rootOrigin, _headers, _origins, _vocab, _aliases, _primary, _loading, _integrations, _handlers, _keys, _context, _termExpansions, _fetcher, _responseHook, _dependencies, _listeners, _acceptMap, _Store_instances, makeCleanupFn_fn, getLoadingKey_fn, publish_fn, handleJSONLD_fn, callFetcher_fn;
 var _Store = class _Store {
   constructor(args) {
     __privateAdd(this, _Store_instances);
@@ -3749,7 +3756,7 @@ var _Store = class _Store {
     __privateAdd(this, _aliases);
     __privateAdd(this, _primary, /* @__PURE__ */ new Map());
     __privateAdd(this, _loading, /* @__PURE__ */ new Set());
-    __privateAdd(this, _alternatives, /* @__PURE__ */ new Map());
+    __privateAdd(this, _integrations, /* @__PURE__ */ new Map());
     __privateAdd(this, _handlers);
     __privateAdd(this, _keys, /* @__PURE__ */ new Set());
     __privateAdd(this, _context);
@@ -3758,6 +3765,8 @@ var _Store = class _Store {
     __privateAdd(this, _responseHook);
     __privateAdd(this, _dependencies, /* @__PURE__ */ new Map());
     __privateAdd(this, _listeners, /* @__PURE__ */ new Map());
+    // iri => accept => [loading, contentType]
+    __privateAdd(this, _acceptMap, /* @__PURE__ */ new Map());
     var _a, _b;
     __privateSet(this, _rootIRI, args.rootIRI);
     __privateSet(this, _rootOrigin, new URL(args.rootIRI).origin);
@@ -3778,12 +3787,64 @@ var _Store = class _Store {
         origin.set("accept", defaultAccept);
       }
     }
+    if (args.acceptMap != null) {
+      for (const [accept, entries] of Object.entries(args.acceptMap)) {
+        __privateGet(this, _acceptMap).set(accept, new Map(entries));
+      }
+    }
+    if (args.alternatives != null) {
+      __privateSet(this, _integrations, args.alternatives);
+    }
   }
   get rootIRI() {
     return __privateGet(this, _rootIRI);
   }
-  entity(iri) {
-    return __privateGet(this, _primary).get(iri);
+  /**
+   * Retrieves an entity state object relating to an IRI.
+   */
+  entity(iri, accept) {
+    var _a, _b, _c, _d;
+    if (accept == null) {
+      return (_a = __privateGet(this, _primary).get(iri)) != null ? _a : null;
+    }
+    const key = __privateMethod(this, _Store_instances, getLoadingKey_fn).call(this, iri, "get", accept);
+    const loading = __privateGet(this, _loading).has(key);
+    if (loading) {
+      return {
+        type: "entity-loading",
+        iri,
+        loading: true
+      };
+    }
+    const contentType = (_c = (_b = __privateGet(this, _acceptMap).get(iri)) == null ? void 0 : _b.get) == null ? void 0 : _c.call(_b, accept);
+    if (contentType == null) {
+      return null;
+    }
+    const integration = (_d = __privateGet(this, _integrations).get(contentType)) == null ? void 0 : _d.get(iri);
+    if (integration == null) {
+      return null;
+    }
+    return {
+      type: "alternative-success",
+      iri,
+      loading: false,
+      ok: true,
+      integration
+    };
+  }
+  /**
+   * Retrieves a text representation of a value in the store
+   * if it is supported by the integration.
+   */
+  text(iri, accept) {
+    const [key, fragment] = iri.split("#");
+    const entity = this.entity(key, accept);
+    if (entity == null) {
+      return;
+    }
+    if ((entity == null ? void 0 : entity.type) === "alternative-success") {
+      return entity.integration.text(fragment);
+    }
   }
   get vocab() {
     return __privateGet(this, _vocab);
@@ -3825,10 +3886,13 @@ var _Store = class _Store {
     __privateGet(this, _termExpansions).set(sym, expanded != null ? expanded : termOrType);
     return expanded != null ? expanded : termOrType;
   }
-  select(selector, value) {
+  select(selector, value, {
+    accept
+  } = {}) {
     return getSelection({
       selector,
       value,
+      accept,
       store: this
     });
   }
@@ -3837,7 +3901,7 @@ var _Store = class _Store {
    */
   key() {
     while (true) {
-      const key = Math.random().toString(36).slice(2, 7);
+      const key = `oct-${Math.random().toString(36).slice(2, 7)}`;
       if (!__privateGet(this, _keys).has(key)) {
         __privateGet(this, _keys).add(key);
         return key;
@@ -3871,38 +3935,20 @@ var _Store = class _Store {
         });
       } else if (handler.integrationType === "problem-details") {
         throw new Error("Problem details response types not supported yet");
-      } else if (handler.integrationType === "html") {
-        const output = yield handler.handler({
-          res,
-          store: this
-        });
-        let integrations = __privateGet(this, _alternatives).get(contentType);
-        if (integrations == null) {
-          integrations = /* @__PURE__ */ new Map();
-          __privateGet(this, _alternatives).set(contentType, integrations);
-        }
-        integrations.set(iri, new HTMLIntegration(handler, {
-          iri,
-          contentType,
-          html: output.html,
-          id: output.id
-        }));
       } else if (handler.integrationType === "html-fragments") {
         const output = yield handler.handler({
           res,
           store: this
         });
-        let integrations = __privateGet(this, _alternatives).get(contentType);
+        let integrations = __privateGet(this, _integrations).get(contentType);
         if (integrations == null) {
           integrations = /* @__PURE__ */ new Map();
-          __privateGet(this, _alternatives).set(contentType, integrations);
+          __privateGet(this, _integrations).set(contentType, integrations);
         }
         integrations.set(iri, new HTMLFragmentsIntegration(handler, {
           iri,
           contentType,
-          root: output.html,
-          ided: output.ided,
-          anon: output.anon
+          output
         }));
       }
       if (handler.integrationType !== "jsonld") {
@@ -3913,11 +3959,15 @@ var _Store = class _Store {
   subscribe({
     key,
     selector,
+    fragment,
+    accept,
     value,
     listener
   }) {
     const details = getSelection({
       selector,
+      fragment,
+      accept,
       value,
       store: this
     });
@@ -3934,6 +3984,8 @@ var _Store = class _Store {
       key,
       selector,
       value,
+      fragment,
+      accept,
       required: details.required,
       dependencies: details.dependencies,
       listener,
@@ -3945,16 +3997,16 @@ var _Store = class _Store {
     var _a;
     (_a = __privateGet(this, _listeners).get(key)) == null ? void 0 : _a.cleanup();
   }
-  fetch(iri) {
+  fetch(iri, accept) {
     return __async(this, null, function* () {
-      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri);
+      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri, { accept });
       return __privateGet(this, _primary).get(iri);
     });
   }
   /**
    * Submits an action. Like fetch this will overwrite
    * entities in the store with any entities returned
-   * in the reponse.
+   * in the response.
    *
    * @param {string} iri                The iri of the request.
    * @param {SubmitArgs} [args]         Arguments to pass to the fetch call.
@@ -3964,61 +4016,115 @@ var _Store = class _Store {
    */
   submit(iri, args) {
     return __async(this, null, function* () {
-      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri, args);
+      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri, __spreadProps(__spreadValues({}, args), {
+        contentType: "application/ld+json"
+      }));
       return this.entity(iri);
     });
   }
+  /**
+   * Creates an Octiron store from initial state written to the page's HTML.
+   *
+   * @param rootIRI       The root endpoint of the API.
+   * @param [disableLogs] Disables warning and error logs if the initial state
+   *                      is not present or corrupt.
+   * @param [vocab]       The JSON-ld @vocab to use for Octiron selectors.
+   * @param [aliases]     The JSON-ld aliases to use for Octiron selectors.
+   * @param [headers]     Headers to send when making requests to endpoints sharing
+   *                      origins with the `rootIRI`.
+   * @param [origins]     A map of origins and the headers to use when sending
+   *                      requests to them. Octiron will only send requests
+   *                      to endpoints which share origins with the `rootIRI`
+   *                      or are configured in the origins object. Aside
+   *                      from the accept header, which has a common default
+   *                      value, headers are not shared between origins.
+   */
   static fromInitialState({
+    disableLogs,
+    rootIRI,
+    vocab,
+    aliases,
     headers,
     origins,
     handlers = []
   }) {
-    const el = document.getElementById("oct-state-info");
-    const stateInfo = JSON.parse(el.innerText);
-    const alternatives = /* @__PURE__ */ new Map();
-    const handlersMap = handlers.reduce((acc, handler) => __spreadProps(__spreadValues({}, acc), {
-      [handler.contentType]: handler
-    }), {});
-    for (const [integrationType, entities] of Object.entries(stateInfo.alternatives)) {
-      for (const stateInfo2 of entities) {
-        const handler = handlersMap[stateInfo2.contentType];
-        const cls = integrationClasses[integrationType];
-        if (cls.type !== handler.integrationType) {
-          continue;
-        }
-        const state = cls.fromInitialState(handler, stateInfo2);
-        if (state == null) {
-          continue;
-        }
-        let integrations = alternatives.get(state.contentType);
-        if (integrations == null) {
-          integrations = /* @__PURE__ */ new Map();
-          alternatives.set(state.contentType, integrations);
-        }
-        integrations.set(state.iri, state);
-      }
-    }
-    return new _Store({
+    performance.mark("octiron:from-initial-state:start");
+    const storeArgs = {
+      rootIRI,
+      vocab,
+      aliases,
       handlers,
-      alternatives,
       headers,
-      origins,
-      rootIRI: stateInfo.rootIRI,
-      vocab: stateInfo.vocab,
-      aliases: stateInfo.aliases,
-      primary: stateInfo.primary
-    });
+      origins
+    };
+    try {
+      const el = document.getElementById("oct-state");
+      if (el == null) {
+        if (!disableLogs) {
+          console.warn("Failed to construct Octiron state from initial state");
+        }
+        return new _Store(storeArgs);
+      }
+      const stateInfo = JSON.parse(el.innerText);
+      const alternatives = /* @__PURE__ */ new Map();
+      const handlersMap = handlers.reduce((acc, handler) => __spreadProps(__spreadValues({}, acc), {
+        [handler.contentType]: handler
+      }), {});
+      for (const [integrationType, entities] of Object.entries(stateInfo.alternatives)) {
+        for (const stateInfo2 of entities) {
+          const handler = handlersMap[stateInfo2.contentType];
+          const cls = integrationClasses[integrationType];
+          if (cls.type !== handler.integrationType) {
+            continue;
+          }
+          const state = cls.fromInitialState(handler, stateInfo2);
+          if (state == null) {
+            continue;
+          }
+          let integrations = alternatives.get(state.contentType);
+          if (integrations == null) {
+            integrations = /* @__PURE__ */ new Map();
+            alternatives.set(state.contentType, integrations);
+          }
+          integrations.set(state.iri, state);
+        }
+      }
+      const store = new _Store(__spreadProps(__spreadValues({}, storeArgs), {
+        alternatives,
+        primary: stateInfo.primary,
+        acceptMap: stateInfo.acceptMap
+      }));
+      performance.mark("octiron:from-initial-state:end");
+      performance.measure("octiron:from-initial-state:duration", "octiron:from-initial-state:start", "octiron:from-initial-state:end");
+      return store;
+    } catch (err) {
+      if (!disableLogs) {
+        console.warn("Failed to construct Octiron state from initial state");
+        console.error(err);
+      }
+      const store = new _Store(storeArgs);
+      performance.mark("octiron:from-initial-state:end");
+      performance.measure("octiron:from-initial-state:duration", "octiron:from-initial-state:start", "octiron:from-initial-state:end");
+      return store;
+    }
   }
+  /**
+   * Writes the Octiron store's state to a string to be embedded
+   * near the end of a HTML document. Ideally this is placed before
+   * the closing of the document's body tag. Octiron uses ids prefixed
+   * with `oct-`, avoid using these ids to prevent id collision.
+   */
   toInitialState() {
     let html = "";
     const stateInfo = {
-      rootIRI: __privateGet(this, _rootIRI),
-      vocab: __privateGet(this, _vocab),
-      aliases: Object.fromEntries(__privateGet(this, _aliases)),
       primary: Object.fromEntries(__privateGet(this, _primary)),
-      alternatives: {}
+      alternatives: {},
+      acceptMap: {}
     };
-    for (const alternative of __privateGet(this, _alternatives).values()) {
+    for (const [accept, map] of __privateGet(this, _acceptMap).entries()) {
+      stateInfo.acceptMap[accept] = Array.from(map.entries());
+    }
+    for (const alternative of __privateGet(this, _integrations).values()) {
       for (const integration of alternative.values()) {
         if (stateInfo.alternatives[integration.integrationType] == null) {
           stateInfo.alternatives[integration.integrationType] = [
@@ -4030,7 +4136,7 @@ var _Store = class _Store {
         html += integration.toInitialState();
       }
     }
-    html += `<script id="oct-state-info" type="application/json">${JSON.stringify(stateInfo)}<\/script>`;
+    html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}<\/script>`;
     return html;
   }
 };
@@ -4042,7 +4148,7 @@ _vocab = new WeakMap();
 _aliases = new WeakMap();
 _primary = new WeakMap();
 _loading = new WeakMap();
-_alternatives = new WeakMap();
+_integrations = new WeakMap();
 _handlers = new WeakMap();
 _keys = new WeakMap();
 _context = new WeakMap();
@@ -4051,6 +4157,7 @@ _fetcher = new WeakMap();
 _responseHook = new WeakMap();
 _dependencies = new WeakMap();
 _listeners = new WeakMap();
+_acceptMap = new WeakMap();
 _Store_instances = new WeakSet();
 /**
  * Creates a cleanup function which should be called
@@ -4086,7 +4193,7 @@ getLoadingKey_fn = function(iri, method, accept) {
  * selection for this entity have the latest selection result pushed to
  * their listener functions.
  */
-publish_fn = function(iri, _contentType3) {
+publish_fn = function(iri, _contentType2) {
   const keys = __privateGet(this, _dependencies).get(iri);
   if (keys == null) {
     return;
@@ -4099,6 +4206,8 @@ publish_fn = function(iri, _contentType3) {
     const details = getSelection({
       selector: listenerDetails.selector,
       value: listenerDetails.value,
+      fragment: listenerDetails.fragment,
+      accept: listenerDetails.accept,
       store: this
     });
     const cleanup = __privateMethod(this, _Store_instances, makeCleanupFn_fn).call(this, key, details);
@@ -4123,6 +4232,7 @@ handleJSONLD_fn = function({
   const iris = [iri];
   if (res.ok) {
     __privateGet(this, _primary).set(iri, {
+      type: "entity-success",
       iri,
       loading: false,
       ok: true,
@@ -4131,6 +4241,7 @@ handleJSONLD_fn = function({
   } else {
     const reason = new HTTPFailure(res.status, res);
     __privateGet(this, _primary).set(iri, {
+      type: "entity-failure",
       iri,
       loading: false,
       ok: false,
@@ -4144,13 +4255,14 @@ handleJSONLD_fn = function({
       continue;
     }
     __privateGet(this, _primary).set(entity["@id"], {
+      type: "entity-success",
       iri: entity["@id"],
       loading: false,
       ok: true,
       value: entity
     });
   }
-  for (const iri2 in iris) {
+  for (const iri2 of iris) {
     __privateMethod(this, _Store_instances, publish_fn).call(this, iri2);
   }
 };
@@ -4161,13 +4273,18 @@ callFetcher_fn = function(_0) {
     const url = new URL(iri);
     const method = args.method || "get";
     const accept = (_b = (_a = args.accept) != null ? _a : __privateGet(this, _headers).get("accept")) != null ? _b : defaultAccept;
-    const loadingKey = __privateMethod(this, _Store_instances, getLoadingKey_fn).call(this, iri, method, args.accept);
+    url.hash = "";
+    const dispatchURL = url.toString();
+    const loadingKey = __privateMethod(this, _Store_instances, getLoadingKey_fn).call(this, dispatchURL, method, args.accept);
     if (url.origin === __privateGet(this, _rootOrigin)) {
       headers = new Headers(__privateGet(this, _headers));
     } else if (__privateGet(this, _origins).has(url.origin)) {
       headers = new Headers(__privateGet(this, _origins).get(url.origin));
     } else {
       throw new Error("Unconfigured origin");
+    }
+    if (args.contentType != null) {
+      headers.set("content-type", args.contentType);
     }
     if (accept != null) {
       headers.set("accept", accept);
@@ -4178,19 +4295,25 @@ callFetcher_fn = function(_0) {
     mithrilRedraw();
     const promise = new Promise((resolve) => {
       (() => __async(this, null, function* () {
+        var _a2;
         let res;
         if (__privateGet(this, _fetcher) != null) {
-          res = yield __privateGet(this, _fetcher).call(this, iri, {
+          res = yield __privateGet(this, _fetcher).call(this, dispatchURL, {
             method,
             headers,
             body: args.body
           });
         } else {
-          res = yield fetch(iri, {
+          res = yield fetch(dispatchURL, {
             method,
             headers,
             body: args.body
           });
+        }
+        if (args.accept != null && __privateGet(this, _acceptMap).has(dispatchURL)) {
+          (_a2 = __privateGet(this, _acceptMap).get(dispatchURL)) == null ? void 0 : _a2.set(args.accept, res.headers.get("content-type"));
+        } else if (args.accept != null) {
+          __privateGet(this, _acceptMap).set(dispatchURL, /* @__PURE__ */ new Map([[args.accept, res.headers.get("content-type")]]));
         }
         yield this.handleResponse(res, iri);
         __privateGet(this, _loading).delete(loadingKey);
@@ -4281,6 +4404,16 @@ var jsonLDHandler = {
   })
 };
 
+// lib/handlers/longformHandler.ts
+import { longform } from "@longform/longform";
+var longformHandler = {
+  integrationType: "html-fragments",
+  contentType: "text/longform",
+  handler: (_0) => __async(null, [_0], function* ({ res }) {
+    return longform(yield res.text());
+  })
+};
+
 // lib/components/OctironJSON.ts
 import m9 from "mithril";
 var OctironJSON = () => {
@@ -4327,9 +4460,7 @@ var OctironJSON = () => {
   const terminalTypes = ["@id", "@type", "@context"];
   function renderObject(value, url, selector = "") {
     const items = [];
-    const list = Object.entries(value).toSorted(
-      (item) => item[0] === "@context" ? 1 : -1
-    );
+    const list = Object.entries(value).toSorted();
     for (let index = 0; index < list.length; index++) {
       const [term, value2] = list[index];
       let children;
@@ -4423,63 +4554,42 @@ var OctironJSON = () => {
 
 // lib/components/OctironDebug.ts
 import m10 from "mithril";
-import * as jsonld2 from "jsonld";
 var OctironDebug = ({
   attrs
 }) => {
+  var _a;
   let currentAttrs = attrs;
   let value = attrs.o.value;
   let rendered;
-  let displayStyle = "value";
+  let presentationStyle = (_a = attrs.initialPresentationStyle) != null ? _a : "value";
   function onRender(redraw = true) {
-    return __async(this, null, function* () {
-      const { o } = currentAttrs;
-      if (displayStyle === "value") {
-        rendered = m10(OctironJSON, { value, selector: currentAttrs.selector, location: currentAttrs.location });
-      } else if (displayStyle === "action-value" && (o.octironType === "action" || o.octironType === "action-selection")) {
-        rendered = m10(OctironJSON, { value: o.actionValue.value, selector: currentAttrs.selector, location: currentAttrs.location });
-      } else if (displayStyle === "expanded") {
-        const expanded = yield jsonld2.compact(value, attrs.o.store.context);
-        rendered = m10(OctironJSON, {
-          value: expanded,
-          location: currentAttrs.location
-        });
-      } else if (displayStyle === "flattened") {
-        const flattened = flattenIRIObjects(value);
-        rendered = m10(OctironJSON, {
-          value: flattened,
-          selector: currentAttrs.selector,
-          location: currentAttrs.location
-        });
-      }
-      if (redraw) {
-        mithrilRedraw();
-      }
-    });
+    const { o } = currentAttrs;
+    if (presentationStyle === "value") {
+      rendered = m10(OctironJSON, {
+        value,
+        selector: currentAttrs.selector,
+        location: currentAttrs.location
+      });
+    } else if (presentationStyle === "action-value" && (o.octironType === "action" || o.octironType === "action-selection")) {
+      rendered = m10(OctironJSON, { value: o.actionValue.value, selector: currentAttrs.selector, location: currentAttrs.location });
+    }
+    if (redraw) {
+      mithrilRedraw();
+    }
   }
   function onSetValue(e) {
     e.redraw = false;
-    displayStyle = "value";
+    presentationStyle = "value";
     onRender();
   }
   function onSetActionValue(e) {
     e.redraw = false;
-    displayStyle = "action-value";
+    presentationStyle = "action-value";
     onRender();
   }
   function onSetComponent(e) {
     e.redraw = false;
-    displayStyle = "component";
-    onRender();
-  }
-  function onSetExpanded(e) {
-    e.redraw = false;
-    displayStyle = "expanded";
-    onRender();
-  }
-  function onSetFlattened(e) {
-    e.redraw = false;
-    displayStyle = "flattened";
+    presentationStyle = "component";
     onRender();
   }
   return {
@@ -4493,11 +4603,11 @@ var OctironDebug = ({
         onRender(true);
       }
     },
-    view: ({ attrs: { o } }) => {
-      const actions = [];
+    view: ({ attrs: { o, availableControls } }) => {
       let children;
       let actionValueAction;
-      if (displayStyle === "component") {
+      const controls = [];
+      if (presentationStyle === "component") {
         children = m10(".oct-debug-body", o.default());
       } else {
         children = m10(".oct-debug-body", rendered);
@@ -4505,17 +4615,28 @@ var OctironDebug = ({
       if (o.octironType === "action" || o.octironType === "action-selection") {
         actionValueAction = m10("button.oct-button", { type: "button", onclick: onSetActionValue }, "Action value");
       }
+      if (availableControls == null || availableControls.includes("value")) {
+        controls.push(
+          m10("button.oct-button", { type: "button", onclick: onSetValue }, "Value")
+        );
+      } else if (actionValueAction != null && (availableControls == null || availableControls.includes("action-value"))) {
+        controls.push(actionValueAction);
+      } else if (availableControls == null || availableControls.includes("component")) {
+        controls.push(
+          m10("button.oct-button", { type: "button", onclick: onSetComponent }, "Component")
+        );
+      } else if (availableControls == null || availableControls.includes("log")) {
+        controls.push(
+          m10("button.oct-button", { type: "button", onclick: () => console.debug(o) }, "Log")
+        );
+      }
       return m10(
         "aside.oct-debug",
         m10(
           ".oct-debug-controls",
           m10(
             ".oct-button-group",
-            m10("button.oct-button", { type: "button", onclick: onSetValue }, "Value"),
-            actionValueAction,
-            m10("button.oct-button", { type: "button", onclick: onSetComponent }, "Component"),
-            m10("button.oct-button", { type: "button", onclick: () => console.log(o) }, "Log"),
-            ...actions
+            ...controls
           )
         ),
         children
@@ -4553,13 +4674,15 @@ var OctironExplorer = ({
       onChange(selector, presentationStyle);
     }
   }
-  function onSetDebug() {
+  function onSetDebug(evt) {
+    evt.preventDefault();
     presentationStyle = "debug";
     if (typeof onChange === "function") {
       onChange(selector, presentationStyle);
     }
   }
-  function onSetComponents() {
+  function onSetComponents(evt) {
+    evt.preventDefault();
     presentationStyle = "components";
     if (typeof onChange === "function") {
       onChange(selector, presentationStyle);
@@ -4578,27 +4701,66 @@ var OctironExplorer = ({
       onChange = attrs2.onChange;
     },
     view: ({ attrs: { autofocus, o } }) => {
+      var _a, _b;
       let children;
+      let upURL;
+      let debugURL;
+      let componentsURL;
       if (selector.length !== 0 && presentationStyle === "debug") {
-        children = o.root(selector, (o2) => m11(OctironDebug, { o: o2, selector, location: attrs.location }));
+        children = o.root(selector, (o2) => m11(OctironDebug, {
+          o: o2,
+          selector,
+          location: attrs.location,
+          initialPresentaionStyle: attrs.presentationStyle,
+          availableControls: !!attrs.childControls == false ? void 0 : []
+        }));
       } else if (selector.length !== 0) {
         children = o.root(
           selector,
           (o2) => m11("div", o2.default({ fallbackComponent, attrs: { selector } }))
         );
       } else if (presentationStyle === "debug") {
-        children = o.root((o2) => m11(OctironDebug, { o: o2, selector, location: attrs.location }));
+        children = o.root((o2) => m11(OctironDebug, {
+          o: o2,
+          selector,
+          location: attrs.location,
+          initialPresentaionStyle: attrs.presentationStyle,
+          availableControls: !!attrs.childControls ? void 0 : []
+        }));
       } else {
         children = o.root(
           (o2) => m11("div", o2.default({ fallbackComponent, attrs: { selector } }))
         );
       }
+      if (attrs.location != null && selector.length !== 0) {
+        const upSelector = attrs.selector.trim().includes(" ") ? attrs.selector.replace(/\s+([^\s]+)$/, "") : "";
+        upURL = new URL(attrs.location);
+        if (upSelector != null) {
+          upURL.searchParams.set("selector", upSelector);
+        } else {
+          upURL.searchParams.delete("selector");
+        }
+      }
+      if (attrs.location != null) {
+        debugURL = new URL(attrs.location);
+        componentsURL = new URL(attrs.location);
+        debugURL.searchParams.set("presentationStyle", "debug");
+        componentsURL.searchParams.set("presentationStyle", "components");
+      }
       return m11(
         ".oct-explorer",
         m11(
           ".oct-explorer-controls",
-          m11(".oct-form-group", [
+          m11("form.oct-form-group", {
+            action: (_b = (_a = attrs.location) == null ? void 0 : _a.toString) == null ? void 0 : _b.call(_a),
+            onsubmit: (evt) => {
+              evt.preventDefault();
+              onApply();
+            }
+          }, [
+            upURL != null ? m11("a.oct-button", { href: upURL.toString() }, "Up") : m11("button.oct-button", { type: "button", disabled: true }, "Up"),
             m11("input", {
+              name: "selector",
               value,
               autofocus,
               oninput: onSearch,
@@ -4607,33 +4769,30 @@ var OctironExplorer = ({
             m11(
               "button.oct-button",
               {
-                type: "button",
-                disabled: selector === value,
-                onclick: onApply
+                type: "submit",
+                disabled: selector === value && typeof window !== "undefined"
               },
               "Apply"
             )
           ]),
           m11(
             ".oct-button-group",
-            m11(
-              "button.oct-button",
-              {
-                type: "button",
-                disabled: presentationStyle === "debug",
-                onclick: onSetDebug
-              },
-              "Debug"
-            ),
-            m11(
-              "button.oct-button",
-              {
-                type: "button",
-                disabled: presentationStyle === "components",
-                onclick: onSetComponents
-              },
-              "Components"
-            )
+            presentationStyle === "debug" || debugURL == null ? m11("button.oct-button", {
+              type: "button",
+              disabled: typeof window === "undefined",
+              onclick: onSetDebug
+            }, "Debug") : m11("a.oct-button", {
+              href: debugURL.toString(),
+              onclick: onSetDebug
+            }, "Debug"),
+            presentationStyle === "components" || componentsURL == null ? m11("button.oct-button", {
+              type: "button",
+              disabled: typeof window === "undefined",
+              onclick: onSetComponents
+            }, "Components") : m11("a.oct-button", {
+              href: componentsURL.toString(),
+              onclick: onSetComponents
+            }, "Components")
           )
         ),
         m11("pre.oct-explorer-body", children)
@@ -4661,7 +4820,7 @@ var OctironForm = (vnode) => {
           method,
           enctype: enctypes[method || "GET"],
           action: o2.url,
-          onSubmit: (evt) => {
+          onsubmit: (evt) => {
             evt.preventDefault();
             o2.submit();
           }
@@ -4727,6 +4886,7 @@ export {
   classes,
   octiron as default,
   jsonLDHandler,
+  longformHandler,
   makeTypeDef,
   makeTypeDefs
 };

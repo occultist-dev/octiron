@@ -2,7 +2,8 @@
   "name": "@octiron/octiron",
   "version": "0.0.2",
   "description": "WIP framework for mithril.js and json-ld APIs.",
-  "main": "octiron.js",
+  "main": "./dist/octiron.js",
+  "types": "./dist/octiron.d.ts",
   "directories": {
     "lib": "lib",
     "test": "test"
@@ -10,23 +11,24 @@
   "files": [
     "./README.md",
     "./LICENCE",
-    "./octiron.d.ts",
-    "./octiron.js",
-    "./octiron.min.js"
+    "./dist",
+    "./lib"
   ],
   "devDependencies": {
-    "uri-templates": "^0.2.0",
-    "typescript": "^5.8.3",
+    "@longform/longform": "^0.0.2",
+    "@types/mithril": "^2.2.7",
+    "esbuild": "^0.25.5",
+    "json-ptr": "^3.1.1",
+    "jsonld": "^8.3.3",
     "mithril": "^2.3.2",
     "mithril-node-render": "^3.0.2",
-    "jsonld": "^8.3.3",
-    "json-ptr": "^3.1.1",
-    "esbuild": "^0.25.5"
+    "typescript": "^5.8.3",
+    "uri-templates": "^0.2.0"
   },
   "peerDependencies": {
-    "uri-templates": "^0.2.0",
+    "json-ptr": "^3.1.1",
     "mithril": "^2.3.2",
-    "json-ptr": "^3.1.1"
+    "uri-templates": "^0.2.0"
   },
   "optionalDependencies": {
     "jsonld": "^8.3.3"
@@ -37,7 +39,6 @@
   },
   "author": "Matthew Quinn",
   "license": "MIT",
-  "types": "./octiron.d.ts",
   "bugs": {
     "url": "https://github.com/matthewquinn/octiron/issues"
   },

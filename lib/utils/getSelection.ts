@@ -1,5 +1,5 @@
 import type { JSONArray, JSONObject, JSONValue, Mutable, SCMPropertyValueSpecification } from '../types/common.ts';
-import type { ActionSelectionResult, EntitySelectionResult, SelectionDetails, SelectionResult, ValueSelectionResult } from '../types/store.ts';
+import type { ActionSelectionResult, AlternativeSelectionResult, EntitySelectionResult, EntityState, IntegrationState, SelectionDetails, SelectionResult, ValueSelectionResult } from '../types/store.ts';
 import { escapeJSONPointerParts } from './escapeJSONPointerParts.ts';
 import { getIterableValue } from "./getIterableValue.ts";
 import { isIRIObject } from "./isIRIObject.ts";
@@ -30,6 +30,7 @@ export type SelectorObject = {
 type SourceSelectionResults =
   | EntitySelectionResult
   | ValueSelectionResult
+  | IntegrationState
 ;
 
 type ProcessingEntitySelectionResult = {
@@ -47,10 +48,16 @@ type ProcessingActionSelectionResult = {
   keySource: string;
 } & Omit<ActionSelectionResult, 'key'>;
 
+type ProcessingAlternativeSelectionResult = {
+  // used to build the final key value.
+  keySource: string;
+} & Omit<AlternativeSelectionResult, 'key'>;
+
 type ProcessingSelectionDetails = SelectionDetails<
   | ProcessingEntitySelectionResult
   | ProcessingValueSelectionResult
   | ProcessingActionSelectionResult
+  | ProcessingAlternativeSelectionResult
 >;
 
 
@@ -80,7 +87,8 @@ export function transformProcessedDetails<T extends SelectionResult>(
  * A type selector selects values from the context of a provided value
  * and will pull from the store if any iri objects are selected in the process.
  *
- * @param {string} args.selector            Selector string begining with a type.
+ * @param {string} args.selector            Selector string beginning with a type.
+ * @param {string} [args.fragment]          A fragment if passed in as select args.
  * @param {JSONObject} [args.value]         Context object to begin the selection from.
  * @param {JSONObject} [args.actionValue]   The action, or point in the action definition which describes this value.
  * @param {JSONValue} [args.defaultValue]   A default value when used to select action values.
@@ -90,12 +98,16 @@ export function transformProcessedDetails<T extends SelectionResult>(
 export function getSelection<T extends SelectionResult>({
   selector: selectorStr,
   value,
+  fragment,
+  accept,
   actionValue,
   defaultValue,
   store,
 }: {
   selector: string;
   value?: JSONObject;
+  fragment?: string;
+  accept?: string;
   actionValue?: JSONObject;
   defaultValue?: JSONValue;
   store: Store;
@@ -111,13 +123,17 @@ export function getSelection<T extends SelectionResult>({
   };
 
   if (value == null) {
-    const [{ subject: iri, filter }, ...selector] =
+    const [{ subject, filter }, ...selector] =
       parseSelectorString(selectorStr, store);
+
+    const [iri, iriFragment] = subject.split('#');
 
     selectEntity({
       keySource: '',
       pointer: '',
       iri,
+      fragment: iriFragment ?? fragment,
+      accept,
       filter,
       selector: selector.length > 0 ? selector : undefined,
       store,
@@ -617,6 +633,8 @@ function selectEntity({
   keySource,
   pointer,
   iri,
+  fragment,
+  accept,
   filter,
   selector,
   store,
@@ -626,6 +644,8 @@ function selectEntity({
   keySource: string;
   pointer: string;
   iri: string;
+  fragment?: string;
+  accept?: string;
   filter?: string;
   selector?: SelectorObject[];
   store: Store;
@@ -635,7 +655,7 @@ function selectEntity({
   keySource = makePointer(keySource, iri);
   pointer = makePointer(pointer, iri);
 
-  const cache = store.entity(iri)
+  const cache: EntityState | null = store.entity(iri, accept)
 
   details.dependencies.push(iri);
 
@@ -643,6 +663,8 @@ function selectEntity({
   if (cache == null || cache.loading) {
     if (!details.required.includes(iri)) {
       details.required.push(iri);
+      details.accept = accept;
+      details.fragment = fragment;
     }
 
     return;
@@ -664,6 +686,18 @@ function selectEntity({
       status: cache.status,
       value: cache.value,
       reason: cache.reason,
+    });
+
+    return;
+  }
+
+  if (cache.type === 'alternative-success') {
+    details.result.push({
+      keySource,
+      pointer,
+      type: 'alternative',
+      contentType: cache.integration.contentType,
+      integration: cache.integration,
     });
 
     return;

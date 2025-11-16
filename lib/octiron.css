@@ -1,0 +1,132 @@
+
+@layer octiron {
+  :root {
+    --primary3: #7fe1ff;
+    --secondary3: salmon;
+  }
+
+
+  .oct-json {
+    padding: 0.25rem;
+    color: silver;
+    background-color: black;
+    line-height: 1.1rem;
+  }
+  .oct-json ul,
+  .oct-json ol {
+      margin-top: 0;
+      padding-left: 1rem;
+  }
+
+  .oct-json-details-sum {
+    width: max-content;
+  }
+
+  .oct-json-obj,
+  .oct-json-arr {
+    list-style-type: none;
+  }
+
+  .oct-json-obj-key {
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  .oct-json-obj-key a {
+    color: var(--primary3);
+    text-decoration: none;
+    text-decoration: underline var(--primary3) 1px;
+  }
+
+  .oct-json-obj-key a:hover {
+    text-decoration: underline var(--primary3) 2px;
+  }
+
+  .oct-json-obj-item > code:first-child {
+    margin-left: 0.666666rem;
+  }
+
+  .oct-json-quote {
+    color: slategray;
+  }
+
+  .oct-json-iri,
+  .oct-json-boolean,
+  .oct-json-number,
+  .oct-json-string {
+    font-weight: 100;
+    color: var(--secondary3);
+  }
+
+  .oct-json-iri {
+    text-decoration: underline var(--secondary3) 1px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    text-wrap: nowrap;
+  }
+
+  .oct-json-iri:hover {
+    text-decoration: underline var(--secondary3) 2px;
+  }
+
+  .oct-debug {
+    display: grid;
+    grid-template-rows: max-content 1fr;
+    gap: 0.25rem;
+    border: solid 1px #4c4c4c;
+    padding: 0.25rem;
+  }
+
+  .oct-debug > .oct-debug-controls {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .oct-debug > .oct-debug-controls > .oct-button-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .oct-debug-body {
+    white-space: pre-wrap;
+  }
+
+  .oct-form {
+    display: contents;
+  }
+
+  .oct-explorer {
+    display: grid;
+    grid-template-rows: max-content 1fr;
+  }
+
+  .oct-explorer > .oct-explorer-controls {
+    display: flex;
+    border: solid 1px #4c4c4c;
+    padding: 0.25rem;
+    gap: 0.5rem;
+  }
+
+  .oct-explorer > .oct-explorer-controls .oct-form-group {
+    display: flex;
+    max-width: 500px;
+    width: 100%;
+    gap: 0.25rem;
+  }
+
+  .oct-explorer > .oct-explorer-controls .oct-form-group input {
+    width: 100%;
+  }
+
+  .oct-explorer > .oct-explorer-controls > .oct-button-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .oct-explorer-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    white-space: pre-wrap;
+  }
+}

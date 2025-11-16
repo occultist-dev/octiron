@@ -1,6 +1,6 @@
 import type m from "mithril";
 import { actionSelectionFactory } from '../factories/actionSelectionFactory.ts';
-import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update, UpdatePointer } from '../types/octiron.ts';
+import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update } from '../types/octiron.ts';
 import type { ActionSelectionResult, SelectionDetails } from '../types/store.ts';
 import { getSelection } from '../utils/getSelection.ts';
 import { isJSONObject } from '../utils/isJSONObject.ts';

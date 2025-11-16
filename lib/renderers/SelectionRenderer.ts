@@ -12,7 +12,7 @@ import type {
   ReadonlySelectionResult,
   SelectionDetails,
 } from "../types/store.ts";
-import m, { render } from "mithril";
+import m from "mithril";
 import { selectionFactory } from "../factories/selectionFactory.ts";
 import { isJSONObject } from "../utils/isJSONObject.ts";
 import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
@@ -21,6 +21,8 @@ import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
 export type SelectionRendererAttrs = {
   entity?: boolean;
   selector: Selector;
+  fragment?: string;
+  accept?: string;
   args: OctironSelectArgs;
   view: SelectView;
   parentArgs: SelectionParentArgs;
@@ -63,6 +65,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
 
   function createInstances() {
     let hasChanges = false;
+    let initialDetails = details == null;
     const nextKeys: Array<symbol> = [];
 
     if (details == null) {
@@ -141,12 +144,12 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       }
     }
 
-    if (hasChanges) {
+    if (!initialDetails && hasChanges) {
       mithrilRedraw();
     }
   }
 
-  async function fetchRequired(required: string[]) {
+  async function fetchRequired(required: string[], accept?: string) {
     if (required.length === 0) {
       return;
     }
@@ -155,7 +158,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     const promises: Promise<any>[] = [];
 
     for (const iri of required) {
-      promises.push(currentAttrs.parentArgs.store.fetch(iri));
+      promises.push(currentAttrs.parentArgs.store.fetch(iri, accept));
     }
 
     await Promise.allSettled(promises);
@@ -177,14 +180,15 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     details = next;
 
     if (required.length > 0) {
-      fetchRequired(required);
+      fetchRequired(required, details.accept);
     }
 
     createInstances();
   }
 
   function subscribe() {
-    const { entity, selector, parentArgs: { value, store } } = currentAttrs;
+    const { entity, selector, parentArgs: { value, store }, args: { accept, fragment } } = currentAttrs;
+
     if (
       !entity &&
       !isJSONObject(value)
@@ -198,12 +202,13 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     details = store.subscribe({
       key,
       selector,
+      fragment,
+      accept,
       value: entity ? undefined : value as JSONObject,
       listener,
     });
 
-
-    fetchRequired(details.required);
+    fetchRequired(details.required, accept);
 
     createInstances();
   }
@@ -234,6 +239,8 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         return attrs.args.loading;
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
         return attrs.args.fallback;
+      } else if (details.result[0].type === 'alternative') {
+        return details.result[0].integration.render(null, attrs.args.fragment);
       }
 
       const view = currentAttrs.view;

@@ -411,6 +411,8 @@
     ],
     "packageJson": {
       "dependencies": [
+        "npm:@longform/longform@^0.0.2",
+        "npm:@types/mithril@^2.2.7",
         "npm:esbuild@~0.25.5",
         "npm:json-ptr@^3.1.1",
         "npm:jsonld@^8.3.3",

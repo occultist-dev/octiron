@@ -5,9 +5,14 @@ await esbuild.build({
   entryPoints: ['lib/octiron.ts'],
   target: 'es6',
   bundle: true,
-  outfile: 'octiron.js',
+  outfile: 'dist/octiron.js',
   format: 'esm',
-  external: ['mithril', 'jsonld'],
+  external: [
+    'mithril',
+    'jsonld',
+    '@longform/longform',
+  ],
+  metafile: true,
   treeShaking: true,
   sourcemap: true,
 });
@@ -16,9 +21,13 @@ await esbuild.build({
   entryPoints: ['lib/octiron.ts'],
   target: 'es6',
   bundle: true,
-  outfile: 'octiron.min.js',
+  outfile: 'dist/octiron.min.js',
   format: 'esm',
-  external: ['mithril', 'jsonld'],
+  external: [
+    'mithril',
+    'jsonld',
+    '@longform/longform',
+  ],
   treeShaking: true,
   minify: true,
   sourcemap: true,
@@ -27,7 +36,7 @@ await esbuild.build({
 const command = new Deno.Command('./node_modules/.bin/tsc', {
   args: [
     './lib/octiron.ts',
-    '--outFile', './octiron.d.ts',
+    '--outFile', './dist/octiron.d.ts',
     '--emitDeclarationOnly',
     '--declaration',
   ],

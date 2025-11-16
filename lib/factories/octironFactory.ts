@@ -218,47 +218,47 @@ export function octironFactory<O extends Octiron>(
   switch (typeKey) {
     case TypeKeys['root']:
       self.select = self.root;
-      break;
+    break;
     case TypeKeys['selection']:
       self.select = (
         arg1: Selector,
         arg2?: OctironSelectArgs | SelectView,
         arg3?: SelectView,
-      ): m.Children => {
-        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+    ): m.Children => {
+      const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-        if (!isJSONObject(rendererArgs.value)) {
-          return null;
-        }
+      if (!isJSONObject(rendererArgs.value)) {
+        return null;
+      }
 
-        return m(
-          SelectionRenderer,
-          {
-            selector,
-            args,
-            view,
-            parentArgs: childArgs as SelectionParentArgs,
-          },
-        );
-      };
+      return m(
+        SelectionRenderer,
+        {
+          selector,
+          args,
+          view,
+          parentArgs: childArgs as SelectionParentArgs,
+        },
+      );
+    };
   }
 
   switch (typeKey) {
     case TypeKeys['root']:
       self.present = self.root;
-      break;
+    break;
     default:
       self.present = (
         args?: OctironPresentArgs<BaseAttrs>,
-      ): m.Children => {
-        return m(PresentRenderer, {
-          o: self as unknown as Octiron,
-          args: args as OctironPresentArgs,
-          factoryArgs: factoryArgs as OctironPresentArgs,
-          parentArgs,
-          rendererArgs,
-        });
-      };
+    ): m.Children => {
+      return m(PresentRenderer, {
+        o: self as unknown as Octiron,
+        args: args as OctironPresentArgs,
+        factoryArgs: factoryArgs as OctironPresentArgs,
+        parentArgs,
+        rendererArgs,
+      });
+    };
   }
 
   self.default = (
@@ -273,15 +273,15 @@ export function octironFactory<O extends Octiron>(
         arg1?: Selector | OctironPerformArgs | PerformView,
         arg2?: OctironPerformArgs | PerformView,
         arg3?: PerformView,
-      ) => {
-        if (typeof arg1 === 'string') {
-          return self.root(arg1, (o) => o.perform(
-            arg2 as OctironPerformArgs,
-            arg3 as PerformView,
-          ));
-        }
+    ) => {
+      if (typeof arg1 === 'string') {
+        return self.root(arg1, (o) => o.perform(
+          arg2 as OctironPerformArgs,
+          arg3 as PerformView,
+        ));
+      }
 
-        return self.root((o) => o.perform(
+      return self.root((o) => o.perform(
           arg2 as OctironPerformArgs,
           arg3 as PerformView,
         ));

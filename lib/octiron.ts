@@ -2,6 +2,7 @@ import type { OctironRoot, TypeDef } from "./types/octiron.ts";
 import { rootFactory } from "./factories/rootFactory.ts";
 import { makeTypeDefs } from "./utils/makeTypeDefs.ts";
 import { Store } from "./store.ts";
+import "./octiron.css";
 
 export * from './types/common.ts';
 export * from './types/store.ts';
@@ -11,6 +12,7 @@ export * from './utils/classes.ts';
 export * from './utils/makeTypeDef.ts';
 export * from './utils/makeTypeDefs.ts';
 export * from './handlers/jsonLDHandler.ts';
+export * from './handlers/longformHandler.ts';
 export * from './components/OctironJSON.ts';
 export * from './components/OctironDebug.ts';
 export * from './components/OctironExplorer.ts';

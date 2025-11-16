@@ -2,6 +2,7 @@ import type { Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.ts';
 import type { Store } from '../store.ts';
 import type { Octiron } from "./octiron.ts";
+import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.ts';
 
 
 export type Aliases = Record<string, string>;
@@ -72,11 +73,20 @@ export type HTMLHandler = {
   onCreate?: HTMLOnCreate;
 };
 
-export type HTMLFragmentsHandlerResult = {
-  selector?: string;
+export type HTMLFragment = {
+  id: string;
+  type: 'embed' | 'bare' | 'text' | 'range';
   html?: string;
-  ided: Record<string, string>;
-  anon: Record<string, string>;
+  dom?: DocumentFragment;
+  selector: string;
+};
+
+export type HTMLFragmentsHandlerResult = {
+  root?: string;
+  dom?: DocumentFragment;
+  selector?: string;
+  fragments: Record<string, HTMLFragment>;
+  templates: Record<string, string>;
 };
 
 export type HTMLFragmentsCleanupFn = () => void;
@@ -90,7 +100,7 @@ export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFra
 export type HTMLFragmentsHandler = {
   integrationType: 'html-fragments';
   contentType: string;
-  handler: RequestHandler<HTMLFragmentsHandlerResult>;
+  handler: RequestHandler<HTMLFragmentsHandlerResult<string>>;
   onCreate?: HTMLFragmentsOnCreate;
 }
 
@@ -111,13 +121,12 @@ export type Fetcher = (iri: string, args: FetcherArgs) => Promise<Response>;
 
 export type ResponseHook = (res: Promise<Response>) => void;
 
-
-
 export type HTTPErrorView = (status: number) => Children;
 
 export type ContentParsingView = (error: Error) => Children;
 
 export type AlternativeContentProps = {
+  o: Octiron;
   fragment?: string;
 };
 
@@ -159,7 +168,7 @@ export interface Failure {
 export type EntitySelectionResult = {
 
   /**
-   * A unique key for identifing this selection result.
+   * A unique key for identifying this selection result.
    * Useful for caching objects which use the result.
    */
   readonly key: symbol;
@@ -182,6 +191,11 @@ export type EntitySelectionResult = {
   readonly iri: string;
 
   /**
+   * The fragment portion of the URL.
+   */
+  readonly fragment?: string;
+
+  /**
    * Indicates if the request responded with a success or error status.
    */
   readonly ok: boolean;
@@ -200,6 +214,16 @@ export type EntitySelectionResult = {
    * The error type.
    */
   readonly reason?: Failure;
+
+  /**
+   * The accept header to use when performing API requests for this entity.
+   */
+  readonly accept?: string;
+
+  /**
+   * The integration used to work with this content.
+   */
+  readonly integration?: HTMLFragmentsIntegration;
 };
 
 export type ValueSelectionResult = {
@@ -232,6 +256,16 @@ export type ValueSelectionResult = {
    * The selection value.
    */
   readonly value: JSONValue;
+
+  readonly fragment?: undefined;
+
+  /**
+   * The accept header to use when performing API requests for this entity.
+   */
+  readonly accept?: undefined;
+
+
+  readonly integration?: undefined;
 };
 
 export type ActionSelectionResult = {
@@ -279,14 +313,23 @@ export type ActionSelectionResult = {
    * values on it which the selection selects into.
    */
   readonly spec?: SCMPropertyValueSpecification;
+
+  readonly fragment?: undefined;
+
+  /**
+   * The accept header to use when performing API requests for this entity.
+   */
+  readonly accept?: undefined;
+
+  readonly integration?: undefined;
 }
 
-export type AlternativeTypeResult = {
+export type AlternativeSelectionResult = {
   readonly key: symbol;
 
   readonly pointer: string;
 
-  readonly type: 'alt';
+  readonly type: 'alternative';
 
   readonly propType?: undefined;
 
@@ -294,18 +337,25 @@ export type AlternativeTypeResult = {
 
   readonly contentType: string;
 
-  readonly component: AlternativeContentComponent;
+  /**
+   * The accept header to use when performing API requests for this entity.
+   */
+  readonly accept?: string;
+
+  readonly integration: IntegrationState;
 };
 
 export type ReadonlySelectionResult =
   | EntitySelectionResult
   | ValueSelectionResult
+  | AlternativeSelectionResult
 ;
 
 export type SelectionResult =
   | EntitySelectionResult
   | ValueSelectionResult
   | ActionSelectionResult
+  | AlternativeSelectionResult
 ;
 
 export type SelectionDetails<T = SelectionResult> = {
@@ -347,6 +397,8 @@ export type SelectionDetails<T = SelectionResult> = {
 export type ActionSelectionDetails = SelectionDetails<SelectionResult>;
 
 export type LoadingEntityState = {
+  readonly type: 'entity-loading';
+  
   /**
    * True if this entity has an in progress request.
    */
@@ -376,9 +428,16 @@ export type LoadingEntityState = {
    * The content type of the response.
    */
   readonly contentType?: undefined;
+
+  /**
+   * Component to render if the returned content type is
+   * not jsonld or problem detail types.
+   */
+  readonly integration?: undefined;
 };
 
 export type SuccessEntityState = {
+  readonly type: 'entity-success';
   /**
    * True if this entity has an in progress request.
    */
@@ -403,9 +462,50 @@ export type SuccessEntityState = {
    * The response status. Only used for failure responses.
    */
   readonly status?: undefined;
+  
+  /**
+   * Component to render if the returned content type is
+   * not jsonld or problem detail types.
+   */
+  readonly integration?: undefined;
+};
+
+export type SuccessAlternativeState = {
+  readonly type: 'alternative-success';
+  /**
+   * True if this entity has an in progress request.
+   */
+  readonly loading: false;
+
+  /**
+   * Indicates if the request responded with a success or error status.
+   */
+  readonly ok: true;
+
+  /**
+   * The IRI of the entity.
+   */
+  readonly iri: string;
+
+  /**
+   * The current value of the entity.
+   */
+  readonly value?: undefined;
+
+  /**
+   * The response status. Only used for failure responses.
+   */
+  readonly status?: undefined;
+  
+  /**
+   * Component to render if the returned content type is
+   * not jsonld or problem detail types.
+   */
+  readonly integration: IntegrationState;
 };
 
 export type FailureEntityState = {
+  readonly type: 'entity-failure';
   /**
    * True if this entity has an in progress request.
    */
@@ -440,10 +540,8 @@ export type FailureEntityState = {
    * Component to render if the returned content type is
    * not jsonld or problem detail types.
    */
-  readonly component?: AlternativeContentComponent;
+  readonly integration?: undefined;
 };
-
-export type AlternativeContentLoadingState = Record<string, Record<string, LoadingEntityState>>;
 
 export type LoadingResult = {
   contentType: string;
@@ -452,21 +550,28 @@ export type LoadingResult = {
 export type EntityState =
   | LoadingEntityState
   | SuccessEntityState
+  | SuccessAlternativeState
   | FailureEntityState;
-  ;
+;
 
 export type IntegrationStateInfo = {
   contentType: string;
   [key: string]: JSONValue;
 };
 
+export type AlternativeAttrs = {
+  fragment?: string;
+};
+
+
 export interface IntegrationState {
   iri: string;
   integrationType: IntegrationType;
   contentType: string;
-  render(o: Octiron): Children;
   getStateInfo(): IntegrationStateInfo;
   toInitialState(): string;
+  render(o: Octiron, fragment?: string): Children;
+  text(iri: string): string | undefined;
 };
 
 export type PrimaryState = Map<string, EntityState>;

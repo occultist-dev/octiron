@@ -47,11 +47,66 @@ declare module "types/common" {
         valueMaxLength?: number;
     };
 }
+declare module "consts" {
+    export const isBrowserRender: boolean;
+}
+declare module "alternatives/htmlFragments" {
+    import m from 'mithril';
+    import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "types/store";
+    import type { Octiron } from "types/octiron";
+    export type HTMLFragmentsIntegrationComponentAttrs = {
+        o: Octiron;
+        integration: HTMLFragmentsIntegration;
+        fragment?: string;
+        output: HTMLFragmentsHandlerResult;
+    };
+    export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmentsIntegrationComponentAttrs>;
+    export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType;
+    export type HTMLFragmentsIntegrationArgs = {
+        iri: string;
+        contentType: string;
+        output: HTMLFragmentsHandlerResult;
+    };
+    export type FragmentState = {
+        type: 'embed' | 'bare' | 'range';
+        id: string;
+        rendered: boolean;
+        selector: string;
+    };
+    type HTMLFragmentsStateInfo = {
+        iri: string;
+        contentType: string;
+        rendered?: boolean;
+        selector?: string;
+        fragments: FragmentState[];
+        texts: Record<string, string>;
+        templates: Record<string, string>;
+    };
+    export class HTMLFragmentsIntegration implements IntegrationState {
+        #private;
+        static type: "html-fragments";
+        readonly integrationType: "html-fragments";
+        constructor(handler: HTMLFragmentsHandler, { iri, contentType, output, }: HTMLFragmentsIntegrationArgs);
+        get iri(): string;
+        get contentType(): string;
+        get output(): HTMLFragmentsHandlerResult;
+        getFragment(fragment?: string): string | Node | null;
+        /**
+         * Returns a text representaion of a fragment.
+         */
+        text(fragment?: string): string | undefined;
+        render(o: Octiron, fragment?: string): any;
+        getStateInfo(): HTMLFragmentsStateInfo;
+        toInitialState(): string;
+        static fromInitialState(handler: HTMLFragmentsHandler, { iri, contentType, rendered, selector, texts, fragments, templates, }: HTMLFragmentsStateInfo): HTMLFragmentsIntegration | null;
+    }
+}
 declare module "types/store" {
     import type { Children, ComponentTypes } from 'mithril';
     import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from "types/common";
     import type { Store } from "store";
     import type { Octiron } from "types/octiron";
+    import type { HTMLFragmentsIntegration } from "alternatives/htmlFragments";
     export type Aliases = Record<string, string>;
     export type Origins = Record<string, Headers>;
     export type Context = {
@@ -105,11 +160,19 @@ declare module "types/store" {
         handler: RequestHandler<HTMLHandlerResult>;
         onCreate?: HTMLOnCreate;
     };
-    export type HTMLFragmentsHandlerResult = {
-        selector?: string;
+    export type HTMLFragment = {
+        id: string;
+        type: 'embed' | 'bare' | 'text' | 'range';
         html?: string;
-        ided: Record<string, string>;
-        anon: Record<string, string>;
+        dom?: DocumentFragment;
+        selector: string;
+    };
+    export type HTMLFragmentsHandlerResult = {
+        root?: string;
+        dom?: DocumentFragment;
+        selector?: string;
+        fragments: Record<string, HTMLFragment>;
+        templates: Record<string, string>;
     };
     export type HTMLFragmentsCleanupFn = () => void;
     export type HTMLFragmentsOnCreateArgs = {
@@ -121,7 +184,7 @@ declare module "types/store" {
     export type HTMLFragmentsHandler = {
         integrationType: 'html-fragments';
         contentType: string;
-        handler: RequestHandler<HTMLFragmentsHandlerResult>;
+        handler: RequestHandler<HTMLFragmentsHandlerResult<string>>;
         onCreate?: HTMLFragmentsOnCreate;
     };
     export type Handler = JSONLDHandler | ProblemDetailsHandler | HTMLHandler | HTMLFragmentsHandler;
@@ -135,6 +198,7 @@ declare module "types/store" {
     export type HTTPErrorView = (status: number) => Children;
     export type ContentParsingView = (error: Error) => Children;
     export type AlternativeContentProps = {
+        o: Octiron;
         fragment?: string;
     };
     export type AlternativeContentComponent = ComponentTypes<AlternativeContentProps>;
@@ -167,7 +231,7 @@ declare module "types/store" {
     }
     export type EntitySelectionResult = {
         /**
-         * A unique key for identifing this selection result.
+         * A unique key for identifying this selection result.
          * Useful for caching objects which use the result.
          */
         readonly key: symbol;
@@ -186,6 +250,10 @@ declare module "types/store" {
          */
         readonly iri: string;
         /**
+         * The fragment portion of the URL.
+         */
+        readonly fragment?: string;
+        /**
          * Indicates if the request responded with a success or error status.
          */
         readonly ok: boolean;
@@ -201,6 +269,14 @@ declare module "types/store" {
          * The error type.
          */
         readonly reason?: Failure;
+        /**
+         * The accept header to use when performing API requests for this entity.
+         */
+        readonly accept?: string;
+        /**
+         * The integration used to work with this content.
+         */
+        readonly integration?: HTMLFragmentsIntegration;
     };
     export type ValueSelectionResult = {
         /**
@@ -222,11 +298,17 @@ declare module "types/store" {
          * The object key (type, or term in json-ld lingo) used when
          * retrieving this value from the parent object.
          */
-        readonly datatype?: string;
+        readonly propType?: string;
         /**
          * The selection value.
          */
         readonly value: JSONValue;
+        readonly fragment?: undefined;
+        /**
+         * The accept header to use when performing API requests for this entity.
+         */
+        readonly accept?: undefined;
+        readonly integration?: undefined;
     };
     export type ActionSelectionResult = {
         /**
@@ -244,7 +326,7 @@ declare module "types/store" {
          * The object key (type, or term in json-ld lingo) used when
          * retrieving this value from the parent object.
          */
-        readonly datatype: string;
+        readonly propType: string;
         /**
          * The selection value.
          */
@@ -266,18 +348,28 @@ declare module "types/store" {
          * values on it which the selection selects into.
          */
         readonly spec?: SCMPropertyValueSpecification;
+        readonly fragment?: undefined;
+        /**
+         * The accept header to use when performing API requests for this entity.
+         */
+        readonly accept?: undefined;
+        readonly integration?: undefined;
     };
-    export type AlternativeTypeResult = {
+    export type AlternativeSelectionResult = {
         readonly key: symbol;
         readonly pointer: string;
-        readonly type: 'alt';
-        readonly datatype?: undefined;
+        readonly type: 'alternative';
+        readonly propType?: undefined;
         readonly value?: undefined;
         readonly contentType: string;
-        readonly component: AlternativeContentComponent;
+        /**
+         * The accept header to use when performing API requests for this entity.
+         */
+        readonly accept?: string;
+        readonly integration: IntegrationState;
     };
-    export type ReadonlySelectionResult = EntitySelectionResult | ValueSelectionResult;
-    export type SelectionResult = EntitySelectionResult | ValueSelectionResult | ActionSelectionResult;
+    export type ReadonlySelectionResult = EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult;
+    export type SelectionResult = EntitySelectionResult | ValueSelectionResult | ActionSelectionResult | AlternativeSelectionResult;
     export type SelectionDetails<T = SelectionResult> = {
         selector: string;
         /**
@@ -310,6 +402,7 @@ declare module "types/store" {
     };
     export type ActionSelectionDetails = SelectionDetails<SelectionResult>;
     export type LoadingEntityState = {
+        readonly type: 'entity-loading';
         /**
          * True if this entity has an in progress request.
          */
@@ -334,8 +427,14 @@ declare module "types/store" {
          * The content type of the response.
          */
         readonly contentType?: undefined;
+        /**
+         * Component to render if the returned content type is
+         * not jsonld or problem detail types.
+         */
+        readonly integration?: undefined;
     };
     export type SuccessEntityState = {
+        readonly type: 'entity-success';
         /**
          * True if this entity has an in progress request.
          */
@@ -356,8 +455,42 @@ declare module "types/store" {
          * The response status. Only used for failure responses.
          */
         readonly status?: undefined;
+        /**
+         * Component to render if the returned content type is
+         * not jsonld or problem detail types.
+         */
+        readonly integration?: undefined;
+    };
+    export type SuccessAlternativeState = {
+        readonly type: 'alternative-success';
+        /**
+         * True if this entity has an in progress request.
+         */
+        readonly loading: false;
+        /**
+         * Indicates if the request responded with a success or error status.
+         */
+        readonly ok: true;
+        /**
+         * The IRI of the entity.
+         */
+        readonly iri: string;
+        /**
+         * The current value of the entity.
+         */
+        readonly value?: undefined;
+        /**
+         * The response status. Only used for failure responses.
+         */
+        readonly status?: undefined;
+        /**
+         * Component to render if the returned content type is
+         * not jsonld or problem detail types.
+         */
+        readonly integration: IntegrationState;
     };
     export type FailureEntityState = {
+        readonly type: 'entity-failure';
         /**
          * True if this entity has an in progress request.
          */
@@ -386,24 +519,27 @@ declare module "types/store" {
          * Component to render if the returned content type is
          * not jsonld or problem detail types.
          */
-        readonly component?: AlternativeContentComponent;
+        readonly integration?: undefined;
     };
-    export type AlternativeContentLoadingState = Record<string, Record<string, LoadingEntityState>>;
     export type LoadingResult = {
         contentType: string;
     };
-    export type EntityState = LoadingEntityState | SuccessEntityState | FailureEntityState;
+    export type EntityState = LoadingEntityState | SuccessEntityState | SuccessAlternativeState | FailureEntityState;
     export type IntegrationStateInfo = {
         contentType: string;
         [key: string]: JSONValue;
+    };
+    export type AlternativeAttrs = {
+        fragment?: string;
     };
     export interface IntegrationState {
         iri: string;
         integrationType: IntegrationType;
         contentType: string;
-        render(o: Octiron): Children;
         getStateInfo(): IntegrationStateInfo;
         toInitialState(): string;
+        render(o: Octiron, fragment?: string): Children;
+        text(iri: string): string | undefined;
     }
     export type PrimaryState = Map<string, EntityState>;
     export type AlternativesState = Map<string, Map<string, IntegrationState>>;
@@ -461,90 +597,6 @@ declare module "types/store" {
          */
         listener: SelectionListener;
     };
-}
-declare module "alternatives/htmlFragments" {
-    import m from 'mithril';
-    import type { HTMLFragmentsHandler, IntegrationState } from "types/store";
-    import type { Octiron } from "types/octiron";
-    export type HTMLFragmentsIntegrationComponentAttrs = {
-        o: Octiron;
-        fragment?: string;
-        rootHTML?: string;
-        fragmentsHTML: Record<string, string>;
-        rootEl?: Element;
-        fragmentEls?: Record<string, Element>;
-    };
-    export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmentsIntegrationComponentAttrs>;
-    export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType;
-    export type HTMLFragmentsIntegrationArgs = {
-        iri: string;
-        contentType: string;
-        root?: string;
-        ided?: Record<string, string>;
-        anon?: Record<string, string>;
-    };
-    type HTMLFragmentsStateInfo = {
-        iri: string;
-        contentType: string;
-        hasRoot: boolean;
-        ided: string[];
-        anon: string[];
-    };
-    export class HTMLFragmentsIntegration implements IntegrationState {
-        #private;
-        static type: "html-fragments";
-        readonly integrationType: "html-fragments";
-        constructor(handler: HTMLFragmentsHandler, { iri, contentType, root, ided, anon, }: HTMLFragmentsIntegrationArgs);
-        get iri(): string;
-        get contentType(): string;
-        render(o: Octiron): any;
-        getStateInfo(): HTMLFragmentsStateInfo;
-        toInitialState(): string;
-        static fromInitialState(handler: HTMLFragmentsHandler, { iri, contentType, hasRoot, ided, anon, }: HTMLFragmentsStateInfo): HTMLFragmentsIntegration | null;
-    }
-}
-declare module "consts" {
-    export const isBrowserRender: boolean;
-}
-declare module "alternatives/html" {
-    import m from 'mithril';
-    import type { HTMLHandler, IntegrationState } from "types/store";
-    import type { Octiron } from "types/octiron";
-    export type HTMLIntegrationComponentAttrs = {
-        o: Octiron;
-        html: string;
-        el?: Element;
-        handler: HTMLHandler;
-    };
-    export type HTMLIntegrationComponentType = m.ComponentTypes<HTMLIntegrationComponentAttrs>;
-    export const HTMLIntegrationComponent: HTMLIntegrationComponentType;
-    export type HTMLIntegrationArgs = {
-        iri: string;
-        contentType: string;
-        html: string;
-        id?: string;
-        el?: Element;
-    };
-    export class HTMLIntegration implements IntegrationState {
-        #private;
-        static type: "html";
-        readonly integrationType: "html";
-        constructor(handler: HTMLHandler, { iri, contentType, html, id, el, }: HTMLIntegrationArgs);
-        get iri(): string;
-        get contentType(): string;
-        render(o: Octiron): any;
-        getStateInfo(): {
-            iri: string;
-            contentType: string;
-            id: string;
-        };
-        toInitialState(): string;
-        static fromInitialState(handler: HTMLHandler, { iri, contentType, id, }: {
-            iri: string;
-            contentType: string;
-            id?: string;
-        }): HTMLIntegration | null;
-    }
 }
 declare module "failures" {
     import type { Children } from 'mithril';
@@ -678,7 +730,7 @@ declare module "utils/escapeJSONPointerParts" {
 declare module "utils/parseSelectorString" {
     import type { Store } from "store";
     export type SelectorObject = {
-        subject: string;
+        fragment?: string;
         filter?: string;
     };
     /**
@@ -693,15 +745,26 @@ declare module "utils/parseSelectorString" {
 }
 declare module "utils/resolvePropertyValueSpecification" {
     import type { Store } from "store";
-    import type { JSONObject, SCMPropertyValueSpecification } from "types/common";
+    import type { JSONObject } from "types/common";
+    import type { Spec } from "types/octiron";
     export function resolvePropertyValueSpecification({ spec, store, }: {
         spec: JSONObject;
         store: Store;
-    }): SCMPropertyValueSpecification;
+    }): Spec;
+}
+declare module "utils/isTypedObject" {
+    import type { JSONObject, JSONValue, TypeObject } from "types/common";
+    /**
+     * @description
+     * Returns true if the given value is a JSON object with a JSON-ld @type value.
+     *
+     * @param value Any value which should come from a JSON source.
+     */
+    export function isTypeObject<Properties extends JSONObject = JSONObject>(value: JSONValue): value is TypeObject<Properties>;
 }
 declare module "utils/getSelection" {
-    import type { JSONObject } from "types/common";
-    import type { ActionSelectionResult, EntitySelectionResult, SelectionDetails, SelectionResult, ValueSelectionResult } from "types/store";
+    import type { JSONObject, JSONValue } from "types/common";
+    import type { ActionSelectionResult, AlternativeSelectionResult, EntitySelectionResult, SelectionDetails, SelectionResult, ValueSelectionResult } from "types/store";
     import type { Store } from "store";
     /**
      * A circular selection error occurs when two or more
@@ -726,7 +789,10 @@ declare module "utils/getSelection" {
     type ProcessingActionSelectionResult = {
         keySource: string;
     } & Omit<ActionSelectionResult, 'key'>;
-    type ProcessingSelectionDetails = SelectionDetails<ProcessingEntitySelectionResult | ProcessingValueSelectionResult | ProcessingActionSelectionResult>;
+    type ProcessingAlternativeSelectionResult = {
+        keySource: string;
+    } & Omit<AlternativeSelectionResult, 'key'>;
+    type ProcessingSelectionDetails = SelectionDetails<ProcessingEntitySelectionResult | ProcessingValueSelectionResult | ProcessingActionSelectionResult | ProcessingAlternativeSelectionResult>;
     export function transformProcessedDetails<T extends SelectionResult>(processing: ProcessingSelectionDetails): SelectionDetails<T>;
     /**
      * @description
@@ -739,16 +805,21 @@ declare module "utils/getSelection" {
      * A type selector selects values from the context of a provided value
      * and will pull from the store if any iri objects are selected in the process.
      *
-     * @param {string} args.selector          Selector string begining with a type.
-     * @param {JSONObject} [args.value]       Context object to begin the selection from.
-     * @param {JSONObject} [args.actionValue] The action, or point in the action definition which describes this value.
-     * @param {Store} args.store       Octiron store to search using.
-     * @returns {SelectionDetails}            Selection contained in a details object.
+     * @param {string} args.selector            Selector string beginning with a type.
+     * @param {string} [args.fragment]          A fragment if passed in as select args.
+     * @param {JSONObject} [args.value]         Context object to begin the selection from.
+     * @param {JSONObject} [args.actionValue]   The action, or point in the action definition which describes this value.
+     * @param {JSONValue} [args.defaultValue]   A default value when used to select action values.
+     * @param {Store} args.store                Octiron store to search using.
+     * @returns {SelectionDetails}              Selection contained in a details object.
      */
-    export function getSelection<T extends SelectionResult>({ selector: selectorStr, value, actionValue, store, }: {
+    export function getSelection<T extends SelectionResult>({ selector: selectorStr, value, fragment, accept, actionValue, defaultValue, store, }: {
         selector: string;
         value?: JSONObject;
+        fragment?: string;
+        accept?: string;
         actionValue?: JSONObject;
+        defaultValue?: JSONValue;
         store: Store;
     }): SelectionDetails<T>;
 }
@@ -777,7 +848,7 @@ declare module "store" {
          * A map of origins and the headers to use when sending
          * requests to them. Octiron will only send requests
          * to endpoints which share origins with the `rootIRI`
-         * or are configured in the origins object. Appart
+         * or are configured in the origins object. Aside
          * from the accept header which has a common default
          * value, headers are not shared between origins.
          */
@@ -794,6 +865,7 @@ declare module "store" {
          * Primary initial state.
          */
         primary?: Record<string, EntityState>;
+        acceptMap?: Record<string, Array<[string, string]>>;
         /**
          * Alternatives initial state.
          */
@@ -815,7 +887,15 @@ declare module "store" {
         #private;
         constructor(args: StoreArgs);
         get rootIRI(): string;
-        entity(iri: string): any;
+        /**
+         * Retrieves an entity state object relating to an IRI.
+         */
+        entity(iri: string, accept?: string): EntityState | null;
+        /**
+         * Retrieves a text representation of a value in the store
+         * if it is supported by the integration.
+         */
+        text(iri: string, accept?: string): string | undefined;
         get vocab(): string | undefined;
         get aliases(): Aliases;
         get context(): Context;
@@ -826,25 +906,29 @@ declare module "store" {
          * return the input value.
          */
         expand(termOrType: string): string;
-        select(selector: string, value?: JSONObject): SelectionDetails;
+        select(selector: string, value?: JSONObject, { accept, }?: {
+            accept?: string;
+        }): SelectionDetails;
         /**
          * Generates a unique key for server rendering only.
          */
         key(): string;
         isLoading(iri: string): boolean;
         handleResponse(res: Response, iri?: string): Promise<void>;
-        subscribe({ key, selector, value, listener, }: {
+        subscribe({ key, selector, fragment, accept, value, listener, }: {
             key: symbol;
             selector: string;
+            fragment?: string;
+            accept?: string;
             value?: JSONObject;
             listener: SelectionListener;
         }): SelectionDetails<ReadonlySelectionResult>;
         unsubscribe(key: symbol): void;
-        fetch(iri: string): Promise<SuccessEntityState | FailureEntityState>;
+        fetch(iri: string, accept?: string): Promise<SuccessEntityState | FailureEntityState>;
         /**
          * Submits an action. Like fetch this will overwrite
          * entities in the store with any entities returned
-         * in the reponse.
+         * in the response.
          *
          * @param {string} iri                The iri of the request.
          * @param {SubmitArgs} [args]         Arguments to pass to the fetch call.
@@ -853,11 +937,38 @@ declare module "store" {
          * @param {string} [args.body]        The body of the request.
          */
         submit(iri: string, args: SubmitArgs): Promise<SuccessEntityState | FailureEntityState>;
-        static fromInitialState({ headers, origins, handlers, }: {
+        /**
+         * Creates an Octiron store from initial state written to the page's HTML.
+         *
+         * @param rootIRI       The root endpoint of the API.
+         * @param [disableLogs] Disables warning and error logs if the initial state
+         *                      is not present or corrupt.
+         * @param [vocab]       The JSON-ld @vocab to use for Octiron selectors.
+         * @param [aliases]     The JSON-ld aliases to use for Octiron selectors.
+         * @param [headers]     Headers to send when making requests to endpoints sharing
+         *                      origins with the `rootIRI`.
+         * @param [origins]     A map of origins and the headers to use when sending
+         *                      requests to them. Octiron will only send requests
+         *                      to endpoints which share origins with the `rootIRI`
+         *                      or are configured in the origins object. Aside
+         *                      from the accept header, which has a common default
+         *                      value, headers are not shared between origins.
+         */
+        static fromInitialState({ disableLogs, rootIRI, vocab, aliases, headers, origins, handlers, }: {
+            disableLogs?: boolean;
+            rootIRI: string;
+            vocab?: string;
+            aliases?: Record<string, string>;
             headers?: Record<string, string>;
             origins?: Record<string, Record<string, string>>;
             handlers?: Handler[];
         }): Store;
+        /**
+         * Writes the Octiron store's state to a string to be embedded
+         * near the end of a HTML document. Ideally this is placed before
+         * the closing of the document's body tag. Octiron uses ids prefixed
+         * with `oct-`, avoid using these ids to prevent id collision.
+         */
         toInitialState(): string;
     }
 }
@@ -900,12 +1011,8 @@ declare module "types/octiron" {
         submitOnChange?: boolean;
     };
     export type OnChange<Value extends JSONValue = JSONValue> = (value: Value | null, args?: UpdateArgs) => void;
-    export type EditAttrs<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = {
-        renderType: 'edit';
-        o: OctironActionSelection;
-        attrs: Attrs;
-        value: Value;
-        name: string;
+    export type Spec = {
+        name?: string;
         required: boolean;
         readonly: boolean;
         min?: JSONPrimitive;
@@ -915,10 +1022,20 @@ declare module "types/octiron" {
         multiple?: boolean;
         minLength?: number;
         maxLength?: number;
+    };
+    export type EditAttrs<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = {
+        renderType: 'edit';
+        o: OctironActionSelection;
+        attrs: Attrs;
+        value: Value;
+        name: string;
         onchange: OnChange;
         onChange: OnChange;
+        spec: Spec;
     };
-    export type AnyAttrs<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = PresentAttrs<Value, Attrs> | EditAttrs<Value, Attrs>;
+    export type AnyAttrs<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = {
+        o: Octiron;
+    } & (Omit<PresentAttrs<Value, Attrs>, 'o'> | Omit<EditAttrs<Value, Attrs>, 'o'>);
     export type PresentComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<PresentAttrs<Value, Attrs>>;
     export type EditComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<EditAttrs<Value, Attrs>>;
     export type AnyComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<AnyAttrs<Value, Attrs>>;
@@ -1077,6 +1194,9 @@ declare module "types/octiron" {
         enter(selector: Selector, view: SelectView): Children;
         enter(selector: Selector, args: OctironSelectArgs<any>, view: SelectView): Children;
     }
+    export interface Queryable {
+        get(termOrType: string): JSONValue;
+    }
     export interface Selectable {
         select(selector: Selector): Children;
         select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironSelectArgs<Attrs>): Children;
@@ -1125,10 +1245,6 @@ declare module "types/octiron" {
     }
     export interface Submitable<Value extends JSONValue = JSONValue> {
         /**
-         * True if the action is currently being submitted.
-         */
-        readonly submitting: boolean;
-        /**
          * Overrides the current payload value.
          */
         update(payloadValue: Value, args?: UpdateArgs): Promise<void>;
@@ -1166,10 +1282,10 @@ declare module "types/octiron" {
         failure(selector: Selector, args: OctironSelectArgs, view: SelectView): Children;
     }
     export interface ActionSelectable {
+        select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironActionSelectionArgs<Attrs>, view: ActionSelectView): Children;
         select(selector: Selector): Children;
         select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironActionSelectionArgs<Attrs>): Children;
         select(selector: Selector, view: ActionSelectView): Children;
-        select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironActionSelectionArgs<Attrs>, view: ActionSelectView): Children;
     }
     export interface Default {
         /**
@@ -1208,7 +1324,30 @@ declare module "types/octiron" {
          */
         not(predicate: Predicate, children: Children): Children;
     }
-    export interface OctironRoot extends Default, Origin, Selectable, Filterable, Presentable, Performable {
+    export interface ActionNot extends Submitable {
+        (predicate: Predicate, children: Children): Children;
+    }
+    export interface ActionFilterable {
+        /**
+         * Renders the children if the predicate passes.
+         *
+         * @params {Predicate} predicate - A function which takes an Octiron instance
+         *                                 returns a boolean.
+         * @params {Children} children   - Mithril children to render if the predicate
+         *                                 passes.
+         */
+        (predicate: Predicate, children: Children): Children;
+        /**
+         * Renders the children if the predicate fails.
+         *
+         * @params {Predicate} predicate - A function which takes an Octiron instance
+         *                                 returns a boolean.
+         * @params {Children} children   - Mithril children to render if the predicate
+         *                                 fails.
+         */
+        not: ActionNot;
+    }
+    export interface OctironRoot extends Default, Origin, EntryPoint, Queryable, Selectable, Filterable, Presentable, Performable {
         /**
          * The Octiron instance type.
          */
@@ -1218,9 +1357,26 @@ declare module "types/octiron" {
          */
         readonly isOctiron: true;
         /**
+         * The property type this instance had on the parent value.
+         */
+        readonly propType?: string;
+        /**
+         * The value's '@type' value if present.
+         */
+        readonly dataType?: string | string[];
+        /**
          * Unique instance id.
          */
         readonly id?: string;
+        /**
+         * 0 based index of the octiron instance within it's selection.
+         */
+        readonly index: number;
+        /**
+         * 1 based position of the octiron instance within
+         * it's selection with filters applied.
+         */
+        readonly position: number;
         /**
          * Only action-selection and edit instances can be editable.
          */
@@ -1234,7 +1390,7 @@ declare module "types/octiron" {
          */
         readonly store: Store;
     }
-    export interface OctironSelection extends Default, Origin, EntryPoint, Selectable, Filterable, Presentable, Performable {
+    export interface OctironSelection extends Default, Origin, EntryPoint, Queryable, Selectable, Filterable, Presentable, Performable {
         /**
          * The Octiron instance type.
          */
@@ -1244,9 +1400,26 @@ declare module "types/octiron" {
          */
         readonly isOctiron: true;
         /**
+         * The property type this instance had on the parent value.
+         */
+        readonly propType?: string;
+        /**
+         * The value's '@type' value if present.
+         */
+        readonly dataType?: string | string[];
+        /**
          * Unique instance id.
          */
         readonly id?: string;
+        /**
+         * 0 based index of the octiron instance within it's selection.
+         */
+        readonly index: number;
+        /**
+         * 1 based position of the octiron instance within
+         * it's selection with filters applied.
+         */
+        readonly position: number;
         /**
          * Only action-selection and edit instances can be editable.
          */
@@ -1260,7 +1433,7 @@ declare module "types/octiron" {
          */
         readonly store: Store;
     }
-    export interface OctironAction extends Default, Origin, EntryPoint, ActionSelectable, Presentable, Submitable<JSONObject>, Filterable, Performable, Appendable {
+    export interface OctironAction extends Default, Origin, EntryPoint, Queryable, ActionSelectable, Presentable, Submitable<JSONObject>, ActionFilterable, Performable, Appendable {
         /**
          * The Octiron instance type.
          */
@@ -1270,9 +1443,30 @@ declare module "types/octiron" {
          */
         readonly isOctiron: true;
         /**
+         * The property type this instance had on the parent value.
+         */
+        readonly propType?: string;
+        /**
+         * The value's '@type' value if present.
+         */
+        readonly dataType?: string | string[];
+        /**
          * Unique instance id.
          */
         readonly id?: string;
+        /**
+         * 0 based index of the octiron instance within it's selection.
+         */
+        readonly index: number;
+        /**
+         * 1 based position of the octiron instance within
+         * it's selection with filters applied.
+         */
+        readonly position: number;
+        /**
+         * True if the action is currently submitting a request.
+         */
+        readonly submitting: boolean;
         /**
          * Only action-selection and edit instances can be editable.
          */
@@ -1299,7 +1493,7 @@ declare module "types/octiron" {
         readonly action: Octiron;
         readonly actionValue: Octiron;
     }
-    export interface OctironActionSelection extends Default, Origin, EntryPoint, ActionSelectable, Presentable, Submitable<JSONObject>, Editable, Filterable, Performable, Appendable {
+    export interface OctironActionSelection extends Default, Origin, EntryPoint, Queryable, ActionSelectable, Presentable, Submitable<JSONObject>, Editable, ActionFilterable, Performable, Appendable {
         /**
          * The Octiron instance type.
          */
@@ -1309,10 +1503,31 @@ declare module "types/octiron" {
          */
         readonly isOctiron: true;
         /**
+         * The property type this instance had on the parent value.
+         */
+        readonly propType?: string;
+        /**
+         * The value's '@type' value if present.
+         */
+        readonly dataType?: string | string[];
+        /**
          * Unique instance id that can optionally be used
          * to set ids in HTML elements.
          */
         readonly id: string;
+        /**
+         * 0 based index of the octiron instance within it's selection.
+         */
+        readonly index: number;
+        /**
+         * 1 based position of the octiron instance within
+         * it's selection with filters applied.
+         */
+        readonly position: number;
+        /**
+         * True if the action is currently submitting a request.
+         */
+        readonly submitting: boolean;
         /**
          * The HTML input elements name. Mostly useful if
          * making form submissions compatible with multi-part
@@ -1334,37 +1549,56 @@ declare module "types/octiron" {
         readonly action: Octiron;
         readonly actionValue: Octiron;
     }
-    export type Octiron = OctironRoot | OctironSelection | OctironAction | OctironActionSelection;
-}
-declare module "utils/getComponent" {
-    import type { AnyComponent, EditComponent, PresentComponent, TypeDefs } from "types/octiron";
     /**
-     * @description
-     * Returns a component based of Octiron's selection rules:
-     *
-     * 1. If the first pick component is given, return it.
-     * 2. If a typedef is defined for the datatype (jsonld term or type)
-     *    for the given style, return it.
-     * 3. If a typedef is defined for the (or one of the) types (jsonld '@type')
-     *    value for the given style, return it.
-     * 4. If a fallback component is given, return it.
-     *
-     * @param args.style - The style of presentation.
-     * @param args.datatype - The datatype the component should be configured to
-     *                        handle.
-     * @param args.type - The type the component should be configured to handle.
-     * @param args.firstPickComponent - The component to use if passed by upstream.
-     * @param args.fallbackComponent - The component to use if no other component
-     *                                 is picked.
+     * The generic Octiron type re-defines instance methods to allow for generic
+     * access without typescript throwing wobblies.
      */
-    export function getComponent({ style, datatype, type, firstPickComponent, typeDefs, fallbackComponent, }: {
-        style: "present" | "edit";
-        datatype?: string;
-        type?: string | string[];
+    export type Octiron = {
+        select(selector: Selector): Children;
+        select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironSelectArgs<Attrs> | OctironActionSelectionArgs<Attrs>): Children;
+        select(selector: Selector, view: SelectView | ActionSelectView): Children;
+        select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironSelectArgs<Attrs>, view: (o: Octiron) => Children): Children;
+    } & (Omit<OctironRoot, 'select'> | Omit<OctironSelection, 'select'> | Omit<OctironAction, 'select'> | Omit<OctironActionSelection, 'select'>);
+    export type CommonParentArgs = {
+        store: Store;
         typeDefs: TypeDefs;
-        firstPickComponent?: PresentComponent<any>;
-        fallbackComponent?: PresentComponent<any>;
-    }): PresentComponent<any> | EditComponent<any> | AnyComponent<any> | undefined;
+        parent: Octiron;
+    };
+    export type SelectionParentArgs = CommonParentArgs & {
+        value: JSONValue;
+    };
+    export type ActionParentArgs = CommonParentArgs;
+    export type Submit = () => Promise<void>;
+    export type UpdatePointer = (pointer: string, value: JSONValue, args?: UpdateArgs) => void;
+    export type ActionSelectionParentArgs = CommonParentArgs & {
+        action: OctironAction;
+        submitting: boolean;
+        submit: Submit;
+        updatePointer: UpdatePointer;
+    };
+    export type CommonRendererArgs = {
+        index: number;
+        propType?: string;
+        value: JSONValue;
+    };
+    /**
+     * Arguments passed from the perform renderer to any
+     * Octiron action instances it manages.
+     */
+    export type PerformRendererArgs = CommonRendererArgs & {
+        actionValue: Octiron;
+    };
+    export type Update = (value: JSONValue) => void;
+    /**
+     * Arguments passed from the action selection renderer
+     * to any Octiron action selection instance it manages.
+     */
+    export type ActionSelectionRendererArgs = CommonRendererArgs & {
+        pointer: string;
+        spec?: Spec;
+        actionValue?: Octiron;
+        update: Update;
+    };
 }
 declare module "utils/unravelArgs" {
     import type { ActionSelectView, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPerformArgs, OctironPresentArgs, OctironSelectArgs, PerformView, Selector, SelectView } from "types/octiron";
@@ -1444,15 +1678,72 @@ declare module "utils/unravelArgs" {
      */
     export function unravelArgs(arg1?: Selector | OctironDefaultArgs, arg2?: OctironDefaultArgs): [Selector, OctironDefaultArgs];
 }
-declare module "utils/isTypedObject" {
-    import type { JSONObject, JSONValue, TypeObject } from "types/common";
+declare module "factories/selectionFactory" {
+    import type { BaseAttrs, CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs } from "types/octiron";
+    import { type InstanceHooks } from "factories/octironFactory";
+    /**
+      * Creates an Octiron selection instance.
+      *
+      * @param args - User specified args passed to the Octiron method creating the factory.
+      * @param parentArgs - Args passed from the Octiron parent instance of this instance.
+      * @param rendererArgs - Args passed from the Mithril renderer component.
+      */
+    export function selectionFactory<Attrs extends BaseAttrs>(args: OctironSelectArgs<Attrs>, parentArgs: SelectionParentArgs, rendererArgs: CommonRendererArgs): OctironSelection & InstanceHooks;
+}
+declare module "renderers/SelectionRenderer" {
+    import type { OctironSelectArgs, SelectionParentArgs, Selector, SelectView } from "types/octiron";
+    import m from "mithril";
+    export type SelectionRendererAttrs = {
+        entity?: boolean;
+        selector: Selector;
+        fragment?: string;
+        accept?: string;
+        args: OctironSelectArgs;
+        view: SelectView;
+        parentArgs: SelectionParentArgs;
+    };
     /**
      * @description
-     * Returns true if the given value is a JSON object with a JSON-ld @type value.
+     * Subscribes to a selection's result using the Octiron store. Each selection
+     * result is feed to an Octiron instance and is only removed if a later
+     * selection update does not include the same result. Selection results are
+     * given a unique key in the form of a json-path.
      *
-     * @param value Any value which should come from a JSON source.
+     * Once an Octiron instance is created using a selection, further changes via
+     * the upstream parentArgs object or user given args applied to the downstream
+     * Octiron instances using their internal update hooks.
      */
-    export function isTypeObject<Properties extends JSONObject = JSONObject>(value: JSONValue): value is TypeObject<Properties>;
+    export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs>;
+}
+declare module "utils/getComponent" {
+    import type { AnyComponent, EditComponent, PresentComponent, TypeDefs } from "types/octiron";
+    /**
+     * @description
+     * Returns a component based of Octiron's selection rules:
+     *
+     * 1. If the first pick component is given, return it.
+     * 2. If a typedef is defined for the propType (jsonld term or type)
+     *    for the given style, return it.
+     * 3. If a typedef is defined for the (or one of the) types (jsonld '@type')
+     *    value for the given style, return it.
+     * 4. If a fallback component is given, return it.
+     *
+     * @param args.style - The style of presentation.
+     * @param args.propType - The propType the component should be configured to
+     *                        handle.
+     * @param args.type - The type the component should be configured to handle.
+     * @param args.firstPickComponent - The component to use if passed by upstream.
+     * @param args.fallbackComponent - The component to use if no other component
+     *                                 is picked.
+     */
+    export function getComponent<Style extends 'present' | 'edit', Component extends (Style extends 'present' ? PresentComponent | AnyComponent : EditComponent | AnyComponent)>({ style, propType, type, firstPickComponent, typeDefs, fallbackComponent, }: {
+        style: Style;
+        propType?: string;
+        type?: string | string[];
+        typeDefs: TypeDefs;
+        firstPickComponent?: Component;
+        fallbackComponent?: Component;
+    }): Component | undefined;
 }
 declare module "utils/getValueType" {
     import type { JSONValue } from "types/common";
@@ -1462,11 +1753,31 @@ declare module "utils/getValueType" {
      *
      * @param value A JSON value which might be a typed JSON-ld object.
      */
-    export function getValueType(value: JSONValue): string | string[] | undefined;
+    export function getDataType(value: JSONValue): string | string[] | undefined;
+}
+declare module "utils/selectComponentFromArgs" {
+    import type { AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironEditArgs, OctironPresentArgs, PresentComponent } from "types/octiron";
+    /**
+     * Selects the component and attrs to render with from args provided to an Octiron
+     * factory instance or the render method.
+     */
+    export const selectComponentFromArgs: <Style extends "present" | "edit", Args extends (Style extends "present" ? OctironPresentArgs : OctironEditArgs), Attrs extends BaseAttrs, Component extends (Style extends "present" ? PresentComponent | AnyComponent : EditComponent | AnyComponent)>(style: Style, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, args?: Args, factoryArgs?: Args) => [Attrs, Component | undefined];
+}
+declare module "renderers/PresentRenderer" {
+    import m from 'mithril';
+    import type { Octiron, OctironPresentArgs, CommonParentArgs, CommonRendererArgs } from "types/octiron";
+    export type PresentRendererAttrs = {
+        o: Octiron;
+        args: OctironPresentArgs;
+        factoryArgs: OctironPresentArgs;
+        parentArgs: CommonParentArgs;
+        rendererArgs: CommonRendererArgs;
+    };
+    export const PresentRenderer: m.ComponentTypes<PresentRendererAttrs>;
 }
 declare module "renderers/ActionStateRenderer" {
     import type m from 'mithril';
-    import type { OctironSelectArgs, SelectView, TypeDefs } from "types/octiron";
+    import type { OctironSelectArgs, SelectionParentArgs, SelectView, TypeDefs } from "types/octiron";
     import type { EntityState } from "types/store";
     import type { Store } from "store";
     export type ActionRendererRef = {
@@ -1476,17 +1787,18 @@ declare module "renderers/ActionStateRenderer" {
         typeDefs: TypeDefs;
     };
     export type ActionStateRendererAttrs = {
+        not?: boolean;
         type: 'initial' | 'success' | 'failure';
         children?: m.Children;
         selector?: string;
-        args?: OctironSelectArgs;
+        args: OctironSelectArgs;
         view?: SelectView;
-        refs: ActionRendererRef;
+        submitResult?: EntityState;
+        parentArgs: SelectionParentArgs;
     };
     export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs>;
 }
 declare module "utils/getSubmitDetails" {
-    import type { Store } from "store";
     import type { JSONObject, SCMAction } from "types/common";
     export type SubmitDetails = {
         url: string;
@@ -1501,168 +1813,105 @@ declare module "utils/getSubmitDetails" {
      *
      * @param args.payload The current payload value.
      * @param args.action The schema.org styled action object.
-     * @param args.store The Octiron store.
      */
-    export function getSubmitDetails({ payload, action, store, }: {
+    export function getSubmitDetails({ payload, action, }: {
         payload: JSONObject;
         action: SCMAction;
-        store: Store;
     }): SubmitDetails;
 }
-declare module "factories/octironFactory" {
-    import type { Octiron } from "@octiron/octiron";
-    import type { Mutable } from "types/common";
-    export function octironFactory<O extends Octiron>(): Mutable<O>;
+declare module "renderers/EditRenderer" {
+    import m from 'mithril';
+    import type { OctironActionSelection, OctironEditArgs, ActionSelectionParentArgs, ActionSelectionRendererArgs } from "types/octiron";
+    export type EditRendererAttrs = {
+        o: OctironActionSelection;
+        args: OctironEditArgs;
+        factoryArgs: OctironEditArgs;
+        parentArgs: ActionSelectionParentArgs;
+        rendererArgs: ActionSelectionRendererArgs;
+    };
+    export const EditRenderer: m.ComponentTypes<EditRendererAttrs>;
 }
 declare module "factories/actionSelectionFactory" {
-    import type { Store } from "store";
-    import type { JSONValue, SCMPropertyValueSpecification } from "types/common";
-    import type { Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironSelection, TypeDefs, UpdateArgs } from "types/octiron";
+    import type { JSONValue } from "types/common";
+    import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, OctironActionSelection, OctironActionSelectionArgs, UpdateArgs } from "types/octiron";
+    import { type InstanceHooks } from "factories/octironFactory";
     export type OnActionSelectionSubmit = () => Promise<void>;
     export type OnActionSelectionUpdate = (pointer: string, value: JSONValue, args?: UpdateArgs) => void;
-    export type ActionSelectionInternals = {
-        submitting: boolean;
-        type: string | string[];
-        datatype: string;
-        pointer: string;
-        name: string;
-        value: JSONValue;
-        actionValue?: JSONValue;
-        entity: Octiron;
-        action: OctironAction;
-        parent: OctironAction | OctironActionSelection;
-        octiron: OctironSelection;
-        store: Store;
-        spec?: SCMPropertyValueSpecification;
-        typeDefs: TypeDefs;
-        onSubmit: OnActionSelectionSubmit;
-        onUpdate: OnActionSelectionUpdate;
-    };
-    export type OctironActionSelectionHooks = {
-        _updateArgs(args: OctironActionSelectionArgs): void;
-        _updateInternals(internals: Partial<ActionSelectionInternals>): void;
-    };
-    export function actionSelectionFactory<Attrs extends Record<string, any> = Record<string, any>>(internals: ActionSelectionInternals, args: OctironActionSelectionArgs<Attrs>): OctironActionSelection & OctironActionSelectionHooks;
+    export function actionSelectionFactory<Attrs extends Record<string, any> = Record<string, any>>(args: OctironActionSelectionArgs<Attrs>, parentArgs: ActionSelectionParentArgs, rendererArgs: ActionSelectionRendererArgs): OctironActionSelection & InstanceHooks;
 }
 declare module "renderers/ActionSelectionRenderer" {
     import type m from "mithril";
-    import { type ActionSelectionInternals } from "factories/actionSelectionFactory";
-    import type { ActionSelectView, OctironActionSelectionArgs, Selector } from "types/octiron";
+    import type { ActionSelectionParentArgs, ActionSelectView, OctironActionSelectionArgs, Selector } from "types/octiron";
     import type { JSONObject } from "types/common";
     export type ActionSelectionRendererAttrs = {
         value: JSONObject;
         actionValue: JSONObject;
         selector: Selector;
-        internals: Omit<ActionSelectionInternals, 'name' | 'type' | 'datatype' | 'pointer' | 'spec' | 'value' | 'actionValue' | 'octiron'>;
+        parentArgs: ActionSelectionParentArgs;
         args: OctironActionSelectionArgs;
         view: ActionSelectView;
+        selectionArgs?: OctironActionSelectionArgs;
     };
     export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRendererAttrs>;
 }
 declare module "factories/actionFactory" {
     import type { Store } from "store";
     import type { JSONObject } from "types/common";
-    import type { Octiron, OctironAction, OctironPerformArgs, TypeDefs } from "types/octiron";
+    import type { ActionParentArgs, OctironAction, OctironPerformArgs, PerformRendererArgs, TypeDefs } from "types/octiron";
     import type { EntityState } from "types/store";
-    export interface OctironActionHooks {
-        _updateArgs(args: OctironPerformArgs): void;
-    }
-    export type ActionInternals = {
-        octiron: Octiron;
-        store: Store;
-        typeDefs: TypeDefs;
-    };
+    import { type InstanceHooks } from "factories/octironFactory";
     export type ActionRefs = {
         url?: string;
-        method: string;
+        method?: string;
         submitting: boolean;
         payload: JSONObject;
         store: Store;
         typeDefs: TypeDefs;
         submitResult?: EntityState;
     };
-    export function actionFactory<Attrs extends Record<string, any> = Record<string, any>>(internals: ActionInternals, args: OctironPerformArgs<Attrs>): OctironAction & OctironActionHooks;
+    export function actionFactory<Attrs extends Record<string, any> = Record<string, any>>(args: OctironPerformArgs<Attrs>, parentArgs: ActionParentArgs, rendererArgs: PerformRendererArgs): OctironAction & InstanceHooks;
 }
 declare module "renderers/PerformRenderer" {
     import type m from 'mithril';
-    import { type ActionInternals } from "factories/actionFactory";
-    import type { OctironPerformArgs, PerformView, Selector } from "types/octiron";
+    import type { ActionParentArgs, OctironPerformArgs, PerformView, SelectionParentArgs, Selector } from "types/octiron";
     export type PerformRendererAttrs = {
-        internals: ActionInternals;
+        parentArgs: SelectionParentArgs & ActionParentArgs;
         selector?: Selector;
         args: OctironPerformArgs;
         view: PerformView;
     };
     export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs>;
 }
-declare module "factories/selectionFactory" {
-    import type { JSONValue } from "types/common";
-    import type { BaseAttrs, Octiron, OctironSelectArgs, OctironSelection, TypeDefs } from "types/octiron";
+declare module "factories/octironFactory" {
+    import m from 'mithril';
+    import type { Mutable } from "types/common";
+    import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironPerformArgs, OctironRoot, OctironSelectArgs, OctironSelection, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, TypeDefs } from "types/octiron";
     import type { Store } from "store";
-    export type SelectionFactoryInternals = {
-        store: Store;
-        typeDefs: TypeDefs;
-        parent?: Octiron;
-        value?: JSONValue;
-        datatype?: string;
+    export type CommonArgs = {
+        pre?: m.Children;
+        sep?: m.Children;
+        post?: m.Children;
+        start?: number;
+        end?: number;
+        predicate?: Predicate;
+        store?: Store;
+        typeDefs?: TypeDefs;
+        attrs?: PresentAttrs | EditAttrs | AnyAttrs;
+        component?: PresentComponent | EditComponent | AnyComponent;
+        fallbackComponent?: AnyComponent;
     };
-    export interface OctironHooks {
-        _updateArgs(args: OctironSelectArgs): void;
-        _updateValue(value: JSONValue): void;
-    }
-    /**
-     * @description
-     * An internal factory function for creating `OctironSelection` objects.
-     *
-     * @param internals Internally held values from upstream.
-     * @param args User given arguments.
-     */
-    export function selectionFactory<Attrs extends BaseAttrs = {}>(internals: SelectionFactoryInternals, args?: OctironSelectArgs<Attrs>): OctironSelection & OctironHooks;
-}
-declare module "renderers/SelectionRenderer" {
-    import type { JSONValue } from "types/common";
-    import type { Octiron, OctironSelectArgs, Selector, SelectView, TypeDefs } from "types/octiron";
-    import m from "mithril";
-    import type { Store } from "store";
-    export type SelectionRendererInternals = {
-        store: Store;
-        typeDefs: TypeDefs;
-        parent?: Octiron;
-        value?: JSONValue;
+    export type ChildArgs = Partial<SelectionParentArgs> & Partial<ActionParentArgs> & Partial<ActionSelectionParentArgs> & CommonParentArgs;
+    export type InstanceHooks = {
+        _updateArgs: (type: 'args' | 'renderer' | 'parent', args: OctironSelectArgs | OctironPerformArgs | OctironActionSelectionArgs) => void;
     };
-    export type SelectionRendererAttrs = {
-        selector: Selector;
-        args: OctironSelectArgs;
-        view: SelectView;
-        internals: SelectionRendererInternals;
-    };
-    /**
-     * @description
-     * Subscribes to a selection's result using the Octiron store. Each selection
-     * result is feed to an Octiron instance and is only removed if a later
-     * selection update does not include the same result. Selection results are
-     * given a unique key in the form of a json-path.
-     *
-     * Once an Octiron instance is created using a selection, further changes via
-     * the upstream internals object or user given args applied to the downstream
-     * Octiron instances using their internal update hooks.
-     */
-    export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs>;
+    export function octironFactory(octironType: 'root', factoryArgs: CommonArgs, parentArgs: CommonParentArgs): Mutable<OctironRoot>;
+    export function octironFactory(octironType: 'selection', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironSelection & InstanceHooks>;
+    export function octironFactory(octironType: 'action', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironAction & InstanceHooks>;
+    export function octironFactory(octironType: 'action-selection', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironActionSelection & InstanceHooks>;
 }
 declare module "factories/rootFactory" {
-    import type { OctironRoot, TypeDefs } from "types/octiron";
-    import type { Store } from "store";
-    export type RootFactoryInternals = {
-        store: Store;
-        typeDefs: TypeDefs;
-    };
-    /**
-     * @description
-     * An internal factory function for creating `OctironRoot` objects.
-     *
-     * @param internals Internally held values from upstream.
-     */
-    export function rootFactory(internals: RootFactoryInternals): OctironRoot;
+    import type { CommonParentArgs, OctironRoot } from "types/octiron";
+    export function rootFactory(parentArgs: CommonParentArgs): OctironRoot;
 }
 declare module "utils/makeTypeDefs" {
     import { Store } from "store";
@@ -1692,6 +1941,10 @@ declare module "handlers/jsonLDHandler" {
     import type { Handler } from "types/store";
     export const jsonLDHandler: Handler;
 }
+declare module "handlers/longformHandler" {
+    import type { Handler } from "types/store";
+    export const longformHandler: Handler;
+}
 declare module "components/OctironJSON" {
     import m from 'mithril';
     import type { JSONValue } from "types/common";
@@ -1705,10 +1958,13 @@ declare module "components/OctironJSON" {
 declare module "components/OctironDebug" {
     import m from 'mithril';
     import type { Octiron } from "types/octiron";
+    export type OctironDebugPresentationStyle = 'value' | 'action-value' | 'component';
     export type OctironDebugAttrs = {
         o: Octiron;
         selector?: string;
         location?: URL;
+        initialPresentationStyle?: OctironDebugPresentationStyle;
+        availableControls?: OctironDebugPresentationStyle[];
     };
     export const OctironDebug: m.ClosureComponent<OctironDebugAttrs>;
 }
@@ -1716,9 +1972,10 @@ declare module "components/OctironExplorer" {
     import m from 'mithril';
     import type { Octiron } from "types/octiron";
     export type OctironExplorerAttrs = {
+        autofocus?: boolean;
         selector?: string;
         presentationStyle?: 'debug' | 'components';
-        autofocus?: boolean;
+        childControls?: boolean;
         onChange?: (selector: string, presentationStyle: 'debug' | 'components') => void;
         location?: URL;
         o: Octiron;
@@ -1748,6 +2005,7 @@ declare module "components/OctironSubmitButton" {
 declare module "octiron" {
     import type { OctironRoot, TypeDef } from "types/octiron";
     import { Store } from "store";
+    import "./octiron.css";
     export * from "types/common";
     export * from "types/store";
     export * from "types/octiron";
@@ -1756,6 +2014,7 @@ declare module "octiron" {
     export * from "utils/makeTypeDef";
     export * from "utils/makeTypeDefs";
     export * from "handlers/jsonLDHandler";
+    export * from "handlers/longformHandler";
     export * from "components/OctironJSON";
     export * from "components/OctironDebug";
     export * from "components/OctironExplorer";

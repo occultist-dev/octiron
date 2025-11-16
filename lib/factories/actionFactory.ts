@@ -48,7 +48,7 @@ export function actionFactory<
     });
 
     self.submitting = true;
-    self.url = new URL(url);
+    self.url = new URL(url, self.store.rootIRI);
 
     mithrilRedraw();
 
