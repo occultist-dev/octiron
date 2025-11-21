@@ -4,24 +4,14 @@ import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState
 import type { Octiron } from "../types/octiron.ts";
 import {isBrowserRender} from '../consts.ts';
 
-function fragmentToHTML(fragment: DocumentFragment) {
+function fragmentToHTML(fragment: Element[]) {
   let html: string = '';
 
-  for (let i = 0; i < fragment.children.length; i++) {
-    html += fragment.children[i].outerHTML;
+  for (let i = 0; i < fragment.length; i++) {
+    html += fragment[i].outerHTML;
   }
 
   return html;
-}
-
-function cloneFragment(fragment: DocumentFragment) {
-  const dom = document.createDocumentFragment();
-
-  for (let i = 0; i < fragment.children.length; i++) {
-    dom.appendChild(fragment.children[i].cloneNode(true));
-  }
-
-  return dom;
 }
 
 export type HTMLFragmentsIntegrationComponentAttrs = {
@@ -35,7 +25,7 @@ export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmen
 
 export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType = () => {
   let fragment: string | undefined;
-  let html: string | DocumentFragment | undefined;
+  let html: string | Element[] | undefined;
 
   function setDomServer(attrs: HTMLFragmentsIntegrationComponentAttrs) {
     if (fragment === attrs.fragment) {
@@ -74,14 +64,21 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
 
   function setDomClient(attrs: HTMLFragmentsIntegrationComponentAttrs) {
     if (attrs.fragment == null) {
+      if (attrs.output.root != null && attrs.output.dom == null) {
+        const template = document.createElement('template');
+        template.innerHTML = attrs.output.root;
+        attrs.output.dom = Array.from(template.content.children);
+      }
       html = attrs.output.dom;
 
       return;
     }
 
     const [id, rest] = attrs.fragment.split('?');
+    const isTemplate = rest != null || attrs.output.templates[id] != null;
 
-    if (rest == null) {
+
+    if (!isTemplate) {
       const fragment = attrs.output.fragments[id];
 
       if (fragment == null) {
@@ -90,11 +87,15 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
         html = fragment.html;
 
         return;
+      } else if (fragment.dom == null && fragment.html != null) {
+        const template = document.createElement('template');
+        template.innerHTML = fragment.html;
+        fragment.dom = Array.from(template.content.children);
       } else if (fragment.dom == null) {
         return;
       }
 
-      html = cloneFragment(fragment.dom);
+      html = fragment.dom;
 
       return;
     }
@@ -132,9 +133,9 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
       }
     },
     view() {
-      if (isBrowserRender && html instanceof DocumentFragment) {
+      if (isBrowserRender && Array.isArray(html)) {
         return m.dom(html);
-      } else if (html != null) {
+      } else if (typeof html === 'string') {
         return m.trust(html);
       }
 
@@ -273,10 +274,12 @@ export class HTMLFragmentsIntegration implements IntegrationState {
   }
 
   public render(o: Octiron, fragment?: string) {
-    if (fragment == null) {
-      this.#rootRendered = true;
-    } else {
-      this.#rendered.add(fragment);
+    if (!isBrowserRender) {
+      if (fragment == null) {
+        this.#rootRendered = true;
+      } else {
+        this.#rendered.add(fragment);
+      }
     }
 
     return m(HTMLFragmentsIntegrationComponent, {
@@ -389,19 +392,10 @@ export class HTMLFragmentsIntegration implements IntegrationState {
               break;
             }
             
-            performance.mark('octiron:clone-embed-start');
-            dom.appendChild(element.cloneNode(true));
-            performance.mark('octiron:clone-embed-end');
-            performance.measure(
-              'octiron:clone-embed-duration',
-              'octiron:clone-embed-start',
-              'octiron:clone-embed-end',
-            );
-
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
-              dom,
+              dom: [element],
               selector: fragment.selector,
             };
             break;
@@ -413,12 +407,10 @@ export class HTMLFragmentsIntegration implements IntegrationState {
               break;
             }
 
-            dom.appendChild(element.cloneNode(true));
-
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
-              dom,
+              dom: [element],
               selector: fragment.selector,
             };
             break;
@@ -426,13 +418,11 @@ export class HTMLFragmentsIntegration implements IntegrationState {
           case 'range': {
             const elements = document.querySelectorAll(fragment.selector);
 
-            dom.append(...elements);
-
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
               selector: fragment.selector,
-              dom,
+              dom: Array.from(elements),
             };
           }
         }
@@ -443,12 +433,10 @@ export class HTMLFragmentsIntegration implements IntegrationState {
           continue;
         }
 
-        dom.append(...template.content.children);
-
         output.fragments[fragment.id] = {
           id: fragment.id,
           type: fragment.type,
-          dom,
+          dom: Array.from(template.content.children),
           selector: fragment.selector,
         };
       }

@@ -703,7 +703,7 @@ var SelectionRenderer = (vnode) => {
     }
     details = next;
     if (required.length > 0) {
-      fetchRequired(required, details.accept);
+      fetchRequired(required, currentAttrs.args.accept);
     }
     createInstances();
   }
@@ -3293,17 +3293,10 @@ import m8 from "mithril";
 import { processTemplate } from "@longform/longform";
 function fragmentToHTML(fragment) {
   let html = "";
-  for (let i = 0; i < fragment.children.length; i++) {
-    html += fragment.children[i].outerHTML;
+  for (let i = 0; i < fragment.length; i++) {
+    html += fragment[i].outerHTML;
   }
   return html;
-}
-function cloneFragment(fragment) {
-  const dom = document.createDocumentFragment();
-  for (let i = 0; i < fragment.children.length; i++) {
-    dom.appendChild(fragment.children[i].cloneNode(true));
-  }
-  return dom;
 }
 var HTMLFragmentsIntegrationComponent = () => {
   let fragment;
@@ -3339,21 +3332,31 @@ var HTMLFragmentsIntegrationComponent = () => {
   }
   function setDomClient(attrs) {
     if (attrs.fragment == null) {
+      if (attrs.output.root != null && attrs.output.dom == null) {
+        const template2 = document.createElement("template");
+        template2.innerHTML = attrs.output.root;
+        attrs.output.dom = Array.from(template2.content.children);
+      }
       html = attrs.output.dom;
       return;
     }
     const [id, rest] = attrs.fragment.split("?");
-    if (rest == null) {
+    const isTemplate = rest != null || attrs.output.templates[id] != null;
+    if (!isTemplate) {
       const fragment2 = attrs.output.fragments[id];
       if (fragment2 == null) {
         return;
       } else if (fragment2.type === "text") {
         html = fragment2.html;
         return;
+      } else if (fragment2.dom == null && fragment2.html != null) {
+        const template2 = document.createElement("template");
+        template2.innerHTML = fragment2.html;
+        fragment2.dom = Array.from(template2.content.children);
       } else if (fragment2.dom == null) {
         return;
       }
-      html = cloneFragment(fragment2.dom);
+      html = fragment2.dom;
       return;
     }
     const template = attrs.output.templates[id];
@@ -3382,9 +3385,9 @@ var HTMLFragmentsIntegrationComponent = () => {
       }
     },
     view() {
-      if (isBrowserRender && html instanceof DocumentFragment) {
+      if (isBrowserRender && Array.isArray(html)) {
         return m8.dom(html);
-      } else if (html != null) {
+      } else if (typeof html === "string") {
         return m8.trust(html);
       }
       return null;
@@ -3468,10 +3471,12 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
     }
   }
   render(o, fragment) {
-    if (fragment == null) {
-      __privateSet(this, _rootRendered, true);
-    } else {
-      __privateGet(this, _rendered).add(fragment);
+    if (!isBrowserRender) {
+      if (fragment == null) {
+        __privateSet(this, _rootRendered, true);
+      } else {
+        __privateGet(this, _rendered).add(fragment);
+      }
     }
     return m8(HTMLFragmentsIntegrationComponent, {
       o,
@@ -3565,18 +3570,10 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
             if (element == null) {
               break;
             }
-            performance.mark("octiron:clone-embed-start");
-            dom.appendChild(element.cloneNode(true));
-            performance.mark("octiron:clone-embed-end");
-            performance.measure(
-              "octiron:clone-embed-duration",
-              "octiron:clone-embed-start",
-              "octiron:clone-embed-end"
-            );
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
-              dom,
+              dom: [element],
               selector: fragment.selector
             };
             break;
@@ -3586,23 +3583,21 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
             if (element == null) {
               break;
             }
-            dom.appendChild(element.cloneNode(true));
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
-              dom,
+              dom: [element],
               selector: fragment.selector
             };
             break;
           }
           case "range": {
             const elements = document.querySelectorAll(fragment.selector);
-            dom.append(...elements);
             output.fragments[fragment.id] = {
               id: fragment.id,
               type: fragment.type,
               selector: fragment.selector,
-              dom
+              dom: Array.from(elements)
             };
           }
         }
@@ -3611,11 +3606,10 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
         if (template == null) {
           continue;
         }
-        dom.append(...template.content.children);
         output.fragments[fragment.id] = {
           id: fragment.id,
           type: fragment.type,
-          dom,
+          dom: Array.from(template.content.children),
           selector: fragment.selector
         };
       }
@@ -3807,15 +3801,6 @@ var _Store = class _Store {
     if (accept == null) {
       return (_a = __privateGet(this, _primary).get(iri)) != null ? _a : null;
     }
-    const key = __privateMethod(this, _Store_instances, getLoadingKey_fn).call(this, iri, "get", accept);
-    const loading = __privateGet(this, _loading).has(key);
-    if (loading) {
-      return {
-        type: "entity-loading",
-        iri,
-        loading: true
-      };
-    }
     const contentType = (_c = (_b = __privateGet(this, _acceptMap).get(iri)) == null ? void 0 : _b.get) == null ? void 0 : _c.call(_b, accept);
     if (contentType == null) {
       return null;
@@ -3834,7 +3819,7 @@ var _Store = class _Store {
   }
   /**
    * Retrieves a text representation of a value in the store
-   * if it is supported by the integration.
+   * if it is supported by the int4egration.
    */
   text(iri, accept) {
     const [key, fragment] = iri.split("#");
@@ -4296,7 +4281,7 @@ callFetcher_fn = function(_0) {
     const promise = new Promise((resolve) => {
       (() => __async(this, null, function* () {
         var _a2;
-        let res;
+        let res = null;
         if (__privateGet(this, _fetcher) != null) {
           res = yield __privateGet(this, _fetcher).call(this, dispatchURL, {
             method,

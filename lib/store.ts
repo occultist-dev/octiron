@@ -216,16 +216,16 @@ export class Store {
         return this.#primary.get(iri) ?? null;
       }
 
-      const key = this.#getLoadingKey(iri, 'get', accept);
-      const loading = this.#loading.has(key);
+      //const key = this.#getLoadingKey(iri, 'get', accept);
+      //const loading = this.#loading.has(key);
 
-      if (loading) {
-        return {
-          type: 'entity-loading',
-          iri,
-          loading: true,
-        };
-      }
+      //if (loading) {
+      //  return {
+      //    type: 'entity-loading',
+      //    iri,
+      //    loading: true,
+      //  };
+      //}
 
       const contentType = this.#acceptMap.get(iri)?.get?.(accept);
 
@@ -250,7 +250,7 @@ export class Store {
 
     /**
      * Retrieves a text representation of a value in the store
-     * if it is supported by the integration.
+     * if it is supported by the int4egration.
      */
     public text(iri: string, accept?: string): string | undefined {
       const [key, fragment] = iri.split('#');
@@ -409,6 +409,7 @@ export class Store {
           accept: listenerDetails.accept,
           store: this,
         } as Parameters<typeof getSelection>[0]);
+
         const cleanup = this.#makeCleanupFn(key, details);
 
         for (const dependency of details.dependencies) {
@@ -594,10 +595,10 @@ export class Store {
       // This promise wrapping is so SSR can hook in and await the promise.
       const promise = new Promise<Response>((resolve) => {
         (async () => {
-          let res: Response;
+          let res: Response | null = null;
 
           if (this.#fetcher != null) {
-            res =  await this.#fetcher(dispatchURL, {
+            res = await this.#fetcher(dispatchURL, {
               method,
               headers,
               body: args.body,

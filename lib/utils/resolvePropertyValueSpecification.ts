@@ -31,7 +31,7 @@ export function resolvePropertyValueSpecification({
   }
 
   for (const [term, value] of Object.entries(spec)) {
-    let type;
+    let type: string | undefined;
 
     if (!httpRe.test(term)) {
       if (scmVocab && !term.includes(':')) {

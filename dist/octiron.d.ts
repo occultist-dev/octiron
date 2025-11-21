@@ -164,12 +164,12 @@ declare module "types/store" {
         id: string;
         type: 'embed' | 'bare' | 'text' | 'range';
         html?: string;
-        dom?: DocumentFragment;
+        dom?: Element[];
         selector: string;
     };
     export type HTMLFragmentsHandlerResult = {
         root?: string;
-        dom?: DocumentFragment;
+        dom?: Element[];
         selector?: string;
         fragments: Record<string, HTMLFragment>;
         templates: Record<string, string>;
@@ -893,7 +893,7 @@ declare module "store" {
         entity(iri: string, accept?: string): EntityState | null;
         /**
          * Retrieves a text representation of a value in the store
-         * if it is supported by the integration.
+         * if it is supported by the int4egration.
          */
         text(iri: string, accept?: string): string | undefined;
         get vocab(): string | undefined;
@@ -1697,7 +1697,6 @@ declare module "renderers/SelectionRenderer" {
         entity?: boolean;
         selector: Selector;
         fragment?: string;
-        accept?: string;
         args: OctironSelectArgs;
         view: SelectView;
         parentArgs: SelectionParentArgs;
@@ -2005,7 +2004,6 @@ declare module "components/OctironSubmitButton" {
 declare module "octiron" {
     import type { OctironRoot, TypeDef } from "types/octiron";
     import { Store } from "store";
-    import "./octiron.css";
     export * from "types/common";
     export * from "types/store";
     export * from "types/octiron";

@@ -22,7 +22,6 @@ export type SelectionRendererAttrs = {
   entity?: boolean;
   selector: Selector;
   fragment?: string;
-  accept?: string;
   args: OctironSelectArgs;
   view: SelectView;
   parentArgs: SelectionParentArgs;
@@ -180,7 +179,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     details = next;
 
     if (required.length > 0) {
-      fetchRequired(required, details.accept);
+      fetchRequired(required, currentAttrs.args.accept);
     }
 
     createInstances();

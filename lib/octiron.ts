@@ -2,7 +2,6 @@ import type { OctironRoot, TypeDef } from "./types/octiron.ts";
 import { rootFactory } from "./factories/rootFactory.ts";
 import { makeTypeDefs } from "./utils/makeTypeDefs.ts";
 import { Store } from "./store.ts";
-import "./octiron.css";
 
 export * from './types/common.ts';
 export * from './types/store.ts';

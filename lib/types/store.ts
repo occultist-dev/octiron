@@ -77,13 +77,13 @@ export type HTMLFragment = {
   id: string;
   type: 'embed' | 'bare' | 'text' | 'range';
   html?: string;
-  dom?: DocumentFragment;
+  dom?: Element[];
   selector: string;
 };
 
 export type HTMLFragmentsHandlerResult = {
   root?: string;
-  dom?: DocumentFragment;
+  dom?: Element[];
   selector?: string;
   fragments: Record<string, HTMLFragment>;
   templates: Record<string, string>;
