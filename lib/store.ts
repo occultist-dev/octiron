@@ -578,7 +578,7 @@ export class Store {
         throw new Error('Unconfigured origin');
       }
 
-      if (args.contentType != null) {
+      if (args.body != null && args.contentType != null) {
         headers.set('content-type', args.contentType);
       }
 

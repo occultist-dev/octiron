@@ -104,8 +104,10 @@ export function getSubmitDetails({
   // only add body if supporting HTTP method
   if (method !== 'get' && method !== 'delete') {
     body = JSON.stringify(submitBody);
+  } else {
+    contentType = undefined
+    encodingType = undefined
   }
-
 
   return {
     url,
