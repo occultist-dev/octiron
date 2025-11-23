@@ -295,6 +295,10 @@ export function octironFactory<O extends Octiron>(
       ) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
+        if (typeof selector === 'string') {
+          return self.select(selector, (o: OctironAction) => o.perform(args, view));
+        }
+
         return m(PerformRenderer, {
           selector,
           args,

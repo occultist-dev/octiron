@@ -1794,6 +1794,9 @@ function getSubmitDetails({
   const url = template.fill(fillArgs);
   if (method !== "get" && method !== "delete") {
     body = JSON.stringify(submitBody);
+  } else {
+    contentType = void 0;
+    encodingType = void 0;
   }
   return {
     url,
@@ -3252,6 +3255,9 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
     default: {
       self.perform = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        if (typeof selector === "string") {
+          return self.select(selector, (o) => o.perform(args, view));
+        }
         return m7(PerformRenderer, {
           selector,
           args,
@@ -4268,7 +4274,7 @@ callFetcher_fn = function(_0) {
     } else {
       throw new Error("Unconfigured origin");
     }
-    if (args.contentType != null) {
+    if (args.body != null && args.contentType != null) {
       headers.set("content-type", args.contentType);
     }
     if (accept != null) {
