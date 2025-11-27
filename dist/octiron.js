@@ -647,7 +647,7 @@ var SelectionRenderer = (vnode) => {
         const prev = instances[key2].selectionResult;
         if (prev.type === "value" && next.type === "value" && next.value === prev.value) {
           continue;
-        } else if (prev.type === "entity" && next.type === "entity" && (next.ok !== prev.ok || next.status !== prev.status || next.value !== prev.value)) {
+        } else if (prev.type === "entity" && next.type === "entity" && next.ok === prev.ok && next.status === prev.status && next.value === prev.value) {
           continue;
         }
       }
@@ -747,10 +747,10 @@ var SelectionRenderer = (vnode) => {
         return attrs.args.loading;
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== "function") {
         return attrs.args.fallback;
-      } else if (details.result[0].type === "alternative") {
+      } else if (details.result[0] != null && details.result[0].type === "alternative") {
         return details.result[0].integration.render(null, attrs.args.fragment);
       }
-      const view = currentAttrs.view;
+      const view = attrs.view;
       const {
         pre,
         sep,
@@ -776,29 +776,28 @@ var SelectionRenderer = (vnode) => {
         list = list.filter(({ octiron: octiron2 }) => predicate(octiron2));
       }
       if (pre != null) {
-        children.push(m2.fragment({ key: preKey }, [pre]));
+        children.push(m2.fragment({}, [pre]));
       }
       for (let index = 0; index < list.length; index++) {
         const { selectionResult, octiron: octiron2 } = list[index];
-        const { key: key2 } = selectionResult;
         octiron2.position = index + 1;
         if (index !== 0) {
-          children.push(m2.fragment({ key: `@${Symbol.keyFor(key2)}` }, [sep]));
+          children.push(m2.fragment({}, [sep]));
         }
         if (selectionResult.type === "value") {
-          children.push(m2.fragment({ key: key2 }, [view(octiron2)]));
+          children.push(m2.fragment({}, [view(octiron2)]));
         } else if (!selectionResult.ok && typeof fallback === "function") {
           children.push(
-            m2.fragment({ key: key2 }, [fallback(octiron2, selectionResult.reason)])
+            m2.fragment({}, [fallback(octiron2, selectionResult.reason)])
           );
         } else if (!selectionResult.ok) {
-          children.push(m2.fragment({ key: key2 }, [fallback]));
+          children.push(m2.fragment({}, [fallback]));
         } else {
-          children.push(m2.fragment({ key: key2 }, [view(octiron2)]));
+          children.push(m2.fragment({}, [view(octiron2)]));
         }
       }
       if (post != null) {
-        children.push(m2.fragment({ key: postKey }, [post]));
+        children.push(m2.fragment({}, [post]));
       }
       return children;
     }
@@ -2736,15 +2735,24 @@ var ActionSelectionRenderer = (vnode) => {
   };
 };
 
+// lib/utils/expandValue.ts
+function expandValue(store, value) {
+  let expanded = {};
+  for (let [key, item] of Object.entries(value)) {
+    expanded[store.expand(key)] = item;
+  }
+  return expanded;
+}
+
 // lib/factories/actionFactory.ts
 function actionFactory(args, parentArgs, rendererArgs) {
   const factoryArgs = Object.assign(/* @__PURE__ */ Object.create(null), args);
   let payload = /* @__PURE__ */ Object.create(null);
   let submitResult;
-  if (isJSONObject(args.initialPayload)) {
-    for (const [key, value] of Object.entries(args.initialPayload)) {
-      payload[parentArgs.store.expand(key)] = value;
-    }
+  if (isJSONObject(args.initialValue)) {
+    payload = expandValue(parentArgs.store, args.initialValue);
+  } else if (args.initialValue != null) {
+    console.warn("o.perform() only supports receiving JSON objects as initial values.");
   }
   function submit() {
     return __async(this, null, function* () {
@@ -3137,6 +3145,7 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
   self.store = parentArgs.store;
   self.index = (_c = rendererArgs.index) != null ? _c : 0;
   self.position = -1;
+  self.expand = (typeOrTerm) => parentArgs.store.expand(typeOrTerm);
   childArgs.parent = self;
   childArgs.store = (_d = factoryArgs.store) != null ? _d : parentArgs.store;
   childArgs.typeDefs = (_e = factoryArgs.typeDefs) != null ? _e : parentArgs.typeDefs;

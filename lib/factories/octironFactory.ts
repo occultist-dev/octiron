@@ -1,5 +1,5 @@
 import m from 'mithril';
-import type { Octiron } from "@octiron/octiron";
+import type { Octiron } from "../types/octiron.ts";
 import type { Mutable } from "../types/common.ts";
 import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeDefs } from "../types/octiron.ts";
 import { isJSONObject } from "../utils/isJSONObject.ts";
@@ -119,6 +119,7 @@ export function octironFactory<O extends Octiron>(
   self.store = parentArgs.store;
   self.index = rendererArgs.index ?? 0;
   self.position = -1;
+  self.expand = (typeOrTerm: string) => parentArgs.store.expand(typeOrTerm);
 
   // easiest to define the common child args here
   // but the object is passed in from the parent factory

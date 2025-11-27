@@ -104,11 +104,9 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         } else if (
           prev.type === 'entity' &&
           next.type === 'entity' &&
-          (
-            next.ok !== prev.ok ||
-            next.status !== prev.status ||
-            next.value !== prev.value
-          )
+          next.ok === prev.ok &&
+          next.status === prev.status &&
+          next.value === prev.value
         ) {
           continue;
         }
@@ -238,11 +236,11 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         return attrs.args.loading;
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
         return attrs.args.fallback;
-      } else if (details.result[0].type === 'alternative') {
+      } else if (details.result[0] != null && details.result[0].type === 'alternative') {
         return details.result[0].integration.render(null, attrs.args.fragment);
       }
 
-      const view = currentAttrs.view;
+      const view = attrs.view;
       const {
         pre,
         sep,
@@ -274,35 +272,34 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       }
 
       if (pre != null) {
-        children.push(m.fragment({ key: preKey }, [pre]));
+        children.push(m.fragment({}, [pre]));
       }
 
       for (let index = 0; index < list.length; index++) {
         const { selectionResult, octiron } = list[index];
-        const { key } = selectionResult;
 
         (octiron as Mutable<OctironSelection>).position = index + 1;
 
 
         if (index !== 0) {
-          children.push(m.fragment({ key: `@${Symbol.keyFor(key)}` }, [sep]));
+          children.push(m.fragment({}, [sep]));
         }
 
         if (selectionResult.type === 'value') {
-          children.push(m.fragment({ key }, [view(octiron)]));
+          children.push(m.fragment({}, [view(octiron)]));
         } else if (!selectionResult.ok && typeof fallback === 'function') {
           children.push(
-            m.fragment({ key }, [fallback(octiron, selectionResult.reason as Failure)]),
+            m.fragment({}, [fallback(octiron, selectionResult.reason as Failure)]),
           );
         } else if (!selectionResult.ok) {
-          children.push(m.fragment({ key }, [fallback as m.Children]));
+          children.push(m.fragment({}, [fallback as m.Children]));
         } else {
-          children.push(m.fragment({ key }, [view(octiron)]));
+          children.push(m.fragment({}, [view(octiron)]));
         }
       }
 
       if (post != null) {
-        children.push(m.fragment({ key: postKey }, [post]));
+        children.push(m.fragment({}, [post]));
       }
 
       return children;

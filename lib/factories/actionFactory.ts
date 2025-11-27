@@ -11,6 +11,7 @@ import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
 import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.ts";
 import { isJSONObject } from "../utils/isJSONObject.ts";
 import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.ts";
+import {expandValue} from '../utils/expandValue.ts';
 
 export type ActionRefs = {
   url?: string;
@@ -34,10 +35,10 @@ export function actionFactory<
   let payload: JSONObject = Object.create(null);
   let submitResult: EntityState | undefined;
 
-  if (isJSONObject(args.initialPayload)) {
-    for (const [key, value] of Object.entries(args.initialPayload)) {
-      payload[parentArgs.store.expand(key)] = value;
-    }
+  if (isJSONObject(args.initialValue)) {
+    payload = expandValue(parentArgs.store, args.initialValue);
+  } else if (args.initialValue != null) {
+    console.warn('o.perform() only supports receiving JSON objects as initial values.');
   }
 
   async function submit() {

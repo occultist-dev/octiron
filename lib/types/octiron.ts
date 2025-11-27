@@ -296,7 +296,6 @@ export type OnSubmitFailure = () => void;
 export type SubmittableArgs = {
   submitOnInit?: boolean;
   submitOnChange?: boolean;
-  initialPayload?: JSONObject;
   onSubmit?: OnSubmit;
   onSubmitSuccess?: OnSubmitSuccess;
   onSubmitFailure?: OnSubmitFailure;
@@ -628,6 +627,11 @@ export interface OctironRoot
    * The octiron store used for this value.
    */
   readonly store: Store;
+
+  /**
+   * Expands a term into a type.
+   */
+  readonly expand: Store['expand'];
 }
 
 export interface OctironSelection
@@ -691,6 +695,11 @@ export interface OctironSelection
    * The octiron store used for this value.
    */
   readonly store: Store;
+
+  /**
+   * Expands a term into a type.
+   */
+  readonly expand: Store['expand'];
 }
 
 export interface OctironAction
@@ -774,6 +783,11 @@ export interface OctironAction
    */
   readonly store: Store;
 
+  /**
+   * Expands a term into a type.
+   */
+  readonly expand: Store['expand'];
+
   readonly action: Octiron;
 
   readonly actionValue: Octiron;
@@ -856,6 +870,12 @@ export interface OctironActionSelection
    * The octiron store used for this value.
    */
   readonly store: Store;
+
+  /**
+   * Expands a term into a type.
+   */
+  readonly expand: Store['expand'];
+
   readonly action: Octiron;
 
   readonly actionValue: Octiron;

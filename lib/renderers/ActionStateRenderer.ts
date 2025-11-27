@@ -29,7 +29,7 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
 
   function setInstance(attrs: ActionStateRendererAttrs) {
     if (attrs.submitResult == null) {
-        submitResult = undefined;
+      submitResult = undefined;
       o = undefined;
     } else if (
       submitResult == null ||

@@ -1153,7 +1153,6 @@ declare module "types/octiron" {
     export type SubmittableArgs = {
         submitOnInit?: boolean;
         submitOnChange?: boolean;
-        initialPayload?: JSONObject;
         onSubmit?: OnSubmit;
         onSubmitSuccess?: OnSubmitSuccess;
         onSubmitFailure?: OnSubmitFailure;
@@ -1389,6 +1388,10 @@ declare module "types/octiron" {
          * The octiron store used for this value.
          */
         readonly store: Store;
+        /**
+         * Expands a term into a type.
+         */
+        readonly expand: Store['expand'];
     }
     export interface OctironSelection extends Default, Origin, EntryPoint, Queryable, Selectable, Filterable, Presentable, Performable {
         /**
@@ -1432,6 +1435,10 @@ declare module "types/octiron" {
          * The octiron store used for this value.
          */
         readonly store: Store;
+        /**
+         * Expands a term into a type.
+         */
+        readonly expand: Store['expand'];
     }
     export interface OctironAction extends Default, Origin, EntryPoint, Queryable, ActionSelectable, Presentable, Submitable<JSONObject>, ActionFilterable, Performable, Appendable {
         /**
@@ -1490,6 +1497,10 @@ declare module "types/octiron" {
          * The octiron store used for this value.
          */
         readonly store: Store;
+        /**
+         * Expands a term into a type.
+         */
+        readonly expand: Store['expand'];
         readonly action: Octiron;
         readonly actionValue: Octiron;
     }
@@ -1546,6 +1557,10 @@ declare module "types/octiron" {
          * The octiron store used for this value.
          */
         readonly store: Store;
+        /**
+         * Expands a term into a type.
+         */
+        readonly expand: Store['expand'];
         readonly action: Octiron;
         readonly actionValue: Octiron;
     }
@@ -1852,6 +1867,17 @@ declare module "renderers/ActionSelectionRenderer" {
         selectionArgs?: OctironActionSelectionArgs;
     };
     export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRendererAttrs>;
+}
+declare module "utils/expandValue" {
+    import type { JSONObject } from "types/common";
+    import type { Store } from "store";
+    /**
+     * Expands a object's keys to be their RDF type equivlent.
+     *
+     * @param store   - An Octiron store with expansion context.
+     * @param value   - A JSON object to expand.
+     */
+    export function expandValue(store: Store, value: JSONObject): JSONObject;
 }
 declare module "factories/actionFactory" {
     import type { Store } from "store";
