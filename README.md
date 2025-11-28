@@ -71,6 +71,11 @@ selecting from the payload. The `o.select('search')` in this
 example would render a search box if such a component had
 been configured globally.
 
+The following is what a fully functional search form looks
+like when rendered using Octiron. The `OctironForm` component
+would render correct HTML in an SSR situration making the form
+work when Javascript is not available client side.
+
 ```typescript
 function recipeSearchForm(o: Octiron) {
   return o.perform('actions ListRecipesAction', o =>
@@ -99,8 +104,22 @@ function recipeSearchForm(o: Octiron) {
           ),
         ),
       ]),
+
+      m('.action-bar',
+        m('button', 'Submit'),
+      )
     ),
   );
 }
 ```
+
+Octiron is a work in progress framework and this description of its
+capibilities is far from complete.
+
+## Install
+
+```
+npm install npm:@octiron/octiron
+```
+
 
