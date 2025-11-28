@@ -141,6 +141,27 @@ export type FallbackView = (
 
 export type Fallback = FallbackView | Children;
 
+export type SSRArgs = {
+  /**
+   * Used in SSR to mark the first request produced by this selection
+   * as the main entity of the page.
+   *
+   * When marked as the main entity, the HTTP status of the first response
+   * triggered by this selection will be saved to the `store.httpStatus` value
+   * allowing the framework SSR rendering the Octiron app to use that status
+   * code when responding with the rendered HTML.
+   */
+  mainEntity?: boolean;
+
+  /**
+   * Used in SSR to defer rendering the content of this selection if it
+   * triggers an API request.
+   *
+   * Defer is ignored if main entity is true for this selection.
+   */
+  defer?: boolean;
+};
+
 /**
  * Arguments for all methods which afford fetching entities.
  */
@@ -214,7 +235,8 @@ export type OctironSelectArgs<
 > =
   & FetchableArgs
   & IterableArgs
-  & PresentableArgs<Attrs>;
+  & PresentableArgs<Attrs>
+  & SSRArgs;
 
 export type OctironPresentArgs<
   Attrs extends BaseAttrs = BaseAttrs,
@@ -229,6 +251,7 @@ export type OctironPerformArgs<
   & InterceptableArgs
   & UpdateableArgs<Attrs>
   & PresentableArgs<Attrs>
+  & SSRArgs
 ;
 
 export type OctironActionSelectionArgs<
@@ -238,6 +261,7 @@ export type OctironActionSelectionArgs<
   & IterableArgs
   & InterceptableArgs
   & UpdateableArgs<Attrs>
+  & SSRArgs
 ;
 
 export type OctironEditArgs<

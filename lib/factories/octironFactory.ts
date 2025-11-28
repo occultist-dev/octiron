@@ -275,17 +275,9 @@ export function octironFactory<O extends Octiron>(
         arg2?: OctironPerformArgs | PerformView,
         arg3?: PerformView,
     ) => {
-      if (typeof arg1 === 'string') {
-        return self.root(arg1, (o) => o.perform(
-          arg2 as OctironPerformArgs,
-          arg3 as PerformView,
-        ));
-      }
-
-      return self.root((o) => o.perform(
-          arg2 as OctironPerformArgs,
-          arg3 as PerformView,
-        ));
+        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        
+        return self.root(selector, args, (o) => o.perform(args, view));
       };
       break;
     default: {
@@ -297,7 +289,7 @@ export function octironFactory<O extends Octiron>(
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
         if (typeof selector === 'string') {
-          return self.select(selector, (o: OctironAction) => o.perform(args, view));
+          return self.select(selector, args, (o) => o.perform(args, view));
         }
 
         return m(PerformRenderer, {

@@ -11,6 +11,7 @@ import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } f
 import { isIterable } from "../utils/isIterable.ts";
 import { getIterableValue } from "../utils/getIterableValue.ts";
 import { selectComponentFromArgs } from "../utils/selectComponentFromArgs.ts";
+import {expandValue} from '../utils/expandValue.ts';
 
 
 export type OnActionSelectionSubmit = () => Promise<void>;
@@ -215,6 +216,10 @@ export function actionSelectionFactory<
     let nextValue: JSONValue;
     const type = parentArgs.store.expand(termOrType);
     const lastValue = rendererArgs.value[type];
+
+    if (isJSONObject(value)) {
+      value = expandValue(self.store, value);
+    }
 
     if (lastValue == null) {
       nextValue = value;

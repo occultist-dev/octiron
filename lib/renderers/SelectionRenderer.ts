@@ -16,6 +16,7 @@ import m from "mithril";
 import { selectionFactory } from "../factories/selectionFactory.ts";
 import { isJSONObject } from "../utils/isJSONObject.ts";
 import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
+import {isBrowserRender} from "../consts.ts";
 
 
 export type SelectionRendererAttrs = {
@@ -54,6 +55,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
   vnode,
 ) => {
   const key = Symbol(`SelectionRenderer`);
+  let deferring: boolean = false;
   let currentAttrs = vnode.attrs;
   let details: undefined | SelectionDetails<ReadonlySelectionResult>;
 
@@ -146,8 +148,17 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     }
   }
 
-  async function fetchRequired(required: string[], accept?: string) {
+  async function fetchRequired(
+    required: string[],
+  ) {
     if (required.length === 0) {
+      return;
+    } else if (
+      !isBrowserRender &&
+      !currentAttrs.args.mainEntity &&
+      currentAttrs.args.defer
+    ) {
+      deferring = true;
       return;
     }
 
@@ -155,7 +166,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     const promises: Promise<any>[] = [];
 
     for (const iri of required) {
-      promises.push(currentAttrs.parentArgs.store.fetch(iri, accept));
+      promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept));
     }
 
     await Promise.allSettled(promises);
@@ -177,14 +188,14 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     details = next;
 
     if (required.length > 0) {
-      fetchRequired(required, currentAttrs.args.accept);
+      fetchRequired(required);
     }
 
     createInstances();
   }
 
   function subscribe() {
-    const { entity, selector, parentArgs: { value, store }, args: { accept, fragment } } = currentAttrs;
+    const { entity, selector, parentArgs: { value, store } } = currentAttrs;
 
     if (
       !entity &&
@@ -199,13 +210,13 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     details = store.subscribe({
       key,
       selector,
-      fragment,
-      accept,
+      fragment: currentAttrs.args.fragment,
+      accept: currentAttrs.args.accept,
       value: entity ? undefined : value as JSONObject,
       listener,
     });
 
-    fetchRequired(details.required, accept);
+    fetchRequired(details.required);
 
     createInstances();
   }
@@ -232,6 +243,10 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       attrs.parentArgs.store.unsubscribe(key);
     },
     view: ({ attrs }): m.Children => {
+      if (deferring) {
+        return currentAttrs.args.loading;
+      }
+
       if (details == null || !details.complete) {
         return attrs.args.loading;
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
@@ -248,6 +263,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         start,
         end,
         predicate,
+        loading,
         fallback,
       } = currentAttrs.args;
 

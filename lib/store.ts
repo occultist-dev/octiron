@@ -784,8 +784,7 @@ export class Store {
               continue;
             }
 
-            // deno-lint-ignore no-explicit-any
-            const state = cls.fromInitialState(handler as any, stateInfo as any);
+            const state = cls.fromInitialState(handler, stateInfo);
 
             if (state == null) {
               continue;

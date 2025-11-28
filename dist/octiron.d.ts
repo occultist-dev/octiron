@@ -533,6 +533,7 @@ declare module "types/store" {
         fragment?: string;
     };
     export interface IntegrationState {
+        key: symbol;
         iri: string;
         integrationType: IntegrationType;
         contentType: string;
@@ -1059,6 +1060,26 @@ declare module "types/octiron" {
      */
     export type FallbackView = (o: OctironSelection, err: UndefinedFailure | HTTPFailure | ContentHandlingFailure) => Children;
     export type Fallback = FallbackView | Children;
+    export type SSRArgs = {
+        /**
+         * Used in SSR to mark the request as the main entity of the page.
+         * This should only be used once on a page and ideally for a selection
+         * where one request will be issued.
+         *
+         * When marked as the main entity, the HTTP status of the first response
+         * triggered by this request will be saved to the `store.httpStatus` value
+         * allowing the framework SSR rendering the Octiron app to use that status
+         * code when responding with the rendered HTML.
+         */
+        mainEntity?: boolean;
+        /**
+         * Used in SSR to defer rendering the content of this selection if it
+         * triggers an API request.
+         *
+         * Defer is ignored if main entity is true for this selection.
+         */
+        defer?: boolean;
+    };
     /**
      * Arguments for all methods which afford fetching entities.
      */
@@ -1111,10 +1132,10 @@ declare module "types/octiron" {
         typeDefs?: TypeDefs;
         store?: Store;
     };
-    export type OctironSelectArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & PresentableArgs<Attrs>;
+    export type OctironSelectArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & PresentableArgs<Attrs> & SSRArgs;
     export type OctironPresentArgs<Attrs extends BaseAttrs = BaseAttrs> = PresentableArgs<Attrs>;
-    export type OctironPerformArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & SubmittableArgs & InterceptableArgs & UpdateableArgs<Attrs> & PresentableArgs<Attrs>;
-    export type OctironActionSelectionArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & InterceptableArgs & UpdateableArgs<Attrs>;
+    export type OctironPerformArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & SubmittableArgs & InterceptableArgs & UpdateableArgs<Attrs> & PresentableArgs<Attrs> & SSRArgs;
+    export type OctironActionSelectionArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & InterceptableArgs & UpdateableArgs<Attrs> & SSRArgs;
     export type OctironEditArgs<Attrs extends BaseAttrs = BaseAttrs> = UpdateableArgs<Attrs> & EditableArgs;
     export type OctironDefaultArgs<Attrs extends BaseAttrs = BaseAttrs> = OctironPresentArgs<Attrs> | OctironEditArgs<Attrs>;
     /**
@@ -1845,6 +1866,17 @@ declare module "renderers/EditRenderer" {
     };
     export const EditRenderer: m.ComponentTypes<EditRendererAttrs>;
 }
+declare module "utils/expandValue" {
+    import type { JSONObject } from "types/common";
+    import type { Store } from "store";
+    /**
+     * Expands a object's keys to be their RDF type equivlent.
+     *
+     * @param store   - An Octiron store with expansion context.
+     * @param value   - A JSON object to expand.
+     */
+    export function expandValue(store: Store, value: JSONObject): JSONObject;
+}
 declare module "factories/actionSelectionFactory" {
     import type { JSONValue } from "types/common";
     import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, OctironActionSelection, OctironActionSelectionArgs, UpdateArgs } from "types/octiron";
@@ -1868,17 +1900,6 @@ declare module "renderers/ActionSelectionRenderer" {
     };
     export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRendererAttrs>;
 }
-declare module "utils/expandValue" {
-    import type { JSONObject } from "types/common";
-    import type { Store } from "store";
-    /**
-     * Expands a object's keys to be their RDF type equivlent.
-     *
-     * @param store   - An Octiron store with expansion context.
-     * @param value   - A JSON object to expand.
-     */
-    export function expandValue(store: Store, value: JSONObject): JSONObject;
-}
 declare module "factories/actionFactory" {
     import type { Store } from "store";
     import type { JSONObject } from "types/common";
@@ -1894,7 +1915,7 @@ declare module "factories/actionFactory" {
         typeDefs: TypeDefs;
         submitResult?: EntityState;
     };
-    export function actionFactory<Attrs extends Record<string, any> = Record<string, any>>(args: OctironPerformArgs<Attrs>, parentArgs: ActionParentArgs, rendererArgs: PerformRendererArgs): OctironAction & InstanceHooks;
+    export function actionFactory<Attrs extends Record<string, unknown> = Record<string, unknown>>(args: OctironPerformArgs<Attrs>, parentArgs: ActionParentArgs, rendererArgs: PerformRendererArgs): OctironAction & InstanceHooks;
 }
 declare module "renderers/PerformRenderer" {
     import type m from 'mithril';

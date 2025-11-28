@@ -24,8 +24,7 @@ export type ActionRefs = {
 };
 
 export function actionFactory<
-  // deno-lint-ignore no-explicit-any
-  Attrs extends Record<string, any> = Record<string, any>,
+  Attrs extends Record<string, unknown> = Record<string, unknown>,
 >(
   args: OctironPerformArgs<Attrs>,
   parentArgs: ActionParentArgs,

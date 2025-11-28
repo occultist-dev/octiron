@@ -565,6 +565,7 @@ export type AlternativeAttrs = {
 
 
 export interface IntegrationState {
+  key: symbol;
   iri: string;
   integrationType: IntegrationType;
   contentType: string;

@@ -60,7 +60,6 @@ type ProcessingSelectionDetails = SelectionDetails<
   | ProcessingAlternativeSelectionResult
 >;
 
-
 export function transformProcessedDetails<T extends SelectionResult>(
   processing: ProcessingSelectionDetails,
 ): SelectionDetails<T> {
@@ -68,9 +67,7 @@ export function transformProcessedDetails<T extends SelectionResult>(
     const element = processing.result[index];
 
     (element as unknown as Mutable<SourceSelectionResults>).key = Symbol.for(element.keySource);
-
-    // deno-lint-ignore no-explicit-any
-    delete (element as any).keySource;
+    delete (element as unknown as Mutable<{ keySource?: string }>).keySource;
   }
 
   return processing as unknown as SelectionDetails<T>;

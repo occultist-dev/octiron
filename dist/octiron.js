@@ -618,6 +618,7 @@ function shouldReselect(next, prev) {
 }
 var SelectionRenderer = (vnode) => {
   const key = Symbol(`SelectionRenderer`);
+  let deferring = false;
   let currentAttrs = vnode.attrs;
   let details;
   const instances = {};
@@ -678,14 +679,18 @@ var SelectionRenderer = (vnode) => {
       mithrilRedraw();
     }
   }
-  function fetchRequired(required, accept) {
+  function fetchRequired(required) {
     return __async(this, null, function* () {
+      console.log("SHOULD DEFER?", currentAttrs.args.defer);
       if (required.length === 0) {
+        return;
+      } else if (!isBrowserRender && !currentAttrs.args.mainEntity && currentAttrs.args.defer) {
+        deferring = true;
         return;
       }
       const promises = [];
       for (const iri of required) {
-        promises.push(currentAttrs.parentArgs.store.fetch(iri, accept));
+        promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept));
       }
       yield Promise.allSettled(promises);
     });
@@ -703,12 +708,12 @@ var SelectionRenderer = (vnode) => {
     }
     details = next;
     if (required.length > 0) {
-      fetchRequired(required, currentAttrs.args.accept);
+      fetchRequired(required);
     }
     createInstances();
   }
   function subscribe() {
-    const { entity, selector, parentArgs: { value, store }, args: { accept, fragment } } = currentAttrs;
+    const { entity, selector, parentArgs: { value, store } } = currentAttrs;
     if (!entity && !isJSONObject(value)) {
       store.unsubscribe(key);
       createInstances();
@@ -717,12 +722,12 @@ var SelectionRenderer = (vnode) => {
     details = store.subscribe({
       key,
       selector,
-      fragment,
-      accept,
+      fragment: currentAttrs.args.fragment,
+      accept: currentAttrs.args.accept,
       value: entity ? void 0 : value,
       listener
     });
-    fetchRequired(details.required, accept);
+    fetchRequired(details.required);
     createInstances();
   }
   return {
@@ -743,6 +748,9 @@ var SelectionRenderer = (vnode) => {
       attrs.parentArgs.store.unsubscribe(key);
     },
     view: ({ attrs }) => {
+      if (deferring) {
+        return currentAttrs.args.loading;
+      }
       if (details == null || !details.complete) {
         return attrs.args.loading;
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== "function") {
@@ -758,6 +766,7 @@ var SelectionRenderer = (vnode) => {
         start,
         end,
         predicate,
+        loading,
         fallback
       } = currentAttrs.args;
       const children = [];
@@ -1854,6 +1863,15 @@ var EditRenderer = ({
   };
 };
 
+// lib/utils/expandValue.ts
+function expandValue(store, value) {
+  let expanded = {};
+  for (let [key, item] of Object.entries(value)) {
+    expanded[store.expand(key)] = item;
+  }
+  return expanded;
+}
+
 // lib/factories/actionSelectionFactory.ts
 function actionSelectionFactory(args, parentArgs, rendererArgs) {
   var _a, _b, _c;
@@ -1992,6 +2010,9 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
     let nextValue;
     const type = parentArgs.store.expand(termOrType);
     const lastValue = rendererArgs.value[type];
+    if (isJSONObject(value)) {
+      value = expandValue(self.store, value);
+    }
     if (lastValue == null) {
       nextValue = value;
     } else if (Array.isArray(lastValue)) {
@@ -2735,15 +2756,6 @@ var ActionSelectionRenderer = (vnode) => {
   };
 };
 
-// lib/utils/expandValue.ts
-function expandValue(store, value) {
-  let expanded = {};
-  for (let [key, item] of Object.entries(value)) {
-    expanded[store.expand(key)] = item;
-  }
-  return expanded;
-}
-
 // lib/factories/actionFactory.ts
 function actionFactory(args, parentArgs, rendererArgs) {
   const factoryArgs = Object.assign(/* @__PURE__ */ Object.create(null), args);
@@ -3249,15 +3261,10 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
   switch (typeKey) {
     case TypeKeys["root"]:
       self.perform = (arg1, arg2, arg3) => {
-        if (typeof arg1 === "string") {
-          return self.root(arg1, (o) => o.perform(
-            arg2,
-            arg3
-          ));
-        }
-        return self.root((o) => o.perform(
-          arg2,
-          arg3
+        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        return self.root(selector, args, (o) => o.perform(
+          args,
+          view
         ));
       };
       break;
@@ -3265,7 +3272,7 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
       self.perform = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
         if (typeof selector === "string") {
-          return self.select(selector, (o) => o.perform(args, view));
+          return self.select(selector, args, (o) => o.perform(args, view));
         }
         return m7(PerformRenderer, {
           selector,
