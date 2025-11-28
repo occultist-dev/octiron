@@ -835,6 +835,9 @@ declare module "store" {
     import type { AlternativesState, Context, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases } from "types/store";
     import type { JSONObject } from "types/common";
     import type { FailureEntityState, SuccessEntityState } from "types/store";
+    type FetchArgs = {
+        mainEntity?: boolean;
+    };
     export type StoreArgs = {
         /**
          * Root endpoint of the API.
@@ -887,6 +890,14 @@ declare module "store" {
     export class Store {
         #private;
         constructor(args: StoreArgs);
+        /**
+         * Used only in SSR for reporting the HTTP status of the
+         * main entity of the page.
+         */
+        get httpStatus(): number;
+        /**
+         * The root IRI this store is configured to work with.
+         */
         get rootIRI(): string;
         /**
          * Retrieves an entity state object relating to an IRI.
@@ -916,16 +927,17 @@ declare module "store" {
         key(): string;
         isLoading(iri: string): boolean;
         handleResponse(res: Response, iri?: string): Promise<void>;
-        subscribe({ key, selector, fragment, accept, value, listener, }: {
+        subscribe({ key, selector, fragment, accept, value, listener, mainEntity, }: {
             key: symbol;
             selector: string;
             fragment?: string;
             accept?: string;
             value?: JSONObject;
             listener: SelectionListener;
+            mainEntity?: boolean;
         }): SelectionDetails<ReadonlySelectionResult>;
         unsubscribe(key: symbol): void;
-        fetch(iri: string, accept?: string): Promise<SuccessEntityState | FailureEntityState>;
+        fetch(iri: string, accept?: string, { mainEntity, }?: FetchArgs): Promise<SuccessEntityState | FailureEntityState>;
         /**
          * Submits an action. Like fetch this will overwrite
          * entities in the store with any entities returned
@@ -1062,12 +1074,11 @@ declare module "types/octiron" {
     export type Fallback = FallbackView | Children;
     export type SSRArgs = {
         /**
-         * Used in SSR to mark the request as the main entity of the page.
-         * This should only be used once on a page and ideally for a selection
-         * where one request will be issued.
+         * Used in SSR to mark the first request produced by this selection
+         * as the main entity of the page.
          *
          * When marked as the main entity, the HTTP status of the first response
-         * triggered by this request will be saved to the `store.httpStatus` value
+         * triggered by this selection will be saved to the `store.httpStatus` value
          * allowing the framework SSR rendering the Octiron app to use that status
          * code when responding with the rendered HTML.
          */

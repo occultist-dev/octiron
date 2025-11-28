@@ -36,6 +36,10 @@ type ListenerDetails = {
 };
 type Listeners = Map<symbol, ListenerDetails>;
 
+type FetchArgs = {
+  mainEntity?: boolean;
+};
+
 function getJSONLdValues(vocab?: string, aliases?: Record<string, string>): [Map<string, string>, Context] {
   const aliasMap: Map<string, string> = new Map<string, string>();
   const context: Context = {};
@@ -146,6 +150,7 @@ export type StoreArgs = {
 
 export class Store {
 
+    #httpStatus: number;
     #rootIRI: string;
     #rootOrigin: string;
     #headers: Headers;
@@ -204,7 +209,18 @@ export class Store {
       }
     }
 
-    public get rootIRI() {
+    /**
+     * Used only in SSR for reporting the HTTP status of the
+     * main entity of the page.
+     */
+    public get httpStatus(): number {
+      return this.#httpStatus;
+    }
+
+    /**
+     * The root IRI this store is configured to work with.
+     */
+    public get rootIRI(): string {
       return this.#rootIRI;
     }
 
@@ -559,6 +575,7 @@ export class Store {
       accept?: string;
       body?: string;
       contentType?: string;
+      mainEntity?: boolean;
     } = {}): Promise<void> {
       let headers: Headers;
       const url = new URL(iri);
@@ -611,6 +628,13 @@ export class Store {
             });
           }
 
+          if (!isBrowserRender &&
+              (this.#httpStatus == null || this.#httpStatus < 400) &&
+              !res.status.toString().startsWith('3')
+          ) {
+            this.#httpStatus = res.status;
+          }
+
           if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
             this.#acceptMap.get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
           } else if (args.accept != null) {
@@ -641,6 +665,7 @@ export class Store {
       accept,
       value,
       listener,
+      mainEntity,
     }: {
       key: symbol;
       selector: string;
@@ -648,6 +673,7 @@ export class Store {
       accept?: string;
       value?: JSONObject;
       listener: SelectionListener;
+      mainEntity?: boolean;
     }) {
       const details = getSelection<ReadonlySelectionResult>({
         selector,
@@ -680,6 +706,17 @@ export class Store {
         cleanup,
       });
 
+      // If this is the main entity and the details has
+      // missing deps simulate a 404 if no other bad
+      // status code has been set
+      if (!isBrowserRender &&
+          mainEntity &&
+          details.hasMissing &&
+          this.#httpStatus < 400
+      ) {
+        this.#httpStatus = 404;
+      }
+
       return details;
     }
 
@@ -687,8 +724,10 @@ export class Store {
       this.#listeners.get(key)?.cleanup();
     }
 
-    public async fetch(iri: string, accept?: string): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri, { accept });
+    public async fetch(iri: string, accept?: string, {
+      mainEntity,
+    }: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
+      await this.#callFetcher(iri, { accept, mainEntity });
 
       return this.#primary.get(iri) as SuccessEntityState | FailureEntityState;
     }

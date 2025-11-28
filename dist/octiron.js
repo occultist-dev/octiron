@@ -681,7 +681,6 @@ var SelectionRenderer = (vnode) => {
   }
   function fetchRequired(required) {
     return __async(this, null, function* () {
-      console.log("SHOULD DEFER?", currentAttrs.args.defer);
       if (required.length === 0) {
         return;
       } else if (!isBrowserRender && !currentAttrs.args.mainEntity && currentAttrs.args.defer) {
@@ -690,7 +689,9 @@ var SelectionRenderer = (vnode) => {
       }
       const promises = [];
       for (const iri of required) {
-        promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept));
+        promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept, {
+          mainEntity: currentAttrs.args.mainEntity
+        }));
       }
       yield Promise.allSettled(promises);
     });
@@ -725,7 +726,8 @@ var SelectionRenderer = (vnode) => {
       fragment: currentAttrs.args.fragment,
       accept: currentAttrs.args.accept,
       value: entity ? void 0 : value,
-      listener
+      listener,
+      mainEntity: currentAttrs.args.mainEntity
     });
     fetchRequired(details.required);
     createInstances();
@@ -3262,10 +3264,7 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
     case TypeKeys["root"]:
       self.perform = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-        return self.root(selector, args, (o) => o.perform(
-          args,
-          view
-        ));
+        return self.root(selector, args, (o) => o.perform(args, view));
       };
       break;
     default: {
@@ -3760,10 +3759,11 @@ function getInternalHeaderValues(headers, origins) {
   }
   return [internalHeaders, internalOrigins];
 }
-var _rootIRI, _rootOrigin, _headers, _origins, _vocab, _aliases, _primary, _loading, _integrations, _handlers, _keys, _context, _termExpansions, _fetcher, _responseHook, _dependencies, _listeners, _acceptMap, _Store_instances, makeCleanupFn_fn, getLoadingKey_fn, publish_fn, handleJSONLD_fn, callFetcher_fn;
+var _httpStatus, _rootIRI, _rootOrigin, _headers, _origins, _vocab, _aliases, _primary, _loading, _integrations, _handlers, _keys, _context, _termExpansions, _fetcher, _responseHook, _dependencies, _listeners, _acceptMap, _Store_instances, makeCleanupFn_fn, getLoadingKey_fn, publish_fn, handleJSONLD_fn, callFetcher_fn;
 var _Store = class _Store {
   constructor(args) {
     __privateAdd(this, _Store_instances);
+    __privateAdd(this, _httpStatus);
     __privateAdd(this, _rootIRI);
     __privateAdd(this, _rootOrigin);
     __privateAdd(this, _headers);
@@ -3812,6 +3812,16 @@ var _Store = class _Store {
       __privateSet(this, _integrations, args.alternatives);
     }
   }
+  /**
+   * Used only in SSR for reporting the HTTP status of the
+   * main entity of the page.
+   */
+  get httpStatus() {
+    return __privateGet(this, _httpStatus);
+  }
+  /**
+   * The root IRI this store is configured to work with.
+   */
   get rootIRI() {
     return __privateGet(this, _rootIRI);
   }
@@ -3969,7 +3979,8 @@ var _Store = class _Store {
     fragment,
     accept,
     value,
-    listener
+    listener,
+    mainEntity
   }) {
     const details = getSelection({
       selector,
@@ -3998,15 +4009,20 @@ var _Store = class _Store {
       listener,
       cleanup
     });
+    if (!isBrowserRender && mainEntity && details.hasMissing && __privateGet(this, _httpStatus) < 400) {
+      __privateSet(this, _httpStatus, 404);
+    }
     return details;
   }
   unsubscribe(key) {
     var _a;
     (_a = __privateGet(this, _listeners).get(key)) == null ? void 0 : _a.cleanup();
   }
-  fetch(iri, accept) {
-    return __async(this, null, function* () {
-      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri, { accept });
+  fetch(_0, _1) {
+    return __async(this, arguments, function* (iri, accept, {
+      mainEntity
+    } = {}) {
+      yield __privateMethod(this, _Store_instances, callFetcher_fn).call(this, iri, { accept, mainEntity });
       return __privateGet(this, _primary).get(iri);
     });
   }
@@ -4147,6 +4163,7 @@ var _Store = class _Store {
     return html;
   }
 };
+_httpStatus = new WeakMap();
 _rootIRI = new WeakMap();
 _rootOrigin = new WeakMap();
 _headers = new WeakMap();
@@ -4316,6 +4333,9 @@ callFetcher_fn = function(_0) {
             headers,
             body: args.body
           });
+        }
+        if (!isBrowserRender && (__privateGet(this, _httpStatus) == null || __privateGet(this, _httpStatus) < 400) && !res.status.toString().startsWith("3")) {
+          __privateSet(this, _httpStatus, res.status);
         }
         if (args.accept != null && __privateGet(this, _acceptMap).has(dispatchURL)) {
           (_a2 = __privateGet(this, _acceptMap).get(dispatchURL)) == null ? void 0 : _a2.set(args.accept, res.headers.get("content-type"));

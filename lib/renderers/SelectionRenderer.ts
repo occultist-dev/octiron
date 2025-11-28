@@ -166,7 +166,9 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     const promises: Promise<any>[] = [];
 
     for (const iri of required) {
-      promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept));
+      promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept, {
+        mainEntity: currentAttrs.args.mainEntity,
+      }));
     }
 
     await Promise.allSettled(promises);
@@ -214,6 +216,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       accept: currentAttrs.args.accept,
       value: entity ? undefined : value as JSONObject,
       listener,
+      mainEntity: currentAttrs.args.mainEntity,
     });
 
     fetchRequired(details.required);
