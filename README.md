@@ -32,7 +32,7 @@ with global type handlers. If no arguments are provided to the
 type handler will be used to render the value.
 
 ```typescript
-const PresentMeters = {
+const PresentMetres = {
   view({ attrs: { value } }) {
     return value + 'm';
   }
@@ -40,7 +40,7 @@ const PresentMeters = {
 const o = new Octiron({
   apiRoot: 'https://example.com',
   typeHandlers: {
-    height: { present: PresentMeters },
+    height: { present: PresentMetres },
   },
 });
 
