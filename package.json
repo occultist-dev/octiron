@@ -1,6 +1,6 @@
 {
   "name": "@octiron/octiron",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "WIP framework for mithril.js and json-ld APIs.",
   "author": "Matthew Quinn",
   "homepage": "https://github.com/occultist-dev/octiron",
