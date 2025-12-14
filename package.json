@@ -2,8 +2,18 @@
   "name": "@octiron/octiron",
   "version": "0.0.5",
   "description": "WIP framework for mithril.js and json-ld APIs.",
+  "author": "Matthew Quinn",
+  "homepage": "https://github.com/occultist-dev/octiron",
+  "license": "MIT",
   "main": "./dist/octiron.js",
   "types": "./dist/octiron.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/occultist-dev/octiron.git"
+  },
+  "bugs": {
+    "url": "https://github.com/occultist-dev/octiron/issues"
+  },
   "directories": {
     "lib": "lib",
     "test": "test"
@@ -33,15 +43,5 @@
   },
   "optionalDependencies": {
     "jsonld": "^8.3.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/matthewquinn/octiron.git"
-  },
-  "author": "Matthew Quinn",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/matthewquinn/octiron/issues"
-  },
-  "homepage": "https://github.com/matthewquinn/octiron#readme"
+  }
 }

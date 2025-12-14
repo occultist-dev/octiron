@@ -18,6 +18,7 @@ export type IntegrationType =
   // | 'problem-details'
   | 'html'
   | 'html-fragments'
+  | 'unrecognized';
 ;
 
 export type HandlerArgs = {
@@ -100,15 +101,21 @@ export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFra
 export type HTMLFragmentsHandler = {
   integrationType: 'html-fragments';
   contentType: string;
-  handler: RequestHandler<HTMLFragmentsHandlerResult<string>>;
+  handler: RequestHandler<HTMLFragmentsHandlerResult>;
   onCreate?: HTMLFragmentsOnCreate;
 }
+
+export type UnrecognizedContentTypeHandler = {
+  integrationType: 'unrecognized';
+  contentType: string;
+};
 
 export type Handler =
   | JSONLDHandler
   | ProblemDetailsHandler
   | HTMLHandler
   | HTMLFragmentsHandler
+  | UnrecognizedContentTypeHandler
 ;
 
 export type FetcherArgs = {
@@ -139,6 +146,12 @@ export interface Failure {
    * of the undefined variety.
    */
   undefined(children: Children): Children;
+
+  /**
+   * The response content type was not understood
+   * by Octiron.
+   */
+  unrecognized(children: Children): Children;
 
   /**
    * Returns the given children if the error is
@@ -204,6 +217,11 @@ export type EntitySelectionResult = {
    * The response status. Only used for failure responses.
    */
   readonly status?: number;
+
+  /**
+   * The response headers if this entity was retrieved using fetch.
+   */
+  readonly headers?: Headers;
 
   /**
    * The current value of the entity.
@@ -316,6 +334,8 @@ export type ActionSelectionResult = {
 
   readonly fragment?: undefined;
 
+  readonly headers?: Headers;
+
   /**
    * The accept header to use when performing API requests for this entity.
    */
@@ -341,6 +361,8 @@ export type AlternativeSelectionResult = {
    * The accept header to use when performing API requests for this entity.
    */
   readonly accept?: string;
+
+  readonly headers?: Headers;
 
   readonly integration: IntegrationState;
 };
@@ -425,6 +447,11 @@ export type LoadingEntityState = {
   readonly status?: undefined;
 
   /**
+   *
+   */
+  readonly headers?: undefined;
+
+  /**
    * The content type of the response.
    */
   readonly contentType?: undefined;
@@ -462,6 +489,11 @@ export type SuccessEntityState = {
    * The response status. Only used for failure responses.
    */
   readonly status?: undefined;
+
+  /**
+   *
+   */
+  readonly headers?: Headers;
   
   /**
    * Component to render if the returned content type is
@@ -496,6 +528,11 @@ export type SuccessAlternativeState = {
    * The response status. Only used for failure responses.
    */
   readonly status?: undefined;
+
+  /**
+   *
+   */
+  readonly headers?: Headers;
   
   /**
    * Component to render if the returned content type is
@@ -532,6 +569,11 @@ export type FailureEntityState = {
   readonly status: number;
 
   /**
+   *
+   */
+  readonly headers?: Headers;
+
+  /**
    * An object describing the reason and source of the failure.
    */
   readonly reason: Failure;
@@ -563,16 +605,21 @@ export type AlternativeAttrs = {
   fragment?: string;
 };
 
+export type ErrorDetails = {
+  type: 'unrecognized-content-type';
+};
+
+export type ErrorView = (errorDetails: ErrorDetails) => Children;
 
 export interface IntegrationState {
-  key: symbol;
-  iri: string;
   integrationType: IntegrationType;
+  iri: string;
   contentType: string;
   getStateInfo(): IntegrationStateInfo;
-  toInitialState(): string;
-  render(o: Octiron, fragment?: string): Children;
-  text(iri: string): string | undefined;
+  toInitialState?(): string;
+  render?(o: Octiron, fragment?: string): Children;
+  error?(view: Children | ErrorView): Children;
+  text?(iri: string): string | undefined;
 };
 
 export type PrimaryState = Map<string, EntityState>;

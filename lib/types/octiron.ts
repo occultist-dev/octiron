@@ -510,6 +510,18 @@ export interface Submitable<
     args: OctironSelectArgs,
     view: SelectView,
   ): Children;
+
+  /**
+   * Returns the human readable problem detail value for the last unsuccessful
+   * submission if it resulted in a problem details response.
+   */
+  problems(): string;
+
+  /**
+   * Returns the full problem detail value for the last unsuccessful
+   * submission if it resulted in a problem details response.
+   */
+  details(): JSONObject;
 }
 
 export interface ActionSelectable {

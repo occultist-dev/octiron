@@ -273,6 +273,14 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     }
   }
 
+  /**
+   * Renders a HTML fragment.
+   *
+   * @param o         The octiron instance.
+   * @param fragment  A fragment identifier to use when selecting the fragment
+   *                  to render and for providing template args. If no fragment
+   *                  identifier is provided the root fragment will be rendered.
+   */
   public render(o: Octiron, fragment?: string) {
     if (!isBrowserRender) {
       if (fragment == null) {
@@ -340,7 +348,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     return html;
   }
 
-  static fromInitialState(handler: HTMLFragmentsHandler, {
+  static fromInitialState({
     iri,
     contentType,
     rendered,
@@ -348,7 +356,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     texts,
     fragments,
     templates,
-  }: HTMLFragmentsStateInfo): HTMLFragmentsIntegration | null {
+  }: HTMLFragmentsStateInfo, handler: HTMLFragmentsHandler): HTMLFragmentsIntegration | null {
     const output: HTMLFragmentsHandlerResult = Object.create(null);
 
     output.fragments = Object.create(null);

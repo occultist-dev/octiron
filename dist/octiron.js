@@ -758,7 +758,11 @@ var SelectionRenderer = (vnode) => {
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== "function") {
         return attrs.args.fallback;
       } else if (details.result[0] != null && details.result[0].type === "alternative") {
-        return details.result[0].integration.render(null, attrs.args.fragment);
+        if (details.result[0].integration.render != null) {
+          return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
+        } else if (details.result[0].integration.error != null) {
+          return details.result[0].integration.error(attrs.args.fallback);
+        }
       }
       const view = attrs.view;
       const {
@@ -3491,6 +3495,14 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
       console.error(err);
     }
   }
+  /**
+   * Renders a HTML fragment.
+   *
+   * @param o         The octiron instance.
+   * @param fragment  A fragment identifier to use when selecting the fragment
+   *                  to render and for providing template args. If no fragment
+   *                  identifier is provided the root fragment will be rendered.
+   */
   render(o, fragment) {
     if (!isBrowserRender) {
       if (fragment == null) {
@@ -3550,7 +3562,7 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
     }
     return html;
   }
-  static fromInitialState(handler, {
+  static fromInitialState({
     iri,
     contentType,
     rendered,
@@ -3558,7 +3570,7 @@ var _HTMLFragmentsIntegration = class _HTMLFragmentsIntegration {
     texts,
     fragments,
     templates
-  }) {
+  }, handler) {
     const output = /* @__PURE__ */ Object.create(null);
     output.fragments = /* @__PURE__ */ Object.create(null);
     output.templates = templates;
@@ -3719,11 +3731,52 @@ function flattenIRIObjects(value, agg = []) {
   return agg;
 }
 
+// lib/alternatives/unrecognized.ts
+var _iri2, _contentType2;
+var _UnrecognizedIntegration = class _UnrecognizedIntegration {
+  constructor(args) {
+    __publicField(this, "integrationType", "unrecognized");
+    __privateAdd(this, _iri2);
+    __privateAdd(this, _contentType2);
+    __privateSet(this, _iri2, args.iri);
+    __privateSet(this, _contentType2, args.contentType);
+  }
+  error(view) {
+    if (typeof view === "function") {
+      return view({ type: "unrecognized-content-type" });
+    }
+    return view;
+  }
+  get iri() {
+    return __privateGet(this, _iri2);
+  }
+  get contentType() {
+    return __privateGet(this, _contentType2);
+  }
+  getStateInfo() {
+    return {
+      iri: __privateGet(this, _iri2),
+      contentType: __privateGet(this, _contentType2)
+    };
+  }
+  static fromInitialState({
+    iri,
+    contentType
+  }) {
+    return new _UnrecognizedIntegration({ iri, contentType });
+  }
+};
+_iri2 = new WeakMap();
+_contentType2 = new WeakMap();
+__publicField(_UnrecognizedIntegration, "type", "unrecognized-integration");
+var UnrecognizedIntegration = _UnrecognizedIntegration;
+
 // lib/store.ts
 var defaultAccept = "application/problem+json, application/ld+json";
 var integrationClasses = {
   // [HTMLIntegration.type]: HTMLIntegration,
-  [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration
+  [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
+  [UnrecognizedIntegration.type]: UnrecognizedIntegration
 };
 function getJSONLdValues(vocab, aliases) {
   const aliasMap = /* @__PURE__ */ new Map();
@@ -3859,7 +3912,7 @@ var _Store = class _Store {
     if (entity == null) {
       return;
     }
-    if ((entity == null ? void 0 : entity.type) === "alternative-success") {
+    if ((entity == null ? void 0 : entity.type) === "alternative-success" && entity.integration.text != null) {
       return entity.integration.text(fragment);
     }
   }
@@ -3938,9 +3991,18 @@ var _Store = class _Store {
       }
       const handler = __privateGet(this, _handlers).get(contentType);
       if (handler == null) {
-        throw new Error(`No handler configured for content type "${contentType}"`);
-      }
-      if (handler.integrationType === "jsonld") {
+        console.log("UNRECOGNIZED", iri, contentType);
+        const integration = new UnrecognizedIntegration({
+          iri,
+          contentType
+        });
+        let integrations = __privateGet(this, _integrations).get(contentType);
+        if (integrations == null) {
+          integrations = /* @__PURE__ */ new Map();
+          __privateGet(this, _integrations).set(contentType, integrations);
+        }
+        integrations.set(iri, integration);
+      } else if (handler.integrationType === "jsonld") {
         const output = yield handler.handler({
           res,
           store: this
@@ -3968,7 +4030,7 @@ var _Store = class _Store {
           output
         }));
       }
-      if (handler.integrationType !== "jsonld") {
+      if ((handler == null ? void 0 : handler.integrationType) !== "jsonld") {
         __privateMethod(this, _Store_instances, publish_fn).call(this, iri, contentType);
       }
     });
@@ -4100,7 +4162,7 @@ var _Store = class _Store {
           if (cls.type !== handler.integrationType) {
             continue;
           }
-          const state = cls.fromInitialState(handler, stateInfo2);
+          const state = cls.fromInitialState(stateInfo2, handler);
           if (state == null) {
             continue;
           }
@@ -4156,7 +4218,8 @@ var _Store = class _Store {
         } else {
           stateInfo.alternatives[integration.integrationType].push(integration.getStateInfo());
         }
-        html += integration.toInitialState();
+        if (integration.toInitialState != null)
+          html += integration.toInitialState();
       }
     }
     html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}<\/script>`;
@@ -4217,7 +4280,7 @@ getLoadingKey_fn = function(iri, method, accept) {
  * selection for this entity have the latest selection result pushed to
  * their listener functions.
  */
-publish_fn = function(iri, _contentType2) {
+publish_fn = function(iri, _contentType3) {
   const keys = __privateGet(this, _dependencies).get(iri);
   if (keys == null) {
     return;
@@ -4260,7 +4323,8 @@ handleJSONLD_fn = function({
       iri,
       loading: false,
       ok: true,
-      value: output.jsonld
+      value: output.jsonld,
+      headers: res.headers
     });
   } else {
     const reason = new HTTPFailure(res.status, res);
@@ -4271,6 +4335,7 @@ handleJSONLD_fn = function({
       ok: false,
       value: output.jsonld,
       status: res.status,
+      headers: res.headers,
       reason
     });
   }
@@ -4292,12 +4357,14 @@ handleJSONLD_fn = function({
 };
 callFetcher_fn = function(_0) {
   return __async(this, arguments, function* (iri, args = {}) {
-    var _a, _b;
+    var _a, _b, _c;
     let headers;
     const url = new URL(iri);
+    url.hash = "";
     const method = args.method || "get";
     const accept = (_b = (_a = args.accept) != null ? _a : __privateGet(this, _headers).get("accept")) != null ? _b : defaultAccept;
-    url.hash = "";
+    const entity = this.entity(iri, accept);
+    const etag = (_c = entity == null ? void 0 : entity.headers) == null ? void 0 : _c.get("Etag");
     const dispatchURL = url.toString();
     const loadingKey = __privateMethod(this, _Store_instances, getLoadingKey_fn).call(this, dispatchURL, method, args.accept);
     if (url.origin === __privateGet(this, _rootOrigin)) {
@@ -4307,20 +4374,21 @@ callFetcher_fn = function(_0) {
     } else {
       throw new Error("Unconfigured origin");
     }
+    headers.set("accept", accept);
     if (args.body != null && args.contentType != null) {
       headers.set("content-type", args.contentType);
     }
-    if (accept != null) {
-      headers.set("accept", accept);
-    } else if (headers.get("accept") == null) {
-      headers.set("accept", defaultAccept);
+    if (method === "GET" && etag != null) {
+      headers.set("If-None-Match", etag);
+    } else if (method === "HEAD" && etag != null) {
+      headers.set("If-None-Match", etag);
     }
     __privateGet(this, _loading).add(loadingKey);
     mithrilRedraw();
     const promise = new Promise((resolve) => {
       (() => __async(this, null, function* () {
         var _a2;
-        let res = null;
+        let res;
         if (__privateGet(this, _fetcher) != null) {
           res = yield __privateGet(this, _fetcher).call(this, dispatchURL, {
             method,

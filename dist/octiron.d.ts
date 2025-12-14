@@ -95,10 +95,18 @@ declare module "alternatives/htmlFragments" {
          * Returns a text representaion of a fragment.
          */
         text(fragment?: string): string | undefined;
+        /**
+         * Renders a HTML fragment.
+         *
+         * @param o         The octiron instance.
+         * @param fragment  A fragment identifier to use when selecting the fragment
+         *                  to render and for providing template args. If no fragment
+         *                  identifier is provided the root fragment will be rendered.
+         */
         render(o: Octiron, fragment?: string): any;
         getStateInfo(): HTMLFragmentsStateInfo;
         toInitialState(): string;
-        static fromInitialState(handler: HTMLFragmentsHandler, { iri, contentType, rendered, selector, texts, fragments, templates, }: HTMLFragmentsStateInfo): HTMLFragmentsIntegration | null;
+        static fromInitialState({ iri, contentType, rendered, selector, texts, fragments, templates, }: HTMLFragmentsStateInfo, handler: HTMLFragmentsHandler): HTMLFragmentsIntegration | null;
     }
 }
 declare module "types/store" {
@@ -114,7 +122,7 @@ declare module "types/store" {
     } & {
         [vocab: string]: string;
     };
-    export type IntegrationType = 'html' | 'html-fragments';
+    export type IntegrationType = 'html' | 'html-fragments' | 'unrecognized';
     export type HandlerArgs = {
         res: Response;
         store: Store;
@@ -184,10 +192,14 @@ declare module "types/store" {
     export type HTMLFragmentsHandler = {
         integrationType: 'html-fragments';
         contentType: string;
-        handler: RequestHandler<HTMLFragmentsHandlerResult<string>>;
+        handler: RequestHandler<HTMLFragmentsHandlerResult>;
         onCreate?: HTMLFragmentsOnCreate;
     };
-    export type Handler = JSONLDHandler | ProblemDetailsHandler | HTMLHandler | HTMLFragmentsHandler;
+    export type UnrecognizedContentTypeHandler = {
+        integrationType: 'unrecognized';
+        contentType: string;
+    };
+    export type Handler = JSONLDHandler | ProblemDetailsHandler | HTMLHandler | HTMLFragmentsHandler | UnrecognizedContentTypeHandler;
     export type FetcherArgs = {
         method?: string;
         body?: string;
@@ -208,6 +220,11 @@ declare module "types/store" {
          * of the undefined variety.
          */
         undefined(children: Children): Children;
+        /**
+         * The response content type was not understood
+         * by Octiron.
+         */
+        unrecognized(children: Children): Children;
         /**
          * Returns the given children if the error is
          * of the http variety.
@@ -261,6 +278,10 @@ declare module "types/store" {
          * The response status. Only used for failure responses.
          */
         readonly status?: number;
+        /**
+         * The response headers if this entity was retrieved using fetch.
+         */
+        readonly headers?: Headers;
         /**
          * The current value of the entity.
          */
@@ -349,6 +370,7 @@ declare module "types/store" {
          */
         readonly spec?: SCMPropertyValueSpecification;
         readonly fragment?: undefined;
+        readonly headers?: Headers;
         /**
          * The accept header to use when performing API requests for this entity.
          */
@@ -366,6 +388,7 @@ declare module "types/store" {
          * The accept header to use when performing API requests for this entity.
          */
         readonly accept?: string;
+        readonly headers?: Headers;
         readonly integration: IntegrationState;
     };
     export type ReadonlySelectionResult = EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult;
@@ -424,6 +447,10 @@ declare module "types/store" {
          */
         readonly status?: undefined;
         /**
+         *
+         */
+        readonly headers?: undefined;
+        /**
          * The content type of the response.
          */
         readonly contentType?: undefined;
@@ -456,6 +483,10 @@ declare module "types/store" {
          */
         readonly status?: undefined;
         /**
+         *
+         */
+        readonly headers?: Headers;
+        /**
          * Component to render if the returned content type is
          * not jsonld or problem detail types.
          */
@@ -483,6 +514,10 @@ declare module "types/store" {
          * The response status. Only used for failure responses.
          */
         readonly status?: undefined;
+        /**
+         *
+         */
+        readonly headers?: Headers;
         /**
          * Component to render if the returned content type is
          * not jsonld or problem detail types.
@@ -512,6 +547,10 @@ declare module "types/store" {
          */
         readonly status: number;
         /**
+         *
+         */
+        readonly headers?: Headers;
+        /**
          * An object describing the reason and source of the failure.
          */
         readonly reason: Failure;
@@ -532,15 +571,19 @@ declare module "types/store" {
     export type AlternativeAttrs = {
         fragment?: string;
     };
+    export type ErrorDetails = {
+        type: 'unrecognized-content-type';
+    };
+    export type ErrorView = (errorDetails: ErrorDetails) => Children;
     export interface IntegrationState {
-        key: symbol;
-        iri: string;
         integrationType: IntegrationType;
+        iri: string;
         contentType: string;
         getStateInfo(): IntegrationStateInfo;
-        toInitialState(): string;
-        render(o: Octiron, fragment?: string): Children;
-        text(iri: string): string | undefined;
+        toInitialState?(): string;
+        render?(o: Octiron, fragment?: string): Children;
+        error?(view: Children | ErrorView): Children;
+        text?(iri: string): string | undefined;
     }
     export type PrimaryState = Map<string, EntityState>;
     export type AlternativesState = Map<string, Map<string, IntegrationState>>;
@@ -830,6 +873,33 @@ declare module "utils/mithrilRedraw" {
      * Calls Mithril's redraw function if the window object exists.
      */
     export function mithrilRedraw(): void;
+}
+declare module "alternatives/unrecognized" {
+    import { Children } from "mithril";
+    import { ErrorView, IntegrationState } from "types/store";
+    export type UnrecognizedStateInfo = {
+        iri: string;
+        contentType: string;
+    };
+    export type UnrecognizedIntegrationArgs = {
+        iri: string;
+        contentType: string;
+    };
+    /**
+     * Handles all responses where the content type is not
+     * configured.
+     */
+    export class UnrecognizedIntegration implements IntegrationState {
+        #private;
+        static type: "unrecognized-integration";
+        readonly integrationType: "unrecognized";
+        constructor(args: UnrecognizedIntegrationArgs);
+        error(view: Children | ErrorView): Children;
+        get iri(): string;
+        get contentType(): string;
+        getStateInfo(): UnrecognizedStateInfo;
+        static fromInitialState({ iri, contentType, }: UnrecognizedStateInfo): UnrecognizedIntegration;
+    }
 }
 declare module "store" {
     import type { AlternativesState, Context, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases } from "types/store";
@@ -1311,6 +1381,16 @@ declare module "types/octiron" {
         failure(selector: Selector, args: OctironSelectArgs): Children;
         failure(selector: Selector, view: SelectView): Children;
         failure(selector: Selector, args: OctironSelectArgs, view: SelectView): Children;
+        /**
+         * Returns the human readable problem detail value for the last unsuccessful
+         * submission if it resulted in a problem details response.
+         */
+        problems(): string;
+        /**
+         * Returns the full problem detail value for the last unsuccessful
+         * submission if it resulted in a problem details response.
+         */
+        details(): JSONObject;
     }
     export interface ActionSelectable {
         select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironActionSelectionArgs<Attrs>, view: ActionSelectView): Children;

@@ -255,7 +255,11 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
         return attrs.args.fallback;
       } else if (details.result[0] != null && details.result[0].type === 'alternative') {
-        return details.result[0].integration.render(null, attrs.args.fragment);
+        if (details.result[0].integration.render != null) {
+          return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
+        } else if (details.result[0].integration.error != null) {
+          return details.result[0].integration.error(attrs.args.fallback)
+        }
       }
 
       const view = attrs.view;

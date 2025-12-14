@@ -4,8 +4,8 @@
   "nodeModulesDir": "manual",
   "exports": "./lib/octiron.ts",
   "tasks": {
-    "build": "deno run --allow-env --allow-read --allow-run build.ts",
-    "build:watch": "deno run --watch --allow-env --allow-read --allow-run build.ts"
+    "build": "deno run --allow-env --allow-read --allow-write --allow-run build.ts",
+    "build:watch": "deno run --watch --allow-env --allow-read --allow-write --allow-run build.ts"
   },
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.49",

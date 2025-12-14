@@ -8,11 +8,13 @@ import { flattenIRIObjects } from "./utils/flattenIRIObjects.ts";
 import { getSelection } from './utils/getSelection.ts';
 import type { FailureEntityState, SuccessEntityState } from "./types/store.ts";
 import { mithrilRedraw } from "./utils/mithrilRedraw.ts";
+import {UnrecognizedIntegration} from "./alternatives/unrecognized.ts";
 
 const defaultAccept = 'application/problem+json, application/ld+json';
 const integrationClasses = {
   // [HTMLIntegration.type]: HTMLIntegration,
   [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
+  [UnrecognizedIntegration.type]: UnrecognizedIntegration,
 };
 
 type StateInfo = {
@@ -276,7 +278,8 @@ export class Store {
         return;
       }
     
-      if (entity?.type === 'alternative-success') {
+      if (entity?.type === 'alternative-success' &&
+         entity.integration.text != null) {
         return entity.integration.text(fragment);
       }
     }
@@ -463,6 +466,7 @@ export class Store {
           loading: false,
           ok: true,
           value: output.jsonld,
+          headers: res.headers,
         })
       } else {
         const reason = new HTTPFailure(res.status, res);
@@ -474,6 +478,7 @@ export class Store {
           ok: false,
           value: output.jsonld,
           status: res.status,
+          headers: res.headers,
           reason,
         });
       }
@@ -510,10 +515,22 @@ export class Store {
       const handler = this.#handlers.get(contentType);
 
       if (handler == null) {
-        throw new Error(`No handler configured for content type "${contentType}"`);
-      }
+        console.log('UNRECOGNIZED', iri, contentType);
+        const integration = new UnrecognizedIntegration({
+          iri,
+          contentType,
+        });
 
-      if (handler.integrationType === 'jsonld') {
+        let integrations = this.#integrations.get(contentType);
+
+        if (integrations == null) {
+          integrations = new Map();
+
+          this.#integrations.set(contentType, integrations);
+        }
+
+        integrations.set(iri, integration);
+      } else if (handler.integrationType === 'jsonld') {
         const output = await handler.handler({
           res,
           store: this,
@@ -565,7 +582,7 @@ export class Store {
         }));
       }
 
-      if (handler.integrationType !== 'jsonld') {
+      if (handler?.integrationType !== 'jsonld') {
         this.#publish(iri, contentType);
       }
     }
@@ -579,13 +596,15 @@ export class Store {
     } = {}): Promise<void> {
       let headers: Headers;
       const url = new URL(iri);
-      const method = args.method || 'get';
-      const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
 
       url.hash = '';
+
+      const method = args.method || 'get';
+      const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
+      const entity = this.entity(iri, accept);
+      const etag = entity?.headers?.get('Etag');
       const dispatchURL = url.toString();
       const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
-
 
       if (url.origin === this.#rootOrigin) {
         headers = new Headers(this.#headers);
@@ -594,15 +613,17 @@ export class Store {
       } else {
         throw new Error('Unconfigured origin');
       }
+    
+      headers.set('accept', accept);
 
       if (args.body != null && args.contentType != null) {
         headers.set('content-type', args.contentType);
       }
 
-      if (accept != null) {
-        headers.set('accept', accept);
-      } else if (headers.get('accept') == null) {
-        headers.set('accept', defaultAccept);
+      if (method === 'GET' && etag != null) {
+        headers.set('If-None-Match', etag);
+      } else if (method === 'HEAD' && etag != null) {
+        headers.set('If-None-Match', etag);
       }
 
       this.#loading.add(loadingKey);
@@ -612,7 +633,7 @@ export class Store {
       // This promise wrapping is so SSR can hook in and await the promise.
       const promise = new Promise<Response>((resolve) => {
         (async () => {
-          let res: Response | null = null;
+          let res: Response;
 
           if (this.#fetcher != null) {
             res = await this.#fetcher(dispatchURL, {
@@ -632,11 +653,13 @@ export class Store {
               (this.#httpStatus == null || this.#httpStatus < 400) &&
               !res.status.toString().startsWith('3')
           ) {
+            // if SSR store the first 400+ status for the final HTTP response
             this.#httpStatus = res.status;
           }
 
           if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
-            this.#acceptMap.get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
+            this.#acceptMap
+              .get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
           } else if (args.accept != null) {
             this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type') as string]]));
           }
@@ -823,7 +846,7 @@ export class Store {
               continue;
             }
 
-            const state = cls.fromInitialState(handler, stateInfo);
+            const state = cls.fromInitialState(stateInfo, handler);
 
             if (state == null) {
               continue;
@@ -892,7 +915,8 @@ export class Store {
             stateInfo.alternatives[integration.integrationType].push(integration.getStateInfo());
           }
 
-          html += integration.toInitialState();
+          if (integration.toInitialState != null) 
+            html += integration.toInitialState();
         }
       }
 
