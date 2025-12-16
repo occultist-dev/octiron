@@ -1,7 +1,7 @@
-import type { Store } from "../store.ts";
+import type { Store } from "../store.js";
 
 export type SelectorObject = {
-  fragment?: string;
+  subject?: string;
   filter?: string;
 };
 

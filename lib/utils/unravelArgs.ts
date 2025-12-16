@@ -1,4 +1,4 @@
-import type { ActionSelectView, Octiron, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPerformArgs, OctironPresentArgs, OctironSelectArgs, PerformView, Selector, SelectView } from '../types/octiron.ts';
+import type { ActionSelectView, Octiron, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPerformArgs, OctironPresentArgs, OctironSelectArgs, PerformView, Selector, SelectView } from '../types/octiron.js';
 
 type AllArgs =
   | OctironSelectArgs

@@ -1,9 +1,9 @@
 import type m from 'mithril';
-import { selectionFactory } from '../factories/selectionFactory.ts';
-import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeDefs } from '../types/octiron.ts';
-import type { EntityState } from '../types/store.ts';
-import type { Store } from "../store.ts";
-import type { Mutable } from "../types/common.ts";
+import { selectionFactory } from '../factories/selectionFactory.js';
+import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeDefs } from '../types/octiron.js';
+import type { EntityState } from '../types/store.js';
+import type { Store } from "../store.js";
+import type { Mutable } from "../types/common.js";
 
 export type ActionRendererRef = {
   submitting: boolean;

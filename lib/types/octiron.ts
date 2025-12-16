@@ -1,11 +1,11 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts'
-import type { Store } from '../store.ts';
+import type { JSONObject, JSONPrimitive, JSONValue } from './common.js'
+import type { Store } from '../store.js';
 import type {
   ContentHandlingFailure,
   HTTPFailure,
   UndefinedFailure,
-} from '../failures.ts';
+} from '../failures.js';
 
 /**
  * An iri (see url) to an entity.
@@ -946,7 +946,7 @@ export type Octiron =
 export type CommonParentArgs = {
   store: Store;
   typeDefs: TypeDefs;
-  parent: Octiron;
+  parent?: Octiron;
 };
 
 

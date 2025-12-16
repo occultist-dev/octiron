@@ -1,7 +1,7 @@
 import uriTemplates from 'uri-templates';
-import type { JSONObject, SCMAction } from '../types/common.ts';
-import { isJSONObject } from './isJSONObject.ts';
-import { isTypeObject } from "./isTypedObject.ts";
+import type { JSONObject, SCMAction } from '../types/common.js';
+import { isJSONObject } from './isJSONObject.js';
+import { isTypeObject } from "./isTypedObject.js";
 
 
 export type SubmitDetails = {

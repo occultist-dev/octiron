@@ -1,16 +1,16 @@
-import type { JSONArray, JSONObject, JSONValue, Mutable, SCMPropertyValueSpecification } from '../types/common.ts';
-import type { ActionSelectionResult, AlternativeSelectionResult, EntitySelectionResult, EntityState, IntegrationState, SelectionDetails, SelectionResult, ValueSelectionResult } from '../types/store.ts';
-import { escapeJSONPointerParts } from './escapeJSONPointerParts.ts';
-import { getIterableValue } from "./getIterableValue.ts";
-import { isIRIObject } from "./isIRIObject.ts";
-import { isIterable } from "./isIterable.ts";
-import { isJSONObject } from './isJSONObject.ts';
-import { isMetadataObject } from "./isMetadataObject.ts";
-import { isValueObject } from "./isValueObject.ts";
-import { parseSelectorString } from './parseSelectorString.ts';
-import type { Store } from '../store.ts';
-import { resolvePropertyValueSpecification } from "./resolvePropertyValueSpecification.ts";
-import { isTypeObject } from "./isTypedObject.ts";
+import type { JSONArray, JSONObject, JSONValue, Mutable, SCMPropertyValueSpecification } from '../types/common.js';
+import type { ActionSelectionResult, AlternativeSelectionResult, EntitySelectionResult, EntityState, IntegrationState, SelectionDetails, SelectionResult, ValueSelectionResult } from '../types/store.js';
+import { escapeJSONPointerParts } from './escapeJSONPointerParts.js';
+import { getIterableValue } from "./getIterableValue.js";
+import { isIRIObject } from "./isIRIObject.js";
+import { isIterable } from "./isIterable.js";
+import { isJSONObject } from './isJSONObject.js';
+import { isMetadataObject } from "./isMetadataObject.js";
+import { isValueObject } from "./isValueObject.js";
+import { parseSelectorString, type SelectorObject } from './parseSelectorString.js';
+import type { Store } from '../store.js';
+import { resolvePropertyValueSpecification } from "./resolvePropertyValueSpecification.js";
+import { isTypeObject } from "./isTypedObject.js";
 
 /**
  * A circular selection error occurs when two or more
@@ -21,57 +21,6 @@ import { isTypeObject } from "./isTypedObject.ts";
  * loop.
  */
 export class CircularSelectionError extends Error {}
-
-export type SelectorObject = {
-  subject: string;
-  filter?: string;
-};
-
-type SourceSelectionResults =
-  | EntitySelectionResult
-  | ValueSelectionResult
-  | IntegrationState
-;
-
-type ProcessingEntitySelectionResult = {
-  // used to build the final key value.
-  keySource: string;
-} & Omit<EntitySelectionResult, 'key'>;
-
-type ProcessingValueSelectionResult = {
-  // used to build the final key value.
-  keySource: string;
-} & Omit<ValueSelectionResult, 'key'>;
-
-type ProcessingActionSelectionResult = {
-  // used to build the final key value.
-  keySource: string;
-} & Omit<ActionSelectionResult, 'key'>;
-
-type ProcessingAlternativeSelectionResult = {
-  // used to build the final key value.
-  keySource: string;
-} & Omit<AlternativeSelectionResult, 'key'>;
-
-type ProcessingSelectionDetails = SelectionDetails<
-  | ProcessingEntitySelectionResult
-  | ProcessingValueSelectionResult
-  | ProcessingActionSelectionResult
-  | ProcessingAlternativeSelectionResult
->;
-
-export function transformProcessedDetails<T extends SelectionResult>(
-  processing: ProcessingSelectionDetails,
-): SelectionDetails<T> {
-  for (let index = 0; index < processing.result.length; index++) {
-    const element = processing.result[index];
-
-    (element as unknown as Mutable<SourceSelectionResults>).key = Symbol.for(element.keySource);
-    delete (element as unknown as Mutable<{ keySource?: string }>).keySource;
-  }
-
-  return processing as unknown as SelectionDetails<T>;
-}
 
 /**
  * @description
@@ -109,7 +58,7 @@ export function getSelection<T extends SelectionResult>({
   defaultValue?: JSONValue;
   store: Store;
 }): SelectionDetails<T> {
-  const details: ProcessingSelectionDetails = {
+  const details: SelectionDetails<T> = {
     selector: selectorStr,
     complete: false,
     hasErrors: false,
@@ -126,7 +75,7 @@ export function getSelection<T extends SelectionResult>({
     const [iri, iriFragment] = subject.split('#');
 
     selectEntity({
-      keySource: '',
+      key: '',
       pointer: '',
       iri,
       fragment: iriFragment ?? fragment,
@@ -139,13 +88,13 @@ export function getSelection<T extends SelectionResult>({
 
     details.complete = details.required.length === 0;
 
-    return transformProcessedDetails<T>(details);
+    return details;
   }
 
   const selector = parseSelectorString(selectorStr, store);
 
   traverseSelector({
-    keySource: '',
+    key: '',
     pointer: '',
     value,
     actionValue,
@@ -157,13 +106,7 @@ export function getSelection<T extends SelectionResult>({
 
   details.complete = details.required.length === 0;
 
-  for (let index = 0; index < details.result.length; index++) {
-    const element = details.result[index];
-
-    (element as unknown as Mutable<SourceSelectionResults>).key = Symbol.for(element.keySource);
-  }
-
-  return transformProcessedDetails<T>(details);
+  return details;
 }
 
 function makePointer(pointer: string, addition: string | number) {
@@ -203,7 +146,6 @@ function passesFilter({
 function isTraversable(value: JSONValue): value is JSONObject | JSONArray {
   return (
     value !== null &&
-    typeof value !== 'undefined' &&
     typeof value !== 'boolean' &&
     typeof value !== 'number' &&
     typeof value !== 'string'
@@ -217,7 +159,7 @@ function isTraversable(value: JSONValue): value is JSONObject | JSONArray {
  * recursion might be nessacary.
  */
 function resolveValue({
-  keySource,
+  key,
   pointer,
   value,
   propType,
@@ -227,7 +169,7 @@ function resolveValue({
   store,
   details,
 }: {
-  keySource: string;
+  key: string;
   pointer: string;
   value: JSONValue;
   spec?: JSONObject;
@@ -235,7 +177,7 @@ function resolveValue({
   propType: string;
   filter?: string;
   store: Store;
-  details: ProcessingSelectionDetails;
+  details: SelectionDetails;
 }) {
   if (value === undefined) {
     details.hasMissing = true;
@@ -267,7 +209,7 @@ function resolveValue({
     }
 
     details.result.push({
-      keySource: pointer,
+      key: pointer,
       pointer,
       type: 'action-value',
       propType,
@@ -282,11 +224,12 @@ function resolveValue({
 
   if (!isTraversable(value)) {
     details.result.push({
-      keySource: pointer,
+      key: pointer,
       pointer: pointer,
       type: 'value',
       propType,
       value,
+      readonly: true,
     });
 
     return;
@@ -297,11 +240,11 @@ function resolveValue({
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        keySource = makePointer(keySource, index);
+        key = makePointer(key, index);
       }
 
       resolveValue({
-        keySource,
+        key,
         pointer: makePointer(pointer, index),
         value: item,
         spec,
@@ -325,7 +268,7 @@ function resolveValue({
 
   if (isValueObject(value)) {
     resolveValue({
-      keySource,
+      key,
       pointer,
       value: value['@value'],
       propType,
@@ -336,7 +279,7 @@ function resolveValue({
     return;
   } else if (isMetadataObject(value)) {
     selectEntity({
-      keySource,
+      key,
       pointer,
       iri: value['@id'],
       filter,
@@ -351,7 +294,7 @@ function resolveValue({
     const iri = value['@id'];
 
     details.result.push({
-      keySource,
+      key,
       pointer,
       type: 'entity',
       iri,
@@ -363,9 +306,10 @@ function resolveValue({
   }
 
   details.result.push({
-    keySource,
+    key,
     pointer,
     type: 'value',
+    readonly: true,
     propType,
     value,
   });
@@ -375,7 +319,7 @@ function resolveValue({
  * Selects a type from a json value, handling invalid situations.
  */
 function selectTypedValue({
-  keySource,
+  key,
   pointer,
   propType,
   value,
@@ -384,14 +328,14 @@ function selectTypedValue({
   store,
   details,
 }: {
-  keySource: string;
+  key: string;
   pointer: string;
   propType: string;
   value: JSONValue;
   actionValue?: JSONObject;
   filter?: string;
   store: Store;
-  details: ProcessingSelectionDetails;
+  details: SelectionDetails;
 }): void {
   pointer = makePointer(pointer, propType);
 
@@ -406,11 +350,11 @@ function selectTypedValue({
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        keySource = makePointer(keySource, index);
+        key = makePointer(key, index);
       }
 
       selectTypedValue({
-        keySource,
+        key,
         pointer: makePointer(pointer, index),
         propType,
         value: item,
@@ -430,7 +374,7 @@ function selectTypedValue({
 
   if (isMetadataObject(value) && isIRIObject(value)) {
     selectEntity({
-      keySource,
+      key,
       pointer,
       iri: value['@id'],
       selector: [{ subject: propType, filter }],
@@ -453,7 +397,7 @@ function selectTypedValue({
   }
 
   resolveValue({
-    keySource,
+    key,
     pointer,
     value: value[propType],
     spec,
@@ -469,7 +413,7 @@ function selectTypedValue({
  * Recurses through the selection until there are no further selection items.
  */
 function traverseSelector({
-  keySource,
+  key,
   pointer,
   selector,
   value,
@@ -478,13 +422,13 @@ function traverseSelector({
   details,
   defaultValue,
 }: {
-  keySource: string;
+  key: string;
   pointer: string;
   selector: SelectorObject[];
   value: JSONValue;
   actionValue?: JSONObject;
   store: Store;
-  details: ProcessingSelectionDetails;
+  details: SelectionDetails;
   defaultValue?: JSONValue;
 }): void {
   if (selector.length === 0) {
@@ -500,14 +444,14 @@ function traverseSelector({
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        keySource = makePointer(keySource, index);
+        key = makePointer(key, index);
       }
 
       // keep nesting on the full selector
       // as only objects can be subscripted
-      // with terms
+      // with propTypes
       traverseSelector({
-        keySource,
+        key,
         pointer: makePointer(pointer, index),
         selector,
         value: item,
@@ -525,7 +469,7 @@ function traverseSelector({
     return;
   } else if (isValueObject(value)) {
     traverseSelector({
-      keySource,
+      key,
       pointer,
       selector,
       value: value['@value'],
@@ -538,7 +482,7 @@ function traverseSelector({
 
   if (isMetadataObject(value) && isIRIObject(value)) {
     selectEntity({
-      keySource,
+      key,
       pointer,
       selector,
       iri: value['@id'],
@@ -574,7 +518,7 @@ function traverseSelector({
     pointer = makePointer(pointer, propType);
 
     resolveValue({
-      keySource: pointer,
+      key: pointer,
       pointer,
       value: value[propType],
       propType,
@@ -588,7 +532,7 @@ function traverseSelector({
     return;
   } else if (rest.length === 0) {
     selectTypedValue({
-      keySource,
+      key,
       pointer,
       propType: propType,
       filter,
@@ -612,7 +556,7 @@ function traverseSelector({
   }
 
   traverseSelector({
-    keySource: makePointer(keySource, propType),
+    key: makePointer(key, propType),
     pointer: makePointer(pointer, propType),
     selector: rest,
     value: value[propType],
@@ -627,7 +571,7 @@ function traverseSelector({
  * if the branch has not completed.
  */
 function selectEntity({
-  keySource,
+  key,
   pointer,
   iri,
   fragment,
@@ -638,7 +582,7 @@ function selectEntity({
   details,
   handledIRIs,
 }: {
-  keySource: string;
+  key: string;
   pointer: string;
   iri: string;
   fragment?: string;
@@ -646,10 +590,10 @@ function selectEntity({
   filter?: string;
   selector?: SelectorObject[];
   store: Store;
-  details: ProcessingSelectionDetails;
+  details: SelectionDetails;
   handledIRIs?: Set<string>;
 }): void {
-  keySource = makePointer(keySource, iri);
+  key = makePointer(key, iri);
   pointer = makePointer(pointer, iri);
 
   const cache: EntityState | null = store.entity(iri, accept)
@@ -675,7 +619,7 @@ function selectEntity({
     }
 
     details.result.push({
-      keySource,
+      key,
       pointer,
       type: 'entity',
       iri: cache.iri,
@@ -690,11 +634,16 @@ function selectEntity({
 
   if (cache.type === 'alternative-success') {
     details.result.push({
-      keySource,
+      key,
       pointer,
+      iri: cache.iri,
+      fragment,
+      ok: cache.ok,
+      status: cache.status,
       type: 'alternative',
       contentType: cache.integration.contentType,
       integration: cache.integration,
+      accept,
     });
 
     return;
@@ -715,7 +664,7 @@ function selectEntity({
 
     // select the entity this entity is referencing
     return selectEntity({
-      keySource,
+      key,
       pointer,
       iri: value['@id'],
       filter,
@@ -733,7 +682,7 @@ function selectEntity({
 
   if (typeof selector === 'undefined') {
     details.result.push({
-      keySource,
+      key,
       pointer,
       type: 'entity',
       iri: cache.iri,
@@ -745,7 +694,7 @@ function selectEntity({
   }
 
   traverseSelector({
-    keySource,
+    key,
     pointer,
     value,
     selector,

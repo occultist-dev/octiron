@@ -1,7 +1,7 @@
 
-import type { Store } from "../store.ts";
-import type { JSONObject, SCMPropertyValueSpecification } from '../types/common.ts';
-import type { Spec } from '../types/octiron.ts';
+import type { Store } from "../store.js";
+import type { JSONObject, SCMPropertyValueSpecification } from '../types/common.js';
+import type { Spec } from '../types/octiron.js';
 
 const httpRe = /^https?\:\/\//;
 const scmCtxRe = /^https?\:\/\/schema\.org/;

@@ -1,5 +1,5 @@
 import type { Children } from 'mithril';
-import type { Failure, HTTPErrorView, ContentParsingView } from './types/store.ts';
+import type { Failure, HTTPErrorView, ContentParsingView } from './types/store.js';
 
 
 export class UndefinedFailure implements Failure {

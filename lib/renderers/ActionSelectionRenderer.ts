@@ -1,13 +1,14 @@
 import type m from "mithril";
-import { actionSelectionFactory } from '../factories/actionSelectionFactory.ts';
-import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update } from '../types/octiron.ts';
-import type { ActionSelectionResult, SelectionDetails } from '../types/store.ts';
-import { getSelection } from '../utils/getSelection.ts';
-import { isJSONObject } from '../utils/isJSONObject.ts';
-import { mithrilRedraw } from '../utils/mithrilRedraw.ts';
-import type { JSONObject, Mutable } from '../types/common.ts';
-import { selectionFactory } from '../factories/selectionFactory.ts';
-import type { InstanceHooks } from "../factories/octironFactory.ts";
+import { actionSelectionFactory } from '../factories/actionSelectionFactory.js';
+import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, Octiron, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update } from '../types/octiron.js';
+import type { ActionSelectionResult, SelectionDetails } from '../types/store.js';
+import { getSelection } from '../utils/getSelection.js';
+import { isJSONObject } from '../utils/isJSONObject.js';
+import { mithrilRedraw } from '../utils/mithrilRedraw.js';
+import type { JSONObject, JSONValue, Mutable } from '../types/common.js';
+import { selectionFactory } from '../factories/selectionFactory.js';
+import type { InstanceHooks } from "../factories/octironFactory.js";
+import {ReadOptions} from "node:fs";
 
 
 export type ActionSelectionRendererAttrs = {
@@ -55,7 +56,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
           );
         };
 
-        rendererArgs.value = octiron.value = selectionResult.value;
+        rendererArgs.value = (octiron as unknown as { value: JSONValue }).value = selectionResult.value;
         rendererArgs.spec = selectionResult.spec;
         rendererArgs.update = update;
 

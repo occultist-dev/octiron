@@ -1,4 +1,4 @@
-import type { JSONObject, Mutable } from "../types/common.ts";
+import type { JSONObject, Mutable } from "../types/common.js";
 import type {
 CommonRendererArgs,
   OctironSelectArgs,
@@ -6,17 +6,17 @@ CommonRendererArgs,
   SelectionParentArgs,
   Selector,
   SelectView,
-} from "../types/octiron.ts";
+} from "../types/octiron.js";
 import type {
   Failure,
   ReadonlySelectionResult,
   SelectionDetails,
-} from "../types/store.ts";
+} from "../types/store.js";
 import m from "mithril";
-import { selectionFactory } from "../factories/selectionFactory.ts";
-import { isJSONObject } from "../utils/isJSONObject.ts";
-import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
-import {isBrowserRender} from "../consts.ts";
+import { selectionFactory } from "../factories/selectionFactory.js";
+import { isJSONObject } from "../utils/isJSONObject.js";
+import { mithrilRedraw } from "../utils/mithrilRedraw.js";
+import {isBrowserRender} from "../consts.js";
 
 
 export type SelectionRendererAttrs = {
@@ -256,10 +256,12 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         return attrs.args.fallback;
       } else if (details.result[0] != null && details.result[0].type === 'alternative') {
         if (details.result[0].integration.render != null) {
-          return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
+          return details.result[0].integration.render(
+            attrs.parentArgs.parent, attrs.args.fragment);
         } else if (details.result[0].integration.error != null) {
-          return details.result[0].integration.error(attrs.args.fallback)
+          //return details.result[0].integration.error(attrs.args.fallback)
         }
+        return null;
       }
 
       const view = attrs.view;
@@ -270,7 +272,6 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         start,
         end,
         predicate,
-        loading,
         fallback,
       } = currentAttrs.args;
 
@@ -311,9 +312,9 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         if (selectionResult.type === 'value') {
           children.push(m.fragment({}, [view(octiron)]));
         } else if (!selectionResult.ok && typeof fallback === 'function') {
-          children.push(
-            m.fragment({}, [fallback(octiron, selectionResult.reason as Failure)]),
-          );
+          //children.push(
+          //  m.fragment({}, [fallback(octiron, selectionResult.reason as Failure)]),
+          //);
         } else if (!selectionResult.ok) {
           children.push(m.fragment({}, [fallback as m.Children]));
         } else {

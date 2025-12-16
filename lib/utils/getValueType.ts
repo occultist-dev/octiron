@@ -1,5 +1,5 @@
-import type { JSONValue } from "../types/common.ts";
-import { isTypeObject } from "./isTypedObject.ts";
+import type { JSONValue } from "../types/common.js";
+import { isTypeObject } from "./isTypedObject.js";
 
 
 /**

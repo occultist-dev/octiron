@@ -1,10 +1,10 @@
-import type { IRIObject, JSONValue } from '../types/common.ts';
-import { getIterableValue } from "./getIterableValue.ts";
-import { isIRIObject } from "./isIRIObject.ts";
-import { isIterable } from "./isIterable.ts";
-import { isJSONObject } from "./isJSONObject.ts";
-import { isMetadataObject } from "./isMetadataObject.ts";
-import { isValueObject } from "./isValueObject.ts";
+import type { IRIObject, JSONValue } from '../types/common.js';
+import { getIterableValue } from "./getIterableValue.js";
+import { isIRIObject } from "./isIRIObject.js";
+import { isIterable } from "./isIterable.js";
+import { isJSONObject } from "./isJSONObject.js";
+import { isMetadataObject } from "./isMetadataObject.js";
+import { isValueObject } from "./isValueObject.js";
 
 
 /**

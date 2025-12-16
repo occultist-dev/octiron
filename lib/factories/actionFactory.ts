@@ -1,17 +1,17 @@
 import m from 'mithril';
 import { JsonPointer } from 'json-ptr';
-import { ActionStateRenderer } from "../renderers/ActionStateRenderer.ts";
-import type { Store } from "../store.ts";
-import type { JSONArray, JSONObject, JSONValue, SCMAction } from "../types/common.ts";
-import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeDefs, UpdateArgs, UpdatePointer } from "../types/octiron.ts";
-import type { EntityState } from "../types/store.ts";
-import { getSubmitDetails } from "../utils/getSubmitDetails.ts";
-import { unravelArgs } from "../utils/unravelArgs.ts";
-import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
-import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.ts";
-import { isJSONObject } from "../utils/isJSONObject.ts";
-import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.ts";
-import {expandValue} from '../utils/expandValue.ts';
+import { ActionStateRenderer } from "../renderers/ActionStateRenderer.js";
+import type { Store } from "../store.js";
+import type { JSONArray, JSONObject, JSONValue, SCMAction } from "../types/common.js";
+import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeDefs, UpdateArgs, UpdatePointer } from "../types/octiron.js";
+import type { EntityState } from "../types/store.js";
+import { getSubmitDetails } from "../utils/getSubmitDetails.js";
+import { unravelArgs } from "../utils/unravelArgs.js";
+import { mithrilRedraw } from "../utils/mithrilRedraw.js";
+import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.js";
+import { isJSONObject } from "../utils/isJSONObject.js";
+import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.js";
+import {expandValue} from '../utils/expandValue.js';
 
 export type ActionRefs = {
   url?: string;
@@ -44,7 +44,6 @@ export function actionFactory<
     const { url, method, body, contentType, encodingType } = getSubmitDetails({
       payload,
       action: rendererArgs.value as SCMAction,
-      store: parentArgs.store,
     });
 
     self.submitting = true;
@@ -259,7 +258,6 @@ export function actionFactory<
     const submitDetails = getSubmitDetails({
       payload: self.value,
       action: rendererArgs.value as SCMAction,
-      store: parentArgs.store,
     });
     self.url = new URL(submitDetails.url);
     self.method = submitDetails.method;

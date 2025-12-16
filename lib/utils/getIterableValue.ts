@@ -1,4 +1,4 @@
-import type { IterableJSONLD, JSONArray } from '../types/common.ts';
+import type { IterableJSONLD, JSONArray } from '../types/common.js';
 
 
 /**

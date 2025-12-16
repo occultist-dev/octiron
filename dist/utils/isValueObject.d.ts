@@ -1,0 +1,10 @@
+import type { JSONObject, ValueObject } from '../types/common.js';
+/**
+ * @description
+ * A value object contains a `@value` value. Often this is used to provide
+ * further information about the value like what `@type` it holds, allowing
+ * filters to be applied to the referenced value.
+ *
+ * @param value - A JSON value.
+ */
+export declare function isValueObject(value: JSONObject): value is ValueObject;

@@ -1,5 +1,5 @@
-import type { Handler } from "../types/store.ts";
-import { isJSONObject } from '../utils/isJSONObject.ts';
+import type { Handler } from "../types/store.js";
+import { isJSONObject } from '../utils/isJSONObject.js';
 import jsonld from 'jsonld';
 
 

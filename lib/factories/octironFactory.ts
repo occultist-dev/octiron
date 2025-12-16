@@ -1,17 +1,16 @@
 import m from 'mithril';
-import type { Octiron } from "../types/octiron.ts";
-import type { Mutable } from "../types/common.ts";
-import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeDefs } from "../types/octiron.ts";
-import { isJSONObject } from "../utils/isJSONObject.ts";
-import { unravelArgs } from "../utils/unravelArgs.ts";
-import type { Store } from "../store.ts";
-import { SelectionRenderer } from "../renderers/SelectionRenderer.ts";
-import { PresentRenderer } from '../renderers/PresentRenderer.ts';
-import { getDataType } from "../utils/getValueType.ts";
-import { isIterable } from "../utils/isIterable.ts";
-import { getIterableValue } from "../utils/getIterableValue.ts";
-import { PerformRenderer } from "../renderers/PerformRenderer.ts";
-import { isIRIObject } from "../utils/isIRIObject.ts";
+import {PerformRenderer} from "../renderers/PerformRenderer.js";
+import {PresentRenderer} from '../renderers/PresentRenderer.js';
+import {SelectionRenderer} from "../renderers/SelectionRenderer.js";
+import type {Store} from "../store.js";
+import type {Mutable} from "../types/common.js";
+import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeDefs} from "../types/octiron.js";
+import {getIterableValue} from "../utils/getIterableValue.js";
+import {getDataType} from "../utils/getValueType.js";
+import {isIRIObject} from "../utils/isIRIObject.js";
+import {isIterable} from "../utils/isIterable.js";
+import {isJSONObject} from "../utils/isJSONObject.js";
+import {unravelArgs} from "../utils/unravelArgs.js";
 
 const TypeKeys = {
   'root': 0,
@@ -221,27 +220,27 @@ export function octironFactory<O extends Octiron>(
       self.select = self.root;
     break;
     case TypeKeys['selection']:
-      self.select = (
+      self.select = ((
         arg1: Selector,
         arg2?: OctironSelectArgs | SelectView,
         arg3?: SelectView,
-    ): m.Children => {
-      const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+      ): m.Children => {
+        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-      if (!isJSONObject(rendererArgs.value)) {
-        return null;
-      }
+        if (!isJSONObject(rendererArgs.value)) {
+          return null;
+        }
 
-      return m(
-        SelectionRenderer,
-        {
-          selector,
-          args,
-          view,
-          parentArgs: childArgs as SelectionParentArgs,
-        },
-      );
-    };
+        return m(
+          SelectionRenderer,
+          {
+            selector,
+            args,
+            view,
+            parentArgs: childArgs as SelectionParentArgs,
+          },
+        );
+      }) as unknown as Octiron['select'];
   }
 
   switch (typeKey) {

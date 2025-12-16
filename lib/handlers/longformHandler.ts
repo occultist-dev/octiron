@@ -1,4 +1,4 @@
-import type { Handler } from "../types/store.ts";
+import type { Handler } from "../types/store.js";
 import { longform } from '@longform/longform';
 
 export const longformHandler: Handler = {

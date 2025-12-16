@@ -1,5 +1,5 @@
-import type { IRIObject, JSONObject, JSONValue } from "../types/common.ts";
-import { isJSONObject } from "./isJSONObject.ts";
+import type { IRIObject, JSONObject, JSONValue } from "../types/common.js";
+import { isJSONObject } from "./isJSONObject.js";
 
 
 /**

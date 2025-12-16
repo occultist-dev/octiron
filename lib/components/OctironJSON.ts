@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { JSONArray, JSONObject, JSONPrimitive, JSONValue } from "../types/common.ts";
-import { isJSONObject } from "../utils/isJSONObject.ts";
+import type { JSONArray, JSONObject, JSONPrimitive, JSONValue } from "../types/common.js";
+import { isJSONObject } from "../utils/isJSONObject.js";
 
 
 export type OctironJSONAttrs = {
@@ -71,7 +71,9 @@ export const OctironJSON: m.ClosureComponent<OctironJSONAttrs> = () => {
   const terminalTypes = ['@id', '@type', '@context'];
   function renderObject(value: JSONObject, url?: URL, selector: string = '') {
     const items: m.Children[] = [];
-    const list = Object.entries(value).toSorted();
+    const list = Object.entries(value);
+    
+    list.sort();
 
     for (let index = 0; index < list.length; index++) {
       const [term, value] = list[index];

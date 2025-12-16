@@ -1,8 +1,8 @@
 import type { Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.ts';
-import type { Store } from '../store.ts';
-import type { Octiron } from "./octiron.ts";
-import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.ts';
+import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.js';
+import type { Store } from '../store.js';
+import type { Octiron, Spec } from "./octiron.js";
+import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.js';
 
 
 export type Aliases = Record<string, string>;
@@ -74,19 +74,33 @@ export type HTMLHandler = {
   onCreate?: HTMLOnCreate;
 };
 
-export type HTMLFragment = {
+export type HTMLFragment<
+  IsInternal extends boolean = false,
+> = IsInternal extends false ? {
+  id: string;
+  type: 'embed' | 'bare' | 'text' | 'range';
+  html?: string;
+  selector: string;
+} : {
   id: string;
   type: 'embed' | 'bare' | 'text' | 'range';
   html?: string;
   dom?: Element[];
   selector: string;
-};
+}
 
-export type HTMLFragmentsHandlerResult = {
-  root?: string;
+export type HTMLFragmentsHandlerResult<
+  IsInternal extends boolean = false,
+> = IsInternal extends false ? {
+  root?: string | null;
+  selector?: string;
+  fragments: Record<string, HTMLFragment<IsInternal>>;
+  templates: Record<string, string>;
+} : {
+  root?: string | null;
   dom?: Element[];
   selector?: string;
-  fragments: Record<string, HTMLFragment>;
+  fragments: Record<string, HTMLFragment<IsInternal>>;
   templates: Record<string, string>;
 };
 
@@ -96,14 +110,15 @@ export type HTMLFragmentsOnCreateArgs = {
   dom: Element;
   fragment?: string;
 };
+
 export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFragmentsCleanupFn;
 
 export type HTMLFragmentsHandler = {
   integrationType: 'html-fragments';
   contentType: string;
-  handler: RequestHandler<HTMLFragmentsHandlerResult>;
+  handler: RequestHandler<HTMLFragmentsHandlerResult<false>>;
   onCreate?: HTMLFragmentsOnCreate;
-}
+};
 
 export type UnrecognizedContentTypeHandler = {
   integrationType: 'unrecognized';
@@ -148,12 +163,6 @@ export interface Failure {
   undefined(children: Children): Children;
 
   /**
-   * The response content type was not understood
-   * by Octiron.
-   */
-  unrecognized(children: Children): Children;
-
-  /**
    * Returns the given children if the error is
    * of the http variety.
    */
@@ -184,7 +193,7 @@ export type EntitySelectionResult = {
    * A unique key for identifying this selection result.
    * Useful for caching objects which use the result.
    */
-  readonly key: symbol;
+  readonly key: string;
 
   /**
    * A json pointer referencing the item within the parent value.
@@ -204,7 +213,7 @@ export type EntitySelectionResult = {
   readonly iri: string;
 
   /**
-   * The fragment portion of the URL.
+   * The fragment portion of the IRI.
    */
   readonly fragment?: string;
 
@@ -217,11 +226,6 @@ export type EntitySelectionResult = {
    * The response status. Only used for failure responses.
    */
   readonly status?: number;
-
-  /**
-   * The response headers if this entity was retrieved using fetch.
-   */
-  readonly headers?: Headers;
 
   /**
    * The current value of the entity.
@@ -250,7 +254,7 @@ export type ValueSelectionResult = {
    * A unique key for identifing this selection result.
    * Useful for caching objects which use the result.
    */
-  readonly key: symbol;
+  readonly key: string;
 
   /**
    * A json pointer referencing the item within the parent value.
@@ -275,29 +279,95 @@ export type ValueSelectionResult = {
    */
   readonly value: JSONValue;
 
+  /**
+   * An action selection can be readonly if the selected spec
+   * has readonly set to true. Or if the payload has entities
+   * or unspecifed values on it which the selection selects into.
+   */
+  readonly readonly: true;
+
+  /**
+   * The point on the action definition describing the value.
+   *
+   * N/A for value selection results.
+   */
+  readonly actionValue?: JSONValue;
+
+  /**
+   * The spec related to the value.
+   *
+   * This can be null if the payload has entities or unspecifed
+   * values on it which the selection selects into.
+   *
+   * N/A for value selection results.
+   */
+  readonly spec?: undefined;
+  
+  /**
+   * The IRI of the document.
+   *
+   * N/A for value selection results.
+   */
+  readonly iri?: undefined;
+
+  /**
+   * The fragment portion of the IRI.
+   *
+   * N/A for value selection results.
+   */
   readonly fragment?: undefined;
 
   /**
    * The accept header to use when performing API requests for this entity.
+   *
+   * N/A for value selection results.
    */
   readonly accept?: undefined;
 
+  /**
+   * Indicates if the request responded with a success or error status.
+   *
+   * N/A for value selection results.
+   */
+  readonly ok?: undefined;
 
+  /**
+   * The response status. Only used for failure responses.
+   *
+   * N/A for value selection results.
+   */
+  readonly status?: undefined;
+
+  /**
+   * The error type.
+   */
+  readonly reason?: Failure;
+
+  /**
+   * The integration state instance for this content type.
+   *
+   * N/A for value selection results.
+   */
   readonly integration?: undefined;
 };
 
 export type ActionSelectionResult = {
 
   /**
-   * A unique json pointer for identifing this selection result.
-   * Useful for caching objects and performing updates on it's value.
+   * A unique key for identifing this selection result.
+   * Useful for caching objects which use the result.
+   */
+  readonly key: string;
+
+  /**
+   * A json pointer referencing the item within the parent value.
    */
   readonly pointer: string;
 
   /**
-   * The type of the selection result. Value 'entity' indicates
-   * the value has an iri and can be fetched. The value `value`
-   * indicates the value is found in the body of an entity.
+   * The type of the selection result. Value 'action-value' is
+   * used for values which are part of a action payload managed
+   * via `o.perform()`.
    */
   readonly type: 'action-value';
 
@@ -305,7 +375,7 @@ export type ActionSelectionResult = {
    * The object key (type, or term in json-ld lingo) used when
    * retrieving this value from the parent object.
    */
-  readonly propType: string;
+  readonly propType?: string;
 
   /**
    * The selection value.
@@ -330,41 +400,131 @@ export type ActionSelectionResult = {
    * This can be null if the payload has entities or unspecifed
    * values on it which the selection selects into.
    */
-  readonly spec?: SCMPropertyValueSpecification;
+  readonly spec?: Spec;
+  
+  /**
+   * The IRI of the document.
+   *
+   * N/A for action value selection results.
+   */
+  readonly iri?: undefined;
 
+  /**
+   * The fragment portion of the IRI.
+   *
+   * N/A for action value selection results.
+   */
   readonly fragment?: undefined;
-
-  readonly headers?: Headers;
 
   /**
    * The accept header to use when performing API requests for this entity.
+   *
+   * N/A for value selection results.
    */
   readonly accept?: undefined;
 
+  /**
+   * Indicates if the request responded with a success or error status.
+   *
+   * N/A for value selection results.
+   */
+  readonly ok?: undefined;
+
+  /**
+   * The response status. Only used for failure responses.
+   *
+   * N/A for value selection results.
+   */
+  readonly status?: undefined;
+
+  /**
+   * The error type.
+   */
+  readonly reason?: Failure;
+
+  /**
+   * The integration state instance for this content type.
+   *
+   * N/A for value selection results.
+   */
   readonly integration?: undefined;
+
 }
 
 export type AlternativeSelectionResult = {
-  readonly key: symbol;
 
+  /**
+   * A unique key for identifing this selection result.
+   * Useful for caching objects which use the result.
+   */
+  readonly key: string;
+
+  /**
+   * A json pointer referencing the item within the parent value.
+   */
   readonly pointer: string;
 
+  /**
+   * The type of the selection result. Value 'alternative' indicates
+   * the selection is a product of a response returning a different
+   * content type to JSON-ld, or configured equivilent.
+   */
   readonly type: 'alternative';
+  
+  /**
+   * The IRI of the document.
+   */
+  readonly iri: string;
 
-  readonly propType?: undefined;
-
-  readonly value?: undefined;
-
-  readonly contentType: string;
+  /**
+   * The fragment portion of the IRI.
+   */
+  readonly fragment?: string;
 
   /**
    * The accept header to use when performing API requests for this entity.
    */
   readonly accept?: string;
 
-  readonly headers?: Headers;
+  /**
+   * Indicates if the request responded with a success or error status.
+   */
+  readonly ok: boolean;
 
+  /**
+   * The response status. Only used for failure responses.
+   */
+  readonly status?: number;
+
+  /**
+   * The error type.
+   */
+  readonly reason?: Failure;
+
+  /**
+   * The content type of the response.
+   */
+  readonly contentType: string;
+
+  /**
+   * The integration state instance for this content type.
+   */
   readonly integration: IntegrationState;
+
+  /**
+   * The object key (type, or term in json-ld lingo) used when
+   * retrieving this value from the parent object.
+   *
+   * N/A for alternative selection results.
+   */
+  readonly propType?: undefined;
+
+  /**
+   * The selection value.
+   *
+   * N/A for alternative selection results.
+   */
+  readonly value?: undefined;
 };
 
 export type ReadonlySelectionResult =
@@ -408,6 +568,10 @@ export type SelectionDetails<T = SelectionResult> = {
    */
   required: string[];
 
+  accept?: string;
+
+  fragment?: string;
+
   /**
    * A list of IRIs which this selection depends on.
    * If the state of any of the dependencies changes the selection result should
@@ -430,6 +594,8 @@ export type LoadingEntityState = {
    * Indicates if the request responded with a success or error status.
    */
   readonly ok?: undefined;
+
+  readonly reason?: undefined;
 
   /**
    * The IRI of the entity.
@@ -475,6 +641,8 @@ export type SuccessEntityState = {
    */
   readonly ok: true;
 
+  readonly reason?: undefined;
+
   /**
    * The IRI of the entity.
    */
@@ -513,6 +681,7 @@ export type SuccessAlternativeState = {
    * Indicates if the request responded with a success or error status.
    */
   readonly ok: true;
+  readonly reason?: undefined;
 
   /**
    * The IRI of the entity.

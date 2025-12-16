@@ -1,17 +1,17 @@
 import { JsonPointer } from 'json-ptr';
 import m from 'mithril';
-import { EditRenderer } from '../renderers/EditRenderer.ts';
-import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.ts";
-import type { JSONObject, JSONValue } from "../types/common.ts";
-import type { Spec, ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPresentArgs, PayloadValueMapper, Selector, UpdateArgs } from "../types/octiron.ts";
-import { isJSONObject } from "../utils/isJSONObject.ts";
-import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
-import { unravelArgs } from "../utils/unravelArgs.ts";
-import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.ts";
-import { isIterable } from "../utils/isIterable.ts";
-import { getIterableValue } from "../utils/getIterableValue.ts";
-import { selectComponentFromArgs } from "../utils/selectComponentFromArgs.ts";
-import {expandValue} from '../utils/expandValue.ts';
+import { EditRenderer } from '../renderers/EditRenderer.js';
+import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.js";
+import type { JSONObject, JSONValue } from "../types/common.js";
+import type { Spec, ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPresentArgs, PayloadValueMapper, Selector, UpdateArgs, OctironSelection, Octiron } from "../types/octiron.js";
+import { isJSONObject } from "../utils/isJSONObject.js";
+import { mithrilRedraw } from "../utils/mithrilRedraw.js";
+import { unravelArgs } from "../utils/unravelArgs.js";
+import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.js";
+import { isIterable } from "../utils/isIterable.js";
+import { getIterableValue } from "../utils/getIterableValue.js";
+import { selectComponentFromArgs } from "../utils/selectComponentFromArgs.js";
+import {expandValue} from '../utils/expandValue.js';
 
 
 export type OnActionSelectionSubmit = () => Promise<void>;
@@ -40,7 +40,7 @@ export function actionSelectionFactory<
 
   const self = octironFactory(
     'action-selection',
-    factoryArgs as CommonArgs,
+    factoryArgs as unknown as CommonArgs,
     parentArgs as CommonParentArgs,
     rendererArgs as CommonRendererArgs,
     childArgs as ChildArgs,
@@ -139,34 +139,11 @@ export function actionSelectionFactory<
     }
 
     return m(EditRenderer, {
-      o: self,
+      o: self as unknown as OctironActionSelection,
       args,
       factoryArgs,
       parentArgs,
       rendererArgs,
-    });
-
-    const [attrs, component] = selectComponentFromArgs(
-      'edit',
-      parentArgs,
-      rendererArgs,
-      args,
-      factoryArgs as OctironEditArgs,
-    );
-
-    if (component == null) {
-      return null;
-    }
-
-    return m(component as EditComponent<JSONValue, BaseAttrs>, {
-      o: self as unknown as OctironActionSelection,
-      spec: rendererArgs.spec as Spec,
-      renderType: "edit",
-      name: self.inputName,
-      value: rendererArgs.value,
-      attrs,
-      onchange: rendererArgs.update,
-      onChange: rendererArgs.update,
     });
   };
 

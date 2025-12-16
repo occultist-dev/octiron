@@ -1,5 +1,5 @@
-import type { IterableJSONLD, JSONValue } from '../types/common.ts';
-import { isJSONObject } from "./isJSONObject.ts";
+import type { IterableJSONLD, JSONValue } from '../types/common.js';
+import { isJSONObject } from "./isJSONObject.js";
 
 /**
  * @description

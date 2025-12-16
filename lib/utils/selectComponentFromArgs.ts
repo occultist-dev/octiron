@@ -1,6 +1,6 @@
-import type { AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironEditArgs, OctironPresentArgs, PresentComponent } from "../types/octiron.ts";
-import { getComponent } from "./getComponent.ts";
-import { getDataType } from "./getValueType.ts";
+import type { AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironEditArgs, OctironPresentArgs, PresentComponent } from "../types/octiron.js";
+import { getComponent } from "./getComponent.js";
+import { getDataType } from "./getValueType.js";
 
 
 /**

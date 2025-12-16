@@ -1,5 +1,5 @@
-import type { CommonParentArgs, OctironRoot } from '../types/octiron.ts';
-import { octironFactory } from "./octironFactory.ts";
+import type { CommonParentArgs, OctironRoot } from '../types/octiron.js';
+import { octironFactory } from "./octironFactory.js";
 
 
 export function rootFactory(

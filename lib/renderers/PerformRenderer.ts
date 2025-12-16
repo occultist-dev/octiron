@@ -1,13 +1,13 @@
 import type m from 'mithril';
-import { actionFactory } from '../factories/actionFactory.ts';
-import { selectionFactory } from '../factories/selectionFactory.ts';
-import type { JSONObject, Mutable } from '../types/common.ts';
-import type { ActionParentArgs, CommonRendererArgs, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, SelectionParentArgs, Selector } from '../types/octiron.ts';
-import type { Failure, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
-import { isIRIObject } from '../utils/isIRIObject.ts';
-import { mithrilRedraw } from '../utils/mithrilRedraw.ts';
-import type { InstanceHooks } from "../factories/octironFactory.ts";
-import { render } from "mithril";
+import { actionFactory } from '../factories/actionFactory.js';
+import { selectionFactory } from '../factories/selectionFactory.js';
+import type { JSONObject, Mutable } from '../types/common.js';
+import type { ActionParentArgs, CommonRendererArgs, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, SelectionParentArgs, Selector } from '../types/octiron.js';
+import type { Failure, ReadonlySelectionResult, SelectionDetails } from '../types/store.js';
+import { isIRIObject } from '../utils/isIRIObject.js';
+import { mithrilRedraw } from '../utils/mithrilRedraw.js';
+import type { InstanceHooks } from "../factories/octironFactory.js";
+
 
 export type PerformRendererAttrs = {
   parentArgs: SelectionParentArgs & ActionParentArgs,
@@ -156,7 +156,7 @@ export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs> = ({ attr
       if (isIRIObject(parentArgs.parent.value)) {
         result = {
           pointer: '/local',
-          key: Symbol.for('/local'),
+          key: '@local',
           type: 'entity',
           iri: parentArgs.parent.value['@id'],
           ok: true,
@@ -165,9 +165,10 @@ export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs> = ({ attr
       } else {
         result = {
           pointer: '/local',
-          key: Symbol.for('/local'),
+          key: '@local',
           type: 'value',
           value: parentArgs.parent.value,
+          readonly: true,
         };
       }
 

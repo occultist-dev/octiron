@@ -1,5 +1,5 @@
 import m from 'mithril';
-import type { OctironAction } from "../types/octiron.ts";
+import type { OctironAction } from "../types/octiron.js";
 
 export type OctironFormAttrs = {
   o: OctironAction;

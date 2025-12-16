@@ -1,5 +1,5 @@
-import { Store } from "../store.ts";
-import type { TypeDef, TypeDefs } from "../types/octiron.ts";
+import { Store } from "../store.js";
+import type { TypeDef, TypeDefs } from "../types/octiron.js";
 
 
 export function makeTypeDefs<

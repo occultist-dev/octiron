@@ -1,16 +1,16 @@
 import m from 'mithril';
-import type { AnyComponent, Octiron } from "../types/octiron.ts";
-import { OctironDebug } from "./OctironDebug.ts";
+import type { AnyComponent, Octiron } from "../types/octiron.js";
+import { OctironDebug, OctironDebugPresentationStyle } from "./OctironDebug.js";
 
 
 export type OctironExplorerAttrs = {
   autofocus?: boolean;
   selector?: string;
-  presentationStyle?: 'debug' | 'components';
+  presentationStyle?: OctironDebugPresentationStyle;
   childControls?: boolean;
   onChange?: (
     selector: string,
-    presentationStyle: 'debug' | 'components',
+    presentationStyle: OctironDebugPresentationStyle,
   ) => void;
   location?: URL;
   o: Octiron;
@@ -22,7 +22,7 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
   let value: string = attrs.selector || '';
   let previousSelector: string = value;
   let selector: string = value;
-  let presentationStyle: 'debug' | 'components' = attrs.presentationStyle || 'debug';
+  let presentationStyle: OctironDebugPresentationStyle = 'value';
   let onChange = attrs.onChange;
   const fallbackComponent: AnyComponent = {
     view: ({ attrs: { o } }) => {
@@ -48,18 +48,18 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
     }
   }
 
-  function onSetDebug(evt: Event) {
+  function onSetValue(evt: Event) {
     evt.preventDefault();
-    presentationStyle = 'debug';
+    presentationStyle = 'value';
 
     if (typeof onChange === 'function') {
       onChange(selector, presentationStyle);
     }
   }
 
-  function onSetComponents(evt: Event) {
+  function onSetActionValue(evt: Event) {
     evt.preventDefault();
-    presentationStyle = 'components';
+    presentationStyle = 'action-value';
 
     if (typeof onChange === 'function') {
       onChange(selector, presentationStyle);
@@ -82,15 +82,15 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
     view: ({ attrs: { autofocus, o } }) => {
       let children: m.Children;
       let upURL: URL;
-      let debugURL: URL;
-      let componentsURL: URL;
+      let valueURL: URL;
+      let actionValueURL: URL;
 
-      if (selector.length !== 0 && presentationStyle === 'debug') {
+      if (selector.length !== 0 && presentationStyle === 'value') {
         children = o.root(selector, (o) => m(OctironDebug, {
           o,
           selector,
           location: attrs.location,
-          initialPresentaionStyle: attrs.presentationStyle,
+          initialPresentationStyle: attrs.presentationStyle,
           availableControls: !!attrs.childControls == false ? undefined : [],
         }));
       } else if (selector.length !== 0) {
@@ -99,11 +99,12 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
           (o) =>
             m('div', o.default({ fallbackComponent, attrs: { selector } })),
         );
-      } else if (presentationStyle === 'debug') {
+      } else if (presentationStyle === 'value') {
         children = o.root((o) => m(OctironDebug, {
-          o, selector,
+          o,
+          selector,
           location: attrs.location,
-          initialPresentaionStyle: attrs.presentationStyle,
+          initialPresentationStyle: attrs.presentationStyle,
           availableControls: !!attrs.childControls ? undefined : [],
         }));
       } else {
@@ -127,11 +128,11 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
       }
 
       if (attrs.location != null) {
-        debugURL = new URL(attrs.location);
-        componentsURL = new URL(attrs.location);
+        valueURL = new URL(attrs.location);
+        actionValueURL = new URL(attrs.location);
 
-        debugURL.searchParams.set('presentationStyle', 'debug');
-        componentsURL.searchParams.set('presentationStyle', 'components');
+        valueURL.searchParams.set('presentationStyle', 'value');
+        actionValueURL.searchParams.set('presentationStyle', 'action-value');
       }
 
       return m('.oct-explorer', m('.oct-explorer-controls',
@@ -164,30 +165,31 @@ export const OctironExplorer: m.ClosureComponent<OctironExplorerAttrs> = ({
           ]),
 
           m('.oct-button-group',
-            presentationStyle === 'debug' || debugURL == null
+            presentationStyle === 'value' || valueURL == null
               ? m('button.oct-button', {
                   type: 'button',
                   disabled: typeof window === 'undefined',
-                  onclick: onSetDebug,
-                }, 'Debug')
+                  onclick: onSetValue,
+                }, 'Value')
               : m('a.oct-button', {
-                  href: debugURL.toString(),
-                  onclick: onSetDebug,
-                }, 'Debug'),
+                  href: valueURL.toString(),
+                  onclick: onSetValue,
+                }, 'Value'),
 
-            presentationStyle === 'components' || componentsURL == null
+            presentationStyle === 'action-value' || actionValueURL == null
               ? m('button.oct-button', {
                   type: 'button',
                   disabled: typeof window === 'undefined',
-                  onclick: onSetComponents,
-                }, 'Components')
+                  onclick: onSetActionValue,
+                }, 'Action value')
               : m('a.oct-button', {
-                  href: componentsURL.toString(),
-                  onclick: onSetComponents,
-                }, 'Components'),
+                  href: actionValueURL.toString(),
+                  onclick: onSetActionValue,
+                }, 'Action value'),
           ),
         ),
         m('pre.oct-explorer-body', children),
-      ); },
+      );
+    },
   };
 };

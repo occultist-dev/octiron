@@ -1,8 +1,8 @@
 import m from 'mithril';
 import {processTemplate} from '@longform/longform';
-import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.ts";
-import type { Octiron } from "../types/octiron.ts";
-import {isBrowserRender} from '../consts.ts';
+import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.js";
+import type { Octiron } from "../types/octiron.js";
+import {isBrowserRender} from '../consts.js';
 
 function fragmentToHTML(fragment: Element[]) {
   let html: string = '';
@@ -18,7 +18,7 @@ export type HTMLFragmentsIntegrationComponentAttrs = {
   o: Octiron;
   integration: HTMLFragmentsIntegration;
   fragment?: string;
-  output: HTMLFragmentsHandlerResult;
+  output: HTMLFragmentsHandlerResult<true>;
 };
 
 export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmentsIntegrationComponentAttrs>;
@@ -147,7 +147,7 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
 export type HTMLFragmentsIntegrationArgs = {
   iri: string;
   contentType: string;
-  output: HTMLFragmentsHandlerResult;
+  output: HTMLFragmentsHandlerResult<true>;
 };
 
 export type FragmentState = {
@@ -177,7 +177,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
   #iri: string;
   #contentType: string;
   #handler: HTMLFragmentsHandler;
-  #output: HTMLFragmentsHandlerResult;
+  #output: HTMLFragmentsHandlerResult<true>;
 
   constructor(handler: HTMLFragmentsHandler, {
     iri,
@@ -198,7 +198,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     return this.#contentType;
   }
 
-  get output(): HTMLFragmentsHandlerResult {
+  get output(): HTMLFragmentsHandlerResult<true> {
     return this.#output;
   }
 
@@ -208,11 +208,11 @@ export class HTMLFragmentsIntegration implements IntegrationState {
       : this.#output.root ?? null;
   }
 
-  #fragmentHTML(fragment: DocumentFragment): string {
+  #fragmentHTML(fragment: Element[]): string {
     let html = '';
 
-    for (let i = 0; i < fragment.children.length; i++) {
-      html += fragment.children[i].outerHTML;
+    for (let i = 0; i < fragment.length; i++) {
+      html += fragment[i].outerHTML;
     }
 
     return html;
@@ -357,7 +357,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     fragments,
     templates,
   }: HTMLFragmentsStateInfo, handler: HTMLFragmentsHandler): HTMLFragmentsIntegration | null {
-    const output: HTMLFragmentsHandlerResult = Object.create(null);
+    const output: HTMLFragmentsHandlerResult<true> = Object.create(null);
 
     output.fragments = Object.create(null);
     output.templates = templates;

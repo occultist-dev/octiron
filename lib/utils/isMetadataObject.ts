@@ -1,4 +1,4 @@
-import type { IRIObject, JSONObject } from '../types/common.ts';
+import type { IRIObject, JSONObject } from '../types/common.js';
 
 /**
  * @description

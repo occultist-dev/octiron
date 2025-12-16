@@ -1,5 +1,5 @@
-import type { JSONValue } from '../types/common.ts';
-import type { TypeDef } from '../types/octiron.ts';
+import type { JSONValue } from '../types/common.js';
+import type { TypeDef } from '../types/octiron.js';
 
 /**
  * @description

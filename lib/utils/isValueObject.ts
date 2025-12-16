@@ -1,4 +1,4 @@
-import type { JSONObject, ValueObject } from '../types/common.ts';
+import type { JSONObject, ValueObject } from '../types/common.js';
 
 /**
  * @description

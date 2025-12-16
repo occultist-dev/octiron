@@ -1,15 +1,14 @@
 import m from 'mithril';
-import * as jsonld from 'jsonld';
-import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
-import type { JSONObject } from "../types/common.ts";
-import type { Octiron } from "../types/octiron.ts";
-import { OctironJSON } from "./OctironJSON.ts";
-import { flattenIRIObjects } from "../utils/flattenIRIObjects.ts";
+import { mithrilRedraw } from "../utils/mithrilRedraw.js";
+import type { JSONObject } from "../types/common.js";
+import type { Octiron } from "../types/octiron.js";
+import { OctironJSON } from "./OctironJSON.js";
 
 export type OctironDebugPresentationStyle =
   | 'value'
   | 'action-value'
   | 'component'
+  | 'log'
 ;
 
 export type OctironDebugAttrs = {

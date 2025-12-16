@@ -1,18 +1,16 @@
-import type { AlternativesState, Context, PrimaryState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases, EntitySelectionResult, ValueSelectionResult, IntegrationState, AlternativeSelectionResult } from "./types/store.ts";
-import { HTMLFragmentsIntegration } from "./alternatives/htmlFragments.ts";
-// import { HTMLIntegration } from "./alternatives/html.ts";
-import { isBrowserRender } from "./consts.ts";
-import type { JSONObject } from "./types/common.ts";
-import { HTTPFailure } from "./failures.ts";
-import { flattenIRIObjects } from "./utils/flattenIRIObjects.ts";
-import { getSelection } from './utils/getSelection.ts';
-import type { FailureEntityState, SuccessEntityState } from "./types/store.ts";
-import { mithrilRedraw } from "./utils/mithrilRedraw.ts";
-import {UnrecognizedIntegration} from "./alternatives/unrecognized.ts";
+import type { AlternativesState, Context, PrimaryState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases, EntitySelectionResult, ValueSelectionResult, IntegrationState, AlternativeSelectionResult } from "./types/store.js";
+import { HTMLFragmentsIntegration } from "./alternatives/htmlFragments.js";
+import { isBrowserRender } from "./consts.js";
+import type { JSONObject } from "./types/common.js";
+import { HTTPFailure } from "./failures.js";
+import { flattenIRIObjects } from "./utils/flattenIRIObjects.js";
+import { getSelection } from './utils/getSelection.js';
+import type { FailureEntityState, SuccessEntityState } from "./types/store.js";
+import { mithrilRedraw } from "./utils/mithrilRedraw.js";
+import {UnrecognizedIntegration} from "./alternatives/unrecognized.js";
 
 const defaultAccept = 'application/problem+json, application/ld+json';
 const integrationClasses = {
-  // [HTMLIntegration.type]: HTMLIntegration,
   [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
   [UnrecognizedIntegration.type]: UnrecognizedIntegration,
 };
