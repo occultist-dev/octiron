@@ -115,6 +115,8 @@ export type StoreArgs = {
    */
   vocab?: string;
 
+  acceptMap?: Record<string, Array<[string, string]>>;
+
   /**
    * Map of JSON-ld aliases to their values.
    */
@@ -124,8 +126,6 @@ export type StoreArgs = {
    * Primary initial state.
    */
   primary?: Record<string, EntityState>;
-
-  acceptMap?: Record<string, Array<[string, string]>>;
 
   /**
    * Alternatives initial state.

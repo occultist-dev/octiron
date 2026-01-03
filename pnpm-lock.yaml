@@ -11,9 +11,6 @@ importers:
 
   .:
     devDependencies:
-      '@longform/longform':
-        specifier: ^0.0.5
-        version: 0.0.5
       '@rollup/plugin-typescript':
         specifier: ^12.3.0
         version: 12.3.0(rollup@4.53.3)(tslib@2.8.1)(typescript@5.8.3)
@@ -51,6 +48,9 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
     optionalDependencies:
+      '@longform/longform':
+        specifier: ^0.0.5
+        version: 0.0.5
       jsonld:
         specifier: ^8.3.3
         version: 8.3.3(web-streams-polyfill@3.3.3)
@@ -437,7 +437,8 @@ snapshots:
   '@fastify/busboy@2.1.1':
     optional: true
 
-  '@longform/longform@0.0.5': {}
+  '@longform/longform@0.0.5':
+    optional: true
 
   '@rollup/plugin-typescript@12.3.0(rollup@4.53.3)(tslib@2.8.1)(typescript@5.8.3)':
     dependencies:
