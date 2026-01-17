@@ -1,13 +1,12 @@
-import type { AlternativesState, Context, PrimaryState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases, EntitySelectionResult, ValueSelectionResult, IntegrationState, AlternativeSelectionResult } from "./types/store.js";
-import { HTMLFragmentsIntegration } from "./alternatives/htmlFragments.js";
-import { isBrowserRender } from "./consts.js";
-import type { JSONObject } from "./types/common.js";
-import { HTTPFailure } from "./failures.js";
-import { flattenIRIObjects } from "./utils/flattenIRIObjects.js";
-import { getSelection } from './utils/getSelection.js';
-import type { FailureEntityState, SuccessEntityState } from "./types/store.js";
-import { mithrilRedraw } from "./utils/mithrilRedraw.js";
+import {HTMLFragmentsIntegration} from "./alternatives/htmlFragments.js";
 import {UnrecognizedIntegration} from "./alternatives/unrecognized.js";
+import {isBrowserRender} from "./consts.js";
+import {HTTPFailure} from "./failures.js";
+import type {JSONObject} from "./types/common.js";
+import type {Aliases, AlternativeSelectionResult, AlternativesState, Context, EntitySelectionResult, EntityState, FailureEntityState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, PrimaryState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState, ValueSelectionResult} from "./types/store.js";
+import {flattenIRIObjects} from "./utils/flattenIRIObjects.js";
+import {getSelection} from './utils/getSelection.js';
+import {mithrilRedraw} from "./utils/mithrilRedraw.js";
 
 const defaultAccept = 'application/problem+json, application/ld+json';
 const integrationClasses = {
@@ -115,6 +114,8 @@ export type StoreArgs = {
    */
   vocab?: string;
 
+  acceptMap?: Record<string, Array<[string, string]>>;
+
   /**
    * Map of JSON-ld aliases to their values.
    */
@@ -124,8 +125,6 @@ export type StoreArgs = {
    * Primary initial state.
    */
   primary?: Record<string, EntityState>;
-
-  acceptMap?: Record<string, Array<[string, string]>>;
 
   /**
    * Alternatives initial state.

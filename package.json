@@ -7,7 +7,7 @@
   "homepage": "https://github.com/occultist-dev/octiron",
   "license": "MIT",
   "main": "./dist/octiron.js",
-  "types": "./dist/octiron.d.ts",
+  "types": "./lib/octiron.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/occultist-dev/octiron.git"
