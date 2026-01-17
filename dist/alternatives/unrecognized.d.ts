@@ -1,5 +1,5 @@
 import { Children } from "mithril";
-import type { ErrorView, IntegrationState } from "../types/store";
+import type { ErrorView, IntegrationState } from "../types/store.js";
 export type UnrecognizedStateInfo = {
     iri: string;
     contentType: string;
