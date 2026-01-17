@@ -1,6 +1,5 @@
-import type { AlternativesState, Context, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, EntityState, SubmitArgs, Aliases } from "./types/store.js";
 import type { JSONObject } from "./types/common.js";
-import type { FailureEntityState, SuccessEntityState } from "./types/store.js";
+import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.js";
 type FetchArgs = {
     mainEntity?: boolean;
 };
@@ -27,6 +26,7 @@ export type StoreArgs = {
      * The JSON-ld @vocab to use for octiron selectors.
      */
     vocab?: string;
+    acceptMap?: Record<string, Array<[string, string]>>;
     /**
      * Map of JSON-ld aliases to their values.
      */
@@ -35,7 +35,6 @@ export type StoreArgs = {
      * Primary initial state.
      */
     primary?: Record<string, EntityState>;
-    acceptMap?: Record<string, Array<[string, string]>>;
     /**
      * Alternatives initial state.
      */

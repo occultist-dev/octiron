@@ -2453,6 +2453,42 @@ class HTMLFragmentsIntegration {
     }
 }
 
+/**
+ * Handles all responses where the content type is not
+ * configured.
+ */
+class UnrecognizedIntegration {
+    static type = 'unrecognized-integration';
+    integrationType = 'unrecognized';
+    #iri;
+    #contentType;
+    constructor(args) {
+        this.#iri = args.iri;
+        this.#contentType = args.contentType;
+    }
+    error(view) {
+        if (typeof view === 'function') {
+            return view({ type: 'unrecognized-content-type' });
+        }
+        return view;
+    }
+    get iri() {
+        return this.#iri;
+    }
+    get contentType() {
+        return this.#contentType;
+    }
+    getStateInfo() {
+        return {
+            iri: this.#iri,
+            contentType: this.#contentType,
+        };
+    }
+    static fromInitialState({ iri, contentType, }) {
+        return new UnrecognizedIntegration({ iri, contentType });
+    }
+}
+
 class HTTPFailure {
     #status;
     #res;
@@ -2522,42 +2558,6 @@ function flattenIRIObjects(value, agg = []) {
         }
     }
     return agg;
-}
-
-/**
- * Handles all responses where the content type is not
- * configured.
- */
-class UnrecognizedIntegration {
-    static type = 'unrecognized-integration';
-    integrationType = 'unrecognized';
-    #iri;
-    #contentType;
-    constructor(args) {
-        this.#iri = args.iri;
-        this.#contentType = args.contentType;
-    }
-    error(view) {
-        if (typeof view === 'function') {
-            return view({ type: 'unrecognized-content-type' });
-        }
-        return view;
-    }
-    get iri() {
-        return this.#iri;
-    }
-    get contentType() {
-        return this.#contentType;
-    }
-    getStateInfo() {
-        return {
-            iri: this.#iri,
-            contentType: this.#contentType,
-        };
-    }
-    static fromInitialState({ iri, contentType, }) {
-        return new UnrecognizedIntegration({ iri, contentType });
-    }
 }
 
 const defaultAccept = 'application/problem+json, application/ld+json';
