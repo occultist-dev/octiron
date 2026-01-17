@@ -1,5 +1,5 @@
 import {Children} from "mithril";
-import {ErrorView, IntegrationState} from "../types/store";
+import type {ErrorView, IntegrationState} from "../types/store";
 
 
 export type UnrecognizedStateInfo = {
