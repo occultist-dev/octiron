@@ -38,7 +38,7 @@ await mkdir(dist);
     external: [
       "mithril",
       "@longform/longform",
-      "jsonld",
+      "@occultist/mini-jsonld",
       "json-ptr",
       "uri-templates",
     ],
@@ -62,7 +62,7 @@ await mkdir(dist);
     external: [
       "mithril",
       "@longform/longform",
-      "jsonld",
+      "@occultist/mini-jsonld",
       "json-ptr",
       "uri-templates",
     ],

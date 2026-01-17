@@ -1,6 +1,6 @@
+import type {JSONObject} from "../types/common.js";
 import type { Handler } from "../types/store.js";
-import { isJSONObject } from '../utils/isJSONObject.js';
-import jsonld from 'jsonld';
+import { expand } from '@occultist/mini-jsonld';
 
 
 export const jsonLDHandler: Handler = {
@@ -8,32 +8,10 @@ export const jsonLDHandler: Handler = {
   contentType: 'application/ld+json',
   handler: async ({ res }) => {
     const json = await res.json();
-
-    // cannot use json-ld ops on scalar types
-    if (!isJSONObject(json) && !Array.isArray(json)) {
-      throw new Error('JSON-LD Document should be an object');
-    }
-
-    const expanded = await jsonld.expand(json, {
-      documentLoader: async (url: string) => {
-        const res = await fetch(url, {
-          headers: {
-            'accept': 'application/ld+json',
-          }
-        });
-        const document = await res.json();
-
-        return {
-          documentUrl: url,
-          document,
-        };
-      }
-    });
-
-    const compacted = await jsonld.compact(expanded, {});
+    const jsonld = await expand(json) as JSONObject;
 
     return {
-      jsonld: compacted,
+      jsonld,
     };
   },
 };

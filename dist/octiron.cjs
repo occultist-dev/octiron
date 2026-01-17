@@ -4,7 +4,7 @@ var m = require('mithril');
 var jsonPtr = require('json-ptr');
 var uriTemplates = require('uri-templates');
 var longform = require('@longform/longform');
-var jsonld = require('jsonld');
+var miniJsonld = require('@occultist/mini-jsonld');
 
 /**
   * Creates an Octiron selection instance.
@@ -3274,27 +3274,9 @@ const jsonLDHandler = {
     contentType: 'application/ld+json',
     handler: async ({ res }) => {
         const json = await res.json();
-        // cannot use json-ld ops on scalar types
-        if (!isJSONObject(json) && !Array.isArray(json)) {
-            throw new Error('JSON-LD Document should be an object');
-        }
-        const expanded = await jsonld.expand(json, {
-            documentLoader: async (url) => {
-                const res = await fetch(url, {
-                    headers: {
-                        'accept': 'application/ld+json',
-                    }
-                });
-                const document = await res.json();
-                return {
-                    documentUrl: url,
-                    document,
-                };
-            }
-        });
-        const compacted = await jsonld.compact(expanded, {});
+        const jsonld = await miniJsonld.expand(json);
         return {
-            jsonld: compacted,
+            jsonld,
         };
     },
 };

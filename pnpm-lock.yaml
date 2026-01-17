@@ -11,9 +11,9 @@ importers:
 
   .:
     devDependencies:
-      '@longform/longform':
-        specifier: ^0.0.5
-        version: 0.0.5
+      '@occultist/mini-jsonld':
+        specifier: ^0.0.1
+        version: 0.0.1(json-ptr@3.1.1)(jsonld@8.3.3(web-streams-polyfill@3.3.3))
       '@rollup/plugin-typescript':
         specifier: ^12.3.0
         version: 12.3.0(rollup@4.53.3)(tslib@2.8.1)(typescript@5.8.3)
@@ -51,11 +51,41 @@ importers:
         specifier: ^0.2.0
         version: 0.2.0
     optionalDependencies:
-      jsonld:
-        specifier: ^8.3.3
-        version: 8.3.3(web-streams-polyfill@3.3.3)
+      '@longform/longform':
+        specifier: ^0.0.5
+        version: 0.0.5
 
 packages:
+
+  '@deno/darwin-arm64@2.6.5':
+    resolution: {integrity: sha512-jHO9d9XsB2YzVUsJr7U9DEj7QEw69yMYbyaLbK1bpHJ6IjYRJFU/Wi7I1b9jSXurezQQulKf75+9QbU27XkL2g==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@deno/darwin-x64@2.6.5':
+    resolution: {integrity: sha512-piyZbW02p4zlviz14UVvoUGhh2mu0OYQBBahdLIbnHaPC14Rj+fHu0vgG8+PTJNCIRkxA1zrm5/GBbjqU3GeZQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@deno/linux-arm64-glibc@2.6.5':
+    resolution: {integrity: sha512-9VjtjIepMgSc6aHNOvjHAlHkG/Lmatoeb6k5vpCtVLpwJWJcteIrNX+Rc2u7HcfJctfPs6HwDYsCGI/jnwwzGw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@deno/linux-x64-glibc@2.6.5':
+    resolution: {integrity: sha512-TZV2Ez3T1qaA7snLKvevwq2LyTGI+1lCQrULZgrytmcaa0Q/9aErA3c135CSscv5LDKSWUXtBCWOHHI6rGm9MA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@deno/win32-arm64@2.6.5':
+    resolution: {integrity: sha512-5zPTnSv0R72GwVxxP20cLN/K5VJd6mF5yaLd/4tnwpv4jExiiQWaoXrae/M8O16Ruz8R+AIpIJfs3oZ+2gwuzA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@deno/win32-x64@2.6.5':
+    resolution: {integrity: sha512-vSr5ZjBvv5n80Bwa9P0WVLpUNLqnDtXMFIuR7H4mdo5zXU9Ay8ggPQ83yPMjmgqRZOBJNXQDFUA3ZWW+UmMjYQ==}
+    cpu: [x64]
+    os: [win32]
 
   '@digitalbazaar/http-client@3.4.1':
     resolution: {integrity: sha512-Ahk1N+s7urkgj7WvvUND5f8GiWEPfUw0D41hdElaqLgu8wZScI8gdI0q+qWw5N1d35x7GCRH2uk9mi+Uzo9M3g==}
@@ -67,6 +97,15 @@ packages:
 
   '@longform/longform@0.0.5':
     resolution: {integrity: sha512-ypKVN10gM61dEI0NUPMTJm5n8m7VbfZItSzDk70D98T97qaLYJjsx0ceL9zp+nssu1gwSTjr5EyTVEg2u4r7Hg==}
+
+  '@occultist/mini-jsonld@0.0.1':
+    resolution: {integrity: sha512-Ki8mlQW77609IbQPt2/yloKHJ2mC1j5NbuCODXDTP8TBZ59vUjMi67XRvhQI9Y8cuwFLlL1MATANJM38gNQCWg==}
+
+  '@occultist/occultist@0.0.12':
+    resolution: {integrity: sha512-8ur1ue5WdXrmLKEeQLW2JW0dewotU4M8RpV1hRspBNPgbRcffi6FRHkjrY5jk/w7TLUwaayy9d6Mz+AqZ2lC6A==}
+    peerDependencies:
+      json-ptr: ^3.1.1
+      jsonld: ^9.0.0
 
   '@rollup/plugin-typescript@12.3.0':
     resolution: {integrity: sha512-7DP0/p7y3t67+NabT9f8oTBFE6gGkto4SA6Np2oudYmZE/m1dt8RB0SjL1msMxFpLo631qjRCcBlAbq1ml/Big==}
@@ -222,6 +261,10 @@ packages:
   data-uri-to-buffer@4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
     engines: {node: '>= 12'}
+
+  deno@2.6.5:
+    resolution: {integrity: sha512-zAEGhAKPyKTA7HwtSVPAmdpj+WQfvw0tPemgkaRsqGLe7oi85iqUPCoCEkItiYp3ZellfQIbDHqQmKUY6fgxig==}
+    hasBin: true
 
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -425,6 +468,24 @@ packages:
 
 snapshots:
 
+  '@deno/darwin-arm64@2.6.5':
+    optional: true
+
+  '@deno/darwin-x64@2.6.5':
+    optional: true
+
+  '@deno/linux-arm64-glibc@2.6.5':
+    optional: true
+
+  '@deno/linux-x64-glibc@2.6.5':
+    optional: true
+
+  '@deno/win32-arm64@2.6.5':
+    optional: true
+
+  '@deno/win32-x64@2.6.5':
+    optional: true
+
   '@digitalbazaar/http-client@3.4.1(web-streams-polyfill@3.3.3)':
     dependencies:
       ky: 0.33.3
@@ -432,12 +493,24 @@ snapshots:
       undici: 5.29.0
     transitivePeerDependencies:
       - web-streams-polyfill
+
+  '@fastify/busboy@2.1.1': {}
+
+  '@longform/longform@0.0.5':
     optional: true
 
-  '@fastify/busboy@2.1.1':
-    optional: true
+  '@occultist/mini-jsonld@0.0.1(json-ptr@3.1.1)(jsonld@8.3.3(web-streams-polyfill@3.3.3))':
+    dependencies:
+      '@occultist/occultist': 0.0.12(json-ptr@3.1.1)(jsonld@8.3.3(web-streams-polyfill@3.3.3))
+      deno: 2.6.5
+    transitivePeerDependencies:
+      - json-ptr
+      - jsonld
 
-  '@longform/longform@0.0.5': {}
+  '@occultist/occultist@0.0.12(json-ptr@3.1.1)(jsonld@8.3.3(web-streams-polyfill@3.3.3))':
+    dependencies:
+      json-ptr: 3.1.1
+      jsonld: 8.3.3(web-streams-polyfill@3.3.3)
 
   '@rollup/plugin-typescript@12.3.0(rollup@4.53.3)(tslib@2.8.1)(typescript@5.8.3)':
     dependencies:
@@ -535,31 +608,34 @@ snapshots:
   abort-controller@3.0.0:
     dependencies:
       event-target-shim: 5.0.1
-    optional: true
 
-  canonicalize@1.0.8:
-    optional: true
+  canonicalize@1.0.8: {}
 
-  data-uri-to-buffer@4.0.1:
-    optional: true
+  data-uri-to-buffer@4.0.1: {}
+
+  deno@2.6.5:
+    optionalDependencies:
+      '@deno/darwin-arm64': 2.6.5
+      '@deno/darwin-x64': 2.6.5
+      '@deno/linux-arm64-glibc': 2.6.5
+      '@deno/linux-x64-glibc': 2.6.5
+      '@deno/win32-arm64': 2.6.5
+      '@deno/win32-x64': 2.6.5
 
   detect-libc@2.1.2: {}
 
   estree-walker@2.0.2: {}
 
-  event-target-shim@5.0.1:
-    optional: true
+  event-target-shim@5.0.1: {}
 
   fetch-blob@3.2.0:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.3.3
-    optional: true
 
   formdata-polyfill@4.0.10:
     dependencies:
       fetch-blob: 3.2.0
-    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -584,7 +660,6 @@ snapshots:
       rdf-canonize: 3.4.0
     transitivePeerDependencies:
       - web-streams-polyfill
-    optional: true
 
   ky-universal@0.11.0(ky@0.33.3)(web-streams-polyfill@3.3.3):
     dependencies:
@@ -593,10 +668,8 @@ snapshots:
       node-fetch: 3.3.2
     optionalDependencies:
       web-streams-polyfill: 3.3.3
-    optional: true
 
-  ky@0.33.3:
-    optional: true
+  ky@0.33.3: {}
 
   lightningcss-android-arm64@1.30.2:
     optional: true
@@ -650,7 +723,6 @@ snapshots:
   lru-cache@6.0.0:
     dependencies:
       yallist: 4.0.0
-    optional: true
 
   mithril-node-render@3.0.2(mithril@2.3.3):
     dependencies:
@@ -658,15 +730,13 @@ snapshots:
 
   mithril@2.3.3: {}
 
-  node-domexception@1.0.0:
-    optional: true
+  node-domexception@1.0.0: {}
 
   node-fetch@3.3.2:
     dependencies:
       data-uri-to-buffer: 4.0.1
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
-    optional: true
 
   path-parse@1.0.7: {}
 
@@ -675,7 +745,6 @@ snapshots:
   rdf-canonize@3.4.0:
     dependencies:
       setimmediate: 1.0.5
-    optional: true
 
   resolve@1.22.11:
     dependencies:
@@ -711,8 +780,7 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.53.3
       fsevents: 2.3.3
 
-  setimmediate@1.0.5:
-    optional: true
+  setimmediate@1.0.5: {}
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
@@ -725,12 +793,9 @@ snapshots:
   undici@5.29.0:
     dependencies:
       '@fastify/busboy': 2.1.1
-    optional: true
 
   uri-templates@0.2.0: {}
 
-  web-streams-polyfill@3.3.3:
-    optional: true
+  web-streams-polyfill@3.3.3: {}
 
-  yallist@4.0.0:
-    optional: true
+  yallist@4.0.0: {}

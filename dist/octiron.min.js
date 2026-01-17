@@ -2,7 +2,7 @@ import m from 'mithril';
 import { JsonPointer } from 'json-ptr';
 import uriTemplates from 'uri-templates';
 import { processTemplate, longform } from '@longform/longform';
-import jsonld from 'jsonld';
+import { expand } from '@occultist/mini-jsonld';
 
 /**
   * Creates an Octiron selection instance.
@@ -3272,27 +3272,9 @@ const jsonLDHandler = {
     contentType: 'application/ld+json',
     handler: async ({ res }) => {
         const json = await res.json();
-        // cannot use json-ld ops on scalar types
-        if (!isJSONObject(json) && !Array.isArray(json)) {
-            throw new Error('JSON-LD Document should be an object');
-        }
-        const expanded = await jsonld.expand(json, {
-            documentLoader: async (url) => {
-                const res = await fetch(url, {
-                    headers: {
-                        'accept': 'application/ld+json',
-                    }
-                });
-                const document = await res.json();
-                return {
-                    documentUrl: url,
-                    document,
-                };
-            }
-        });
-        const compacted = await jsonld.compact(expanded, {});
+        const jsonld = await expand(json);
         return {
-            jsonld: compacted,
+            jsonld,
         };
     },
 };
