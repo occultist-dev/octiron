@@ -4,7 +4,6 @@ var m = require('mithril');
 var jsonPtr = require('json-ptr');
 var uriTemplates = require('uri-templates');
 var longform = require('@longform/longform');
-var miniJsonld = require('@occultist/mini-jsonld');
 
 /**
   * Creates an Octiron selection instance.
@@ -3273,8 +3272,9 @@ const jsonLDHandler = {
     integrationType: 'jsonld',
     contentType: 'application/ld+json',
     handler: async ({ res }) => {
+        const { expand } = await import('@occultist/mini-jsonld');
         const json = await res.json();
-        const jsonld = await miniJsonld.expand(json);
+        const jsonld = await expand(json);
         return {
             jsonld,
         };
@@ -3285,7 +3285,8 @@ const longformHandler = {
     integrationType: 'html-fragments',
     contentType: 'text/longform',
     handler: async ({ res }) => {
-        return longform.longform(await res.text());
+        const { longform } = await import('@longform/longform');
+        return longform(await res.text());
     },
 };
 

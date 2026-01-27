@@ -1,8 +1,7 @@
 import m from 'mithril';
 import { JsonPointer } from 'json-ptr';
 import uriTemplates from 'uri-templates';
-import { processTemplate, longform } from '@longform/longform';
-import { expand } from '@occultist/mini-jsonld';
+import { processTemplate } from '@longform/longform';
 
 /**
   * Creates an Octiron selection instance.
@@ -3271,6 +3270,7 @@ const jsonLDHandler = {
     integrationType: 'jsonld',
     contentType: 'application/ld+json',
     handler: async ({ res }) => {
+        const { expand } = await import('@occultist/mini-jsonld');
         const json = await res.json();
         const jsonld = await expand(json);
         return {
@@ -3283,6 +3283,7 @@ const longformHandler = {
     integrationType: 'html-fragments',
     contentType: 'text/longform',
     handler: async ({ res }) => {
+        const { longform } = await import('@longform/longform');
         return longform(await res.text());
     },
 };

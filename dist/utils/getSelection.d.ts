@@ -1,6 +1,6 @@
+import type { Store } from '../store.js';
 import type { JSONObject, JSONValue } from '../types/common.js';
 import type { SelectionDetails, SelectionResult } from '../types/store.js';
-import type { Store } from '../store.js';
 /**
  * A circular selection error occurs when two or more
  * entities contain no concrete values and their '@id'
