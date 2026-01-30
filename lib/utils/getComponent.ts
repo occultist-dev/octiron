@@ -1,4 +1,4 @@
-import type { AnyComponent, BaseAttrs, EditComponent, PresentComponent, TypeDefs } from "../types/octiron.js";
+import type { AnyComponent, BaseAttrs, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.js";
 
 /**
  * @description
@@ -31,13 +31,13 @@ export function getComponent<
   propType,
   type,
   firstPickComponent,
-  typeDefs,
+  typeHandlers,
   fallbackComponent,
 }: {
   style: Style;
   propType?: string;
   type?: string | string[];
-  typeDefs: TypeDefs;
+  typeHandlers: TypeHandlers;
   firstPickComponent?: Component;
   fallbackComponent?: Component;
 }): Component | undefined {
@@ -47,25 +47,25 @@ export function getComponent<
 
   if (
     propType != null &&
-    typeDefs[propType]?.[style] != null
+    typeHandlers[propType]?.[style] != null
   ) {
-    return typeDefs[propType][style] as Component;
+    return typeHandlers[propType][style] as Component;
   }
 
   if (
     !Array.isArray(type) &&
     type != null &&
-    typeDefs[type]?.[style] != null
+    typeHandlers[type]?.[style] != null
   ) {
-    return typeDefs[type][style] as Component;
+    return typeHandlers[type][style] as Component;
   }
 
   if (Array.isArray(type)) {
     for (const item of type) {
       if (
-        typeDefs[item]?.[style] != null
+        typeHandlers[item]?.[style] != null
       ) {
-        return typeDefs[item][style] as Component;
+        return typeHandlers[item][style] as Component;
       }
     }
   }

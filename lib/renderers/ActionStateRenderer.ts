@@ -1,6 +1,6 @@
 import type m from 'mithril';
 import { selectionFactory } from '../factories/selectionFactory.js';
-import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeDefs } from '../types/octiron.js';
+import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.js';
 import type { EntityState } from '../types/store.js';
 import type { Store } from "../store.js";
 import type { Mutable } from "../types/common.js";
@@ -9,7 +9,7 @@ export type ActionRendererRef = {
   submitting: boolean;
   submitResult?: EntityState;
   store: Store;
-  typeDefs: TypeDefs;
+  typeHandlers: TypeHandlers;
 };
 
 export type ActionStateRendererAttrs = {

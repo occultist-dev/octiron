@@ -39,7 +39,7 @@ export const selectComponentFromArgs = <
     type: getDataType(rendererArgs.value),
     firstPickComponent,
     fallbackComponent,
-    typeDefs: args?.typeDefs ?? parentArgs.typeDefs,
+    typeHandlers: args?.typeHandlers ?? parentArgs.typeHandlers,
   });
 
   return [attrs, component];

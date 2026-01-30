@@ -1,12 +1,12 @@
 import type m from 'mithril';
-import type { OctironSelectArgs, SelectionParentArgs, SelectView, TypeDefs } from '../types/octiron.js';
+import type { OctironSelectArgs, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.js';
 import type { EntityState } from '../types/store.js';
 import type { Store } from "../store.js";
 export type ActionRendererRef = {
     submitting: boolean;
     submitResult?: EntityState;
     store: Store;
-    typeDefs: TypeDefs;
+    typeHandlers: TypeHandlers;
 };
 export type ActionStateRendererAttrs = {
     not?: boolean;

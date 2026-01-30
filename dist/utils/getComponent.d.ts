@@ -1,4 +1,4 @@
-import type { AnyComponent, EditComponent, PresentComponent, TypeDefs } from "../types/octiron.js";
+import type { AnyComponent, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.js";
 /**
  * @description
  * Returns a component based of Octiron's selection rules:
@@ -18,11 +18,11 @@ import type { AnyComponent, EditComponent, PresentComponent, TypeDefs } from "..
  * @param args.fallbackComponent - The component to use if no other component
  *                                 is picked.
  */
-export declare function getComponent<Style extends 'present' | 'edit', Component extends (Style extends 'present' ? PresentComponent | AnyComponent : EditComponent | AnyComponent)>({ style, propType, type, firstPickComponent, typeDefs, fallbackComponent, }: {
+export declare function getComponent<Style extends 'present' | 'edit', Component extends (Style extends 'present' ? PresentComponent | AnyComponent : EditComponent | AnyComponent)>({ style, propType, type, firstPickComponent, typeHandlers, fallbackComponent, }: {
     style: Style;
     propType?: string;
     type?: string | string[];
-    typeDefs: TypeDefs;
+    typeHandlers: TypeHandlers;
     firstPickComponent?: Component;
     fallbackComponent?: Component;
 }): Component | undefined;

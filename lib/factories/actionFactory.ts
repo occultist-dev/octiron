@@ -3,7 +3,7 @@ import { JsonPointer } from 'json-ptr';
 import { ActionStateRenderer } from "../renderers/ActionStateRenderer.js";
 import type { Store } from "../store.js";
 import type { JSONArray, JSONObject, JSONValue, SCMAction } from "../types/common.js";
-import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeDefs, UpdateArgs, UpdatePointer } from "../types/octiron.js";
+import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeHandlers, UpdateArgs, UpdatePointer } from "../types/octiron.js";
 import type { EntityState } from "../types/store.js";
 import { getSubmitDetails } from "../utils/getSubmitDetails.js";
 import { unravelArgs } from "../utils/unravelArgs.js";
@@ -19,7 +19,7 @@ export type ActionRefs = {
   submitting: boolean;
   payload: JSONObject;
   store: Store;
-  typeDefs: TypeDefs;
+  typeHandlers: TypeHandlers;
   submitResult?: EntityState;
 };
 

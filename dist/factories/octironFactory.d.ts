@@ -1,7 +1,7 @@
 import m from 'mithril';
 import type { Store } from "../store.js";
 import type { Mutable } from "../types/common.js";
-import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironPerformArgs, OctironRoot, OctironSelectArgs, OctironSelection, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, TypeDefs } from "../types/octiron.js";
+import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironPerformArgs, OctironRoot, OctironSelectArgs, OctironSelection, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, TypeHandlers } from "../types/octiron.js";
 export type CommonArgs = {
     pre?: m.Children;
     sep?: m.Children;
@@ -10,7 +10,7 @@ export type CommonArgs = {
     end?: number;
     predicate?: Predicate;
     store?: Store;
-    typeDefs?: TypeDefs;
+    typeHandlers?: TypeHandlers;
     attrs?: PresentAttrs | EditAttrs | AnyAttrs;
     component?: PresentComponent | EditComponent | AnyComponent;
     fallbackComponent?: AnyComponent;

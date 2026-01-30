@@ -107,7 +107,7 @@ export type AnyComponent<
   Attrs extends BaseAttrs = BaseAttrs,
 > = ComponentTypes<AnyAttrs<Value, Attrs>>;
 
-export type TypeDef<
+export type TypeHandler<
   Value extends JSONValue = JSONValue,
   Type extends string = string,
 > = {
@@ -116,12 +116,12 @@ export type TypeDef<
   edit?: EditComponent<Value> | AnyComponent<Value>;
 };
 
-export type TypeDefs<
+export type TypeHandlers<
   Type extends string = string,
   // deno-lint-ignore no-explicit-any
-  TypeDefList extends TypeDef<any, Type> = TypeDef<any, Type>,
+  TypeHandlerList extends TypeHandler<any, Type> = TypeHandler<any, Type>,
 > = {
-  [TypeDef in TypeDefList as TypeDef["type"]]: TypeDef;
+  [TypeHandler in TypeHandlerList as TypeHandler["type"]]: TypeHandler;
 };
 
 /**
@@ -201,7 +201,7 @@ export type PresentableArgs<
   component?: PresentComponent<any, Attrs> | AnyComponent<any, Attrs>;
   // deno-lint-ignore no-explicit-any
   fallbackComponent?: PresentComponent<any, Attrs>;
-  typeDefs?: TypeDefs;
+  typeHandlers?: TypeHandlers;
   store?: Store;
 };
 
@@ -226,7 +226,7 @@ export type EditableArgs = {
   multiple?: boolean;
   minLength?: number;
   maxLength?: number;
-  typeDefs?: TypeDefs;
+  typeHandlers?: TypeHandlers;
   store?: Store;
 };
 
@@ -337,7 +337,7 @@ export type UpdateableArgs<
   component?: EditComponent<any, Attrs> | AnyComponent<any, Attrs>;
   // deno-lint-ignore no-explicit-any
   fallbackComponent?: AnyComponent<any, Attrs>;
-  typeDefs?: TypeDefs;
+  typeHandlers?: TypeHandlers;
   store?: Store;
 };
 export interface OctironView {
@@ -350,7 +350,7 @@ export interface SelectView {
 
 export interface Origin {
   /**
-   * Fetches the root entity and presents it using the type defs.
+   * Fetches the root entity and presents it using the type handlers.
    */
   root(): Children;
   root(selector: Selector): Children;
@@ -945,7 +945,7 @@ export type Octiron =
 
 export type CommonParentArgs = {
   store: Store;
-  typeDefs: TypeDefs;
+  typeHandlers: TypeHandlers;
   parent?: Octiron;
 };
 

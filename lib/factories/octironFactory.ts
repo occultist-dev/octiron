@@ -4,7 +4,7 @@ import {PresentRenderer} from '../renderers/PresentRenderer.js';
 import {SelectionRenderer} from "../renderers/SelectionRenderer.js";
 import type {Store} from "../store.js";
 import type {Mutable} from "../types/common.js";
-import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeDefs} from "../types/octiron.js";
+import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeHandlers} from "../types/octiron.js";
 import {getIterableValue} from "../utils/getIterableValue.js";
 import {getDataType} from "../utils/getValueType.js";
 import {isIRIObject} from "../utils/isIRIObject.js";
@@ -27,7 +27,7 @@ export type CommonArgs = {
   end?: number,
   predicate?: Predicate,
   store?: Store,
-  typeDefs?: TypeDefs,
+  typeHandlers?: TypeHandlers,
   attrs?: PresentAttrs | EditAttrs | AnyAttrs,
   component?: PresentComponent | EditComponent | AnyComponent,
   fallbackComponent?: AnyComponent,
@@ -125,7 +125,7 @@ export function octironFactory<O extends Octiron>(
   // so it has references and control over the values.
   childArgs.parent = self as unknown as Octiron;
   childArgs.store = factoryArgs.store ?? parentArgs.store;
-  childArgs.typeDefs = factoryArgs.typeDefs ?? parentArgs.typeDefs;
+  childArgs.typeHandlers = factoryArgs.typeHandlers ?? parentArgs.typeHandlers;
 
   if (typeKey !== TypeKeys['root']) {
     self.propType = rendererArgs.propType;

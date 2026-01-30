@@ -64,13 +64,13 @@ export type AnyAttrs<Value extends JSONValue = JSONValue, Attrs extends BaseAttr
 export type PresentComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<PresentAttrs<Value, Attrs>>;
 export type EditComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<EditAttrs<Value, Attrs>>;
 export type AnyComponent<Value extends JSONValue = JSONValue, Attrs extends BaseAttrs = BaseAttrs> = ComponentTypes<AnyAttrs<Value, Attrs>>;
-export type TypeDef<Value extends JSONValue = JSONValue, Type extends string = string> = {
+export type TypeHandler<Value extends JSONValue = JSONValue, Type extends string = string> = {
     type: Type;
     present?: PresentComponent<Value> | AnyComponent<Value>;
     edit?: EditComponent<Value> | AnyComponent<Value>;
 };
-export type TypeDefs<Type extends string = string, TypeDefList extends TypeDef<any, Type> = TypeDef<any, Type>> = {
-    [TypeDef in TypeDefList as TypeDef["type"]]: TypeDef;
+export type TypeHandlers<Type extends string = string, TypeHandlerList extends TypeHandler<any, Type> = TypeHandler<any, Type>> = {
+    [TypeHandler in TypeHandlerList as TypeHandler["type"]]: TypeHandler;
 };
 /**
  * A view which is rendered in the following situations:
@@ -130,7 +130,7 @@ export type PresentableArgs<Attrs extends BaseAttrs = BaseAttrs> = {
     attrs?: Attrs;
     component?: PresentComponent<any, Attrs> | AnyComponent<any, Attrs>;
     fallbackComponent?: PresentComponent<any, Attrs>;
-    typeDefs?: TypeDefs;
+    typeHandlers?: TypeHandlers;
     store?: Store;
 };
 export type IterablePeridcate = (octiron: Octiron) => boolean;
@@ -152,7 +152,7 @@ export type EditableArgs = {
     multiple?: boolean;
     minLength?: number;
     maxLength?: number;
-    typeDefs?: TypeDefs;
+    typeHandlers?: TypeHandlers;
     store?: Store;
 };
 export type OctironSelectArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & PresentableArgs<Attrs> & SSRArgs;
@@ -209,7 +209,7 @@ export type UpdateableArgs<Attrs extends BaseAttrs = BaseAttrs> = {
     attrs?: Attrs;
     component?: EditComponent<any, Attrs> | AnyComponent<any, Attrs>;
     fallbackComponent?: AnyComponent<any, Attrs>;
-    typeDefs?: TypeDefs;
+    typeHandlers?: TypeHandlers;
     store?: Store;
 };
 export interface OctironView {
@@ -220,7 +220,7 @@ export interface SelectView {
 }
 export interface Origin {
     /**
-     * Fetches the root entity and presents it using the type defs.
+     * Fetches the root entity and presents it using the type handlers.
      */
     root(): Children;
     root(selector: Selector): Children;
@@ -630,7 +630,7 @@ export type Octiron = {
 } & (Omit<OctironRoot, 'select'> | Omit<OctironSelection, 'select'> | Omit<OctironAction, 'select'> | Omit<OctironActionSelection, 'select'>);
 export type CommonParentArgs = {
     store: Store;
-    typeDefs: TypeDefs;
+    typeHandlers: TypeHandlers;
     parent?: Octiron;
 };
 export type SelectionParentArgs = CommonParentArgs & {

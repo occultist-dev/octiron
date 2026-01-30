@@ -267,23 +267,23 @@ function mithrilRedraw() {
  * @param args.fallbackComponent - The component to use if no other component
  *                                 is picked.
  */
-function getComponent({ style, propType, type, firstPickComponent, typeDefs, fallbackComponent, }) {
+function getComponent({ style, propType, type, firstPickComponent, typeHandlers, fallbackComponent, }) {
     if (firstPickComponent != null) {
         return firstPickComponent;
     }
     if (propType != null &&
-        typeDefs[propType]?.[style] != null) {
-        return typeDefs[propType][style];
+        typeHandlers[propType]?.[style] != null) {
+        return typeHandlers[propType][style];
     }
     if (!Array.isArray(type) &&
         type != null &&
-        typeDefs[type]?.[style] != null) {
-        return typeDefs[type][style];
+        typeHandlers[type]?.[style] != null) {
+        return typeHandlers[type][style];
     }
     if (Array.isArray(type)) {
         for (const item of type) {
-            if (typeDefs[item]?.[style] != null) {
-                return typeDefs[item][style];
+            if (typeHandlers[item]?.[style] != null) {
+                return typeHandlers[item][style];
             }
         }
     }
@@ -320,7 +320,7 @@ const selectComponentFromArgs = (style, parentArgs, rendererArgs, args, factoryA
         type: getDataType(rendererArgs.value),
         firstPickComponent,
         fallbackComponent,
-        typeDefs: args?.typeDefs ?? parentArgs.typeDefs,
+        typeHandlers: args?.typeHandlers ?? parentArgs.typeHandlers,
     });
     return [attrs, component];
 };
@@ -1962,7 +1962,7 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
     // so it has references and control over the values.
     childArgs.parent = self;
     childArgs.store = factoryArgs.store ?? parentArgs.store;
-    childArgs.typeDefs = factoryArgs.typeDefs ?? parentArgs.typeDefs;
+    childArgs.typeHandlers = factoryArgs.typeHandlers ?? parentArgs.typeHandlers;
     if (typeKey !== TypeKeys['root']) {
         self.propType = rendererArgs.propType;
         self.dataType = getDataType(rendererArgs.value);
@@ -3204,27 +3204,27 @@ class Store {
 
 /**
  * @description
- * Aggregates a list of type defs into an easier to access
- * type def config object.
+ * Aggregates a list of type handlers into an easier to access
+ * type handler config object.
  *
- * @param typeDefs The type defs to aggregate.
+ * @param typeHandlers The type handlers to aggregate.
  */
-function makeTypeDefs(
+function makeTypeHandlers(
 // deno-lint-ignore no-explicit-any
-storeOrTypeDef, ...typeDefs) {
+storeOrTypeHandler, ...typeHandlers) {
     const config = {};
-    if (storeOrTypeDef instanceof Store) {
-        for (const typeDef of typeDefs) {
+    if (storeOrTypeHandler instanceof Store) {
+        for (const typeHandler of typeHandlers) {
             // deno-lint-ignore no-explicit-any
-            config[storeOrTypeDef.expand(typeDef.type)] = typeDef;
+            config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
         }
     }
     else {
         // deno-lint-ignore no-explicit-any
-        config[storeOrTypeDef.type] = storeOrTypeDef;
-        for (const typeDef of typeDefs) {
+        config[storeOrTypeHandler.type] = storeOrTypeHandler;
+        for (const typeHandler of typeHandlers) {
             // deno-lint-ignore no-explicit-any
-            config[typeDef.type] = typeDef;
+            config[typeHandler.type] = typeHandler;
         }
     }
     return config;
@@ -3260,12 +3260,12 @@ function classes(...classArgs) {
 
 /**
  * @description
- * Utility for creating a well typed typeDef.
+ * Utility for creating a well typed typeHandler.
  *
- * @param typeDef An object to property define the types for.
+ * @param typeHandler An object to property define the types for.
  */
-function makeTypeDef(typeDef) {
-    return typeDef;
+function makeTypeHandler(typeHandler) {
+    return typeHandler;
 }
 
 const jsonLDHandler = {
@@ -3662,26 +3662,26 @@ const OctironSubmitButton = () => {
 /**
  * Creates a root octiron instance.
  */
-function octiron({ typeDefs, ...storeArgs }) {
+function octiron({ typeHandlers, ...storeArgs }) {
     const store = new Store(storeArgs);
-    const config = typeDefs != null
-        ? makeTypeDefs(store, ...typeDefs)
+    const config = typeHandlers != null
+        ? makeTypeHandlers(store, ...typeHandlers)
         : {};
     return rootFactory({
         store,
-        typeDefs: config,
+        typeHandlers: config,
     });
 }
-octiron.fromInitialState = ({ typeDefs, ...storeArgs }) => {
+octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
     const store = Store.fromInitialState({
         ...storeArgs,
     });
-    const config = typeDefs != null
-        ? makeTypeDefs(store, ...typeDefs)
+    const config = typeHandlers != null
+        ? makeTypeHandlers(store, ...typeHandlers)
         : {};
     return rootFactory({
         store,
-        typeDefs: config,
+        typeHandlers: config,
     });
 };
 
@@ -3694,7 +3694,7 @@ exports.Store = Store;
 exports.classes = classes;
 exports.jsonLDHandler = jsonLDHandler;
 exports.longformHandler = longformHandler;
-exports.makeTypeDef = makeTypeDef;
-exports.makeTypeDefs = makeTypeDefs;
+exports.makeTypeHandler = makeTypeHandler;
+exports.makeTypeHandlers = makeTypeHandlers;
 exports.octiron = octiron;
 //# sourceMappingURL=octiron.cjs.map
