@@ -3,7 +3,6 @@ import m from "mithril";
 export type SelectionRendererAttrs = {
     entity?: boolean;
     selector: Selector;
-    fragment?: string;
     args: OctironSelectArgs;
     view: SelectView;
     parentArgs: SelectionParentArgs;

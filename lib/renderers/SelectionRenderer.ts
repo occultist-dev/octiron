@@ -17,26 +17,60 @@ import { selectionFactory } from "../factories/selectionFactory.js";
 import { isJSONObject } from "../utils/isJSONObject.js";
 import { mithrilRedraw } from "../utils/mithrilRedraw.js";
 import {isBrowserRender} from "../consts.js";
+import {Store} from "../store.js";
+import {JSONValue} from "@occultist/mini-jsonld";
 
 
 export type SelectionRendererAttrs = {
   entity?: boolean;
   selector: Selector;
-  fragment?: string;
+  //fragment?: string;
   args: OctironSelectArgs;
   view: SelectView;
   parentArgs: SelectionParentArgs;
 };
 
+type InternalPrevCache = {
+  selector: Selector;
+  args: {
+    fragment?: string;
+  };
+  parentArgs: {
+    store: Store;
+    value: JSONValue;
+  },
+};
+
 const preKey = Symbol.for('@pre');
 const postKey = Symbol.for('@post');
 
+function cachePrev(attrs: SelectionRendererAttrs): InternalPrevCache {
+  return {
+    selector: attrs.selector,
+    args: {
+      fragment: attrs.args.fragment,
+    },
+    parentArgs: {
+      store: attrs.parentArgs.store,
+      value: attrs.parentArgs.value,
+    },
+  };
+}
+
 function shouldReselect(
   next: SelectionRendererAttrs,
-  prev: SelectionRendererAttrs,
+  prev: InternalPrevCache,
 ) {
+  //console.log('SHOULD UPDATE', next.selector, next.args.fragment);
+  //console.log('PREV', prev);
+  //console.log('NEXT', next);
+  //console.log('RESULT', next.parentArgs.store !== prev.parentArgs.store ||
+  //  next.selector !== prev.selector ||
+  //  next.args.fragment !== prev.args.fragment ||
+  //  next.parentArgs.value !== prev.parentArgs.value);
   return next.parentArgs.store !== prev.parentArgs.store ||
     next.selector !== prev.selector ||
+    next.args.fragment !== prev.args.fragment ||
     next.parentArgs.value !== prev.parentArgs.value;
 }
 
@@ -58,6 +92,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
   let deferring: boolean = false;
   let currentAttrs = vnode.attrs;
   let details: undefined | SelectionDetails<ReadonlySelectionResult>;
+  let prev!: InternalPrevCache;
 
   const instances: Record<symbol, {
     octiron: OctironSelection;
@@ -227,11 +262,12 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
   return {
     oninit: ({ attrs }) => {
       currentAttrs = attrs;
+      prev = cachePrev(attrs);
 
       subscribe();
     },
     onbeforeupdate: ({ attrs }) => {
-      const reselect = shouldReselect(attrs, currentAttrs);
+      const reselect = shouldReselect(attrs, prev);
 
       currentAttrs = attrs;
 
@@ -239,6 +275,8 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         attrs.parentArgs.store.unsubscribe(key);
         subscribe();
       }
+
+      prev = cachePrev(attrs);
     },
     onbeforeremove: ({ attrs }) => {
       currentAttrs = attrs;
@@ -252,12 +290,17 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
 
       if (details == null || !details.complete) {
         return attrs.args.loading;
-      } else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
+      } else if ((details.hasErrors ||
+                  details.hasMissing) &&
+                    typeof attrs.args.fallback !== 'function') {
         return attrs.args.fallback;
-      } else if (details.result[0] != null && details.result[0].type === 'alternative') {
+      } else if (details.result[0] != null &&
+                 details.result[0].type === 'alternative') {
         if (details.result[0].integration.render != null) {
           return details.result[0].integration.render(
-            attrs.parentArgs.parent, attrs.args.fragment);
+            attrs.parentArgs.parent,
+            attrs.args.fragment,
+          );
         } else if (details.result[0].integration.error != null) {
           //return details.result[0].integration.error(attrs.args.fallback)
         }

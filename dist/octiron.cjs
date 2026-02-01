@@ -1707,9 +1707,29 @@ const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs,
     };
 };
 
+function cachePrev(attrs) {
+    return {
+        selector: attrs.selector,
+        args: {
+            fragment: attrs.args.fragment,
+        },
+        parentArgs: {
+            store: attrs.parentArgs.store,
+            value: attrs.parentArgs.value,
+        },
+    };
+}
 function shouldReselect(next, prev) {
+    //console.log('SHOULD UPDATE', next.selector, next.args.fragment);
+    //console.log('PREV', prev);
+    //console.log('NEXT', next);
+    //console.log('RESULT', next.parentArgs.store !== prev.parentArgs.store ||
+    //  next.selector !== prev.selector ||
+    //  next.args.fragment !== prev.args.fragment ||
+    //  next.parentArgs.value !== prev.parentArgs.value);
     return next.parentArgs.store !== prev.parentArgs.store ||
         next.selector !== prev.selector ||
+        next.args.fragment !== prev.args.fragment ||
         next.parentArgs.value !== prev.parentArgs.value;
 }
 /**
@@ -1728,6 +1748,7 @@ const SelectionRenderer = (vnode) => {
     let deferring = false;
     let currentAttrs = vnode.attrs;
     let details;
+    let prev;
     const instances = {};
     function createInstances() {
         let hasChanges = false;
@@ -1849,15 +1870,19 @@ const SelectionRenderer = (vnode) => {
     return {
         oninit: ({ attrs }) => {
             currentAttrs = attrs;
+            prev = cachePrev(attrs);
             subscribe();
         },
         onbeforeupdate: ({ attrs }) => {
-            const reselect = shouldReselect(attrs, currentAttrs);
+            const reselect = shouldReselect(attrs, prev);
             currentAttrs = attrs;
             if (reselect) {
+                //console.log('RESELECTING');
                 attrs.parentArgs.store.unsubscribe(key);
                 subscribe();
             }
+            //console.log('DETAILS', details);
+            prev = cachePrev(attrs);
         },
         onbeforeremove: ({ attrs }) => {
             currentAttrs = attrs;
@@ -1875,6 +1900,7 @@ const SelectionRenderer = (vnode) => {
             }
             else if (details.result[0] != null && details.result[0].type === 'alternative') {
                 if (details.result[0].integration.render != null) {
+                    console.log('RENDERING ALT', details, attrs);
                     return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
                 }
                 else if (details.result[0].integration.error != null) ;
@@ -2122,6 +2148,8 @@ function fragmentToHTML(fragment) {
 const HTMLFragmentsIntegrationComponent = () => {
     let fragment;
     let html;
+    let prevIRI;
+    let prevFragment;
     function setDomServer(attrs) {
         if (fragment === attrs.fragment) {
             return;
@@ -2209,6 +2237,21 @@ const HTMLFragmentsIntegrationComponent = () => {
             else {
                 setDomServer(attrs);
             }
+            prevIRI = attrs.integration.iri;
+            prevFragment = attrs.fragment;
+        },
+        onupdate({ attrs }) {
+            if (prevIRI !== attrs.integration.iri ||
+                prevFragment !== attrs.fragment) {
+                if (isBrowserRender) {
+                    setDomClient(attrs);
+                }
+                else {
+                    setDomServer(attrs);
+                }
+            }
+            prevIRI = attrs.integration.iri;
+            prevFragment = attrs.fragment;
         },
         view() {
             if (isBrowserRender && Array.isArray(html)) {
@@ -2457,7 +2500,7 @@ class HTMLFragmentsIntegration {
  * configured.
  */
 class UnrecognizedIntegration {
-    static type = 'unrecognized-integration';
+    static type = 'unrecognized';
     integrationType = 'unrecognized';
     #iri;
     #contentType;
@@ -3131,7 +3174,7 @@ class Store {
                 for (const stateInfo of entities) {
                     const handler = handlersMap[stateInfo.contentType];
                     const cls = integrationClasses[integrationType];
-                    if (cls.type !== handler.integrationType) {
+                    if (cls === null || cls.type !== handler?.integrationType) {
                         continue;
                     }
                     const state = cls.fromInitialState(stateInfo, handler);

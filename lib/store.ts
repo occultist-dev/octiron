@@ -839,7 +839,7 @@ export class Store {
             const handler = handlersMap[stateInfo.contentType];
             const cls = integrationClasses[integrationType as IntegrationType];
 
-            if (cls.type !== handler.integrationType) {
+            if (cls === null || cls.type !== handler?.integrationType) {
               continue;
             }
 

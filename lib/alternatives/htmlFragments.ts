@@ -26,6 +26,8 @@ export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmen
 export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType = () => {
   let fragment: string | undefined;
   let html: string | Element[] | undefined;
+  let prevIRI: string | undefined;
+  let prevFragment: string | undefined;
 
   function setDomServer(attrs: HTMLFragmentsIntegrationComponentAttrs) {
     if (fragment === attrs.fragment) {
@@ -131,6 +133,22 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
       } else {
         setDomServer(attrs);
       }
+
+      prevIRI = attrs.integration.iri;
+      prevFragment = attrs.fragment;
+    },
+    onupdate({ attrs }) {
+      if (prevIRI !== attrs.integration.iri ||
+          prevFragment !== attrs.fragment) {
+        if (isBrowserRender) {
+          setDomClient(attrs);
+        } else {
+          setDomServer(attrs);
+        }
+      }
+
+      prevIRI = attrs.integration.iri;
+      prevFragment = attrs.fragment;
     },
     view() {
       if (isBrowserRender && Array.isArray(html)) {
@@ -169,7 +187,6 @@ type HTMLFragmentsStateInfo = {
 
 export class HTMLFragmentsIntegration implements IntegrationState {
   static type = 'html-fragments' as const;
-
   readonly integrationType = 'html-fragments' as const;
 
   #rootRendered: boolean = false;

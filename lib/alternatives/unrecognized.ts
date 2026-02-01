@@ -17,7 +17,7 @@ export type UnrecognizedIntegrationArgs = {
  * configured.
  */
 export class UnrecognizedIntegration implements IntegrationState {
-  static type = 'unrecognized-integration' as const;
+  static type = 'unrecognized' as const;
   readonly integrationType = 'unrecognized' as const
 
   #iri: string;

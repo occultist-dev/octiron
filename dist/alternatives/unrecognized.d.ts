@@ -14,7 +14,7 @@ export type UnrecognizedIntegrationArgs = {
  */
 export declare class UnrecognizedIntegration implements IntegrationState {
     #private;
-    static type: "unrecognized-integration";
+    static type: "unrecognized";
     readonly integrationType: "unrecognized";
     constructor(args: UnrecognizedIntegrationArgs);
     error(view: Children | ErrorView): Children;
