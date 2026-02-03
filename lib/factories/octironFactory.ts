@@ -169,11 +169,15 @@ export function octironFactory<O extends Octiron>(
   }
 
   self.enter = (
-    arg1: Selector,
+    arg1: Selector | URL,
     arg2?: OctironSelectArgs | SelectView,
     arg3?: SelectView,
   ): m.Children => {
-    const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+    const [selector, args, view] = unravelArgs(
+      arg1 instanceof URL ? arg1.toString() : arg1,
+      arg2,
+      arg3,
+    );
 
     return m(SelectionRenderer, {
       entity: true,

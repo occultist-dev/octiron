@@ -9,6 +9,7 @@ export * from './utils/makeTypeHandler.js';
 export * from './utils/makeTypeHandlers.js';
 export * from './handlers/jsonLDHandler.js';
 export * from './handlers/longformHandler.js';
+export * from './handlers/problemDetailsJSONHandler.js';
 export * from './components/OctironJSON.js';
 export * from './components/OctironDebug.js';
 export * from './components/OctironExplorer.js';

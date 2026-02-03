@@ -61,13 +61,6 @@ function shouldReselect(
   next: SelectionRendererAttrs,
   prev: InternalPrevCache,
 ) {
-  //console.log('SHOULD UPDATE', next.selector, next.args.fragment);
-  //console.log('PREV', prev);
-  //console.log('NEXT', next);
-  //console.log('RESULT', next.parentArgs.store !== prev.parentArgs.store ||
-  //  next.selector !== prev.selector ||
-  //  next.args.fragment !== prev.args.fragment ||
-  //  next.parentArgs.value !== prev.parentArgs.value);
   return next.parentArgs.store !== prev.parentArgs.store ||
     next.selector !== prev.selector ||
     next.args.fragment !== prev.args.fragment ||

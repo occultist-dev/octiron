@@ -61,6 +61,7 @@ export function getSelection<T extends SelectionResult>({
   const details: SelectionDetails<T> = {
     selector: selectorStr,
     complete: false,
+    isProblem: false,
     hasErrors: false,
     hasMissing: false,
     required: [],
@@ -613,6 +614,7 @@ function selectEntity({
 
   if (!cache.ok) {
     details.hasErrors = true;
+    details.isProblem = cache.isProblem;
 
     if (selector == null || selector.length === 0) {
       return;

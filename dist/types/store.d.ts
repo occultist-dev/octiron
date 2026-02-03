@@ -434,6 +434,10 @@ export type SelectionDetails<T = SelectionResult> = {
      */
     hasErrors: boolean;
     /**
+     * True if the response was in the problem details content type.
+     */
+    isProblem: boolean;
+    /**
      * True if any selections are not defined in the data.
      */
     hasMissing: boolean;
@@ -479,6 +483,10 @@ export type LoadingEntityState = {
      */
     readonly status?: undefined;
     /**
+     * True if the response was of the problem details type
+     */
+    readonly isProblem: false;
+    /**
      *
      */
     readonly headers?: undefined;
@@ -516,6 +524,10 @@ export type SuccessEntityState = {
      */
     readonly status?: undefined;
     /**
+     * True if the response was of the problem details type
+     */
+    readonly isProblem: false;
+    /**
      *
      */
     readonly headers?: Headers;
@@ -549,6 +561,10 @@ export type SuccessAlternativeState = {
      */
     readonly status?: undefined;
     /**
+     * True if the response was of the problem details type
+     */
+    readonly isProblem: false;
+    /**
      *
      */
     readonly headers?: Headers;
@@ -581,6 +597,10 @@ export type FailureEntityState = {
      */
     readonly status: number;
     /**
+     * True if the response was of the problem details type
+     */
+    readonly isProblem: boolean;
+    /**
      *
      */
     readonly headers?: Headers;
@@ -609,6 +629,18 @@ export type ErrorDetails = {
     type: 'unrecognized-content-type';
 };
 export type ErrorView = (errorDetails: ErrorDetails) => Children;
+export type ProblemDetailsError = {
+    detail: string;
+    pointer: string;
+};
+export type ProblemDetails = {
+    type?: string;
+    title?: string;
+    status?: number;
+    detail?: string;
+    instance?: string;
+    errors?: ProblemDetailsError[];
+};
 export interface IntegrationState {
     integrationType: IntegrationType;
     iri: string;
@@ -621,6 +653,7 @@ export interface IntegrationState {
 }
 export type PrimaryState = Map<string, EntityState>;
 export type AlternativesState = Map<string, Map<string, IntegrationState>>;
+export type ProblemDetailsState = Map<string, ProblemDetails>;
 export type Method = string | 'get' | 'query' | 'post' | 'put' | 'patch' | 'delete';
 export type SubmitArgs = {
     /**

@@ -259,6 +259,7 @@ export class Store {
         iri,
         loading: false,
         ok: true,
+        isProblem: false,
         integration,
       };
     }
@@ -464,6 +465,7 @@ export class Store {
           ok: true,
           value: output.jsonld,
           headers: res.headers,
+          isProblem: false,
         })
       } else {
         const reason = new HTTPFailure(res.status, res);
@@ -475,6 +477,7 @@ export class Store {
           ok: false,
           value: output.jsonld,
           status: res.status,
+          isProblem: false,
           headers: res.headers,
           reason,
         });
@@ -491,6 +494,7 @@ export class Store {
           loading: false,
           ok: true,
           value: entity,
+          isProblem: false,
         });
       }
 
@@ -512,7 +516,6 @@ export class Store {
       const handler = this.#handlers.get(contentType);
 
       if (handler == null) {
-        console.log('UNRECOGNIZED', iri, contentType);
         const integration = new UnrecognizedIntegration({
           iri,
           contentType,
@@ -539,26 +542,22 @@ export class Store {
           output,
         });
       } else if (handler.integrationType === 'problem-details') {
-        throw new Error('Problem details response types not supported yet');
-      //} else if (handler.integrationType === 'html') {
-      //  const output = await handler.handler({
-      //    res,
-      //    store: this,
-      //  });
-      //  let integrations = this.#integrations.get(contentType);
+        const output = await handler.handler({
+          res,
+          store: this,
+        });
 
-      //  if (integrations == null) {
-      //    integrations = new Map();
-
-      //    this.#integrations.set(contentType, integrations);
-      //  }
-
-      //  integrations.set(iri, new HTMLIntegration(handler, {
-      //    iri,
-      //    contentType,
-      //    html: output.html,
-      //    id: output.id,
-      //  }));
+        this.#primary.set(iri, {
+          type: 'entity-failure',
+          iri,
+          loading: false,
+          ok: false,
+          value: output,
+          status: res.status,
+          isProblem: true,
+          reason: new HTTPFailure(res.status, res),
+          headers: res.headers,
+        });
       } else if (handler.integrationType === 'html-fragments') {
         const output = await handler.handler({
           res,
@@ -646,7 +645,8 @@ export class Store {
             });
           }
 
-          if (!isBrowserRender &&
+          if (args?.mainEntity &&
+              !isBrowserRender &&
               (this.#httpStatus == null || this.#httpStatus < 400) &&
               !res.status.toString().startsWith('3')
           ) {

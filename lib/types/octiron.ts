@@ -367,12 +367,12 @@ export interface Origin {
 }
 
 export interface EntryPoint {
-  enter(selector: Selector): Children;
+  enter(selector: Selector | URL): Children;
   // deno-lint-ignore no-explicit-any
-  enter(selector: Selector, args: OctironSelectArgs<any>): Children;
-  enter(selector: Selector, view: SelectView): Children;
+  enter(selector: Selector | URL, args: OctironSelectArgs<any>): Children;
+  enter(selector: Selector | URL, view: SelectView): Children;
   enter(
-    selector: Selector,
+    selector: Selector | URL,
   // deno-lint-ignore no-explicit-any
     args: OctironSelectArgs<any>,
     view: SelectView,

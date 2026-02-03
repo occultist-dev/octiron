@@ -722,6 +722,7 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
     const details = {
         selector: selectorStr,
         complete: false,
+        isProblem: false,
         hasErrors: false,
         hasMissing: false,
         required: [],
@@ -1115,6 +1116,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
     }
     if (!cache.ok) {
         details.hasErrors = true;
+        details.isProblem = cache.isProblem;
         if (selector == null || selector.length === 0) {
             return;
         }
@@ -1720,13 +1722,6 @@ function cachePrev(attrs) {
     };
 }
 function shouldReselect(next, prev) {
-    //console.log('SHOULD UPDATE', next.selector, next.args.fragment);
-    //console.log('PREV', prev);
-    //console.log('NEXT', next);
-    //console.log('RESULT', next.parentArgs.store !== prev.parentArgs.store ||
-    //  next.selector !== prev.selector ||
-    //  next.args.fragment !== prev.args.fragment ||
-    //  next.parentArgs.value !== prev.parentArgs.value);
     return next.parentArgs.store !== prev.parentArgs.store ||
         next.selector !== prev.selector ||
         next.args.fragment !== prev.args.fragment ||
@@ -1877,11 +1872,9 @@ const SelectionRenderer = (vnode) => {
             const reselect = shouldReselect(attrs, prev);
             currentAttrs = attrs;
             if (reselect) {
-                //console.log('RESELECTING');
                 attrs.parentArgs.store.unsubscribe(key);
                 subscribe();
             }
-            //console.log('DETAILS', details);
             prev = cachePrev(attrs);
         },
         onbeforeremove: ({ attrs }) => {
@@ -1895,12 +1888,14 @@ const SelectionRenderer = (vnode) => {
             if (details == null || !details.complete) {
                 return attrs.args.loading;
             }
-            else if ((details.hasErrors || details.hasMissing) && typeof attrs.args.fallback !== 'function') {
+            else if ((details.hasErrors ||
+                details.hasMissing) &&
+                typeof attrs.args.fallback !== 'function') {
                 return attrs.args.fallback;
             }
-            else if (details.result[0] != null && details.result[0].type === 'alternative') {
+            else if (details.result[0] != null &&
+                details.result[0].type === 'alternative') {
                 if (details.result[0].integration.render != null) {
-                    console.log('RENDERING ALT', details, attrs);
                     return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
                 }
                 else if (details.result[0].integration.error != null) ;
@@ -2018,7 +2013,7 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
         return self.value[type] ?? null;
     };
     self.enter = (arg1, arg2, arg3) => {
-        const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
+        const [selector, args, view] = unravelArgs(arg1 instanceof URL ? arg1.toString() : arg1, arg2, arg3);
         return m(SelectionRenderer, {
             entity: true,
             selector,
@@ -2733,6 +2728,7 @@ class Store {
             iri,
             loading: false,
             ok: true,
+            isProblem: false,
             integration,
         };
     }
@@ -2891,6 +2887,7 @@ class Store {
                 ok: true,
                 value: output.jsonld,
                 headers: res.headers,
+                isProblem: false,
             });
         }
         else {
@@ -2902,6 +2899,7 @@ class Store {
                 ok: false,
                 value: output.jsonld,
                 status: res.status,
+                isProblem: false,
                 headers: res.headers,
                 reason,
             });
@@ -2916,6 +2914,7 @@ class Store {
                 loading: false,
                 ok: true,
                 value: entity,
+                isProblem: false,
             });
         }
         for (const iri of iris) {
@@ -2929,7 +2928,6 @@ class Store {
         }
         const handler = this.#handlers.get(contentType);
         if (handler == null) {
-            console.log('UNRECOGNIZED', iri, contentType);
             const integration = new UnrecognizedIntegration({
                 iri,
                 contentType,
@@ -2953,23 +2951,21 @@ class Store {
             });
         }
         else if (handler.integrationType === 'problem-details') {
-            throw new Error('Problem details response types not supported yet');
-            //} else if (handler.integrationType === 'html') {
-            //  const output = await handler.handler({
-            //    res,
-            //    store: this,
-            //  });
-            //  let integrations = this.#integrations.get(contentType);
-            //  if (integrations == null) {
-            //    integrations = new Map();
-            //    this.#integrations.set(contentType, integrations);
-            //  }
-            //  integrations.set(iri, new HTMLIntegration(handler, {
-            //    iri,
-            //    contentType,
-            //    html: output.html,
-            //    id: output.id,
-            //  }));
+            const output = await handler.handler({
+                res,
+                store: this,
+            });
+            this.#primary.set(iri, {
+                type: 'entity-failure',
+                iri,
+                loading: false,
+                ok: false,
+                value: output,
+                status: res.status,
+                isProblem: true,
+                reason: new HTTPFailure(res.status, res),
+                headers: res.headers,
+            });
         }
         else if (handler.integrationType === 'html-fragments') {
             const output = await handler.handler({
@@ -3040,7 +3036,8 @@ class Store {
                         body: args.body,
                     });
                 }
-                if (!isBrowserRender &&
+                if (args?.mainEntity &&
+                    !isBrowserRender &&
                     (this.#httpStatus == null || this.#httpStatus < 400) &&
                     !res.status.toString().startsWith('3')) {
                     // if SSR store the first 400+ status for the final HTTP response
@@ -3330,6 +3327,14 @@ const longformHandler = {
     handler: async ({ res }) => {
         const { longform } = await import('@longform/longform');
         return longform(await res.text());
+    },
+};
+
+const problemDetailsJSONHandler = {
+    integrationType: 'problem-details',
+    contentType: 'application/problem+json',
+    handler: async ({ res }) => {
+        return res.json();
     },
 };
 
@@ -3740,4 +3745,5 @@ exports.longformHandler = longformHandler;
 exports.makeTypeHandler = makeTypeHandler;
 exports.makeTypeHandlers = makeTypeHandlers;
 exports.octiron = octiron;
+exports.problemDetailsJSONHandler = problemDetailsJSONHandler;
 //# sourceMappingURL=octiron.cjs.map

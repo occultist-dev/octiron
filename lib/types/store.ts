@@ -542,6 +542,7 @@ export type SelectionResult =
 
 export type SelectionDetails<T = SelectionResult> = {
   selector: string;
+
   /**
    * True if the selection does not require fetching any depencencies.
    * A selection can be complete while having errors.
@@ -552,6 +553,11 @@ export type SelectionDetails<T = SelectionResult> = {
    * True if any entities the selection traverses are in an error state.
    */
   hasErrors: boolean;
+
+  /**
+   * True if the response was in the problem details content type.
+   */
+  isProblem: boolean;
 
   /**
    * True if any selections are not defined in the data.
@@ -613,6 +619,11 @@ export type LoadingEntityState = {
   readonly status?: undefined;
 
   /**
+   * True if the response was of the problem details type
+   */
+  readonly isProblem: false;
+
+  /**
    *
    */
   readonly headers?: undefined;
@@ -659,6 +670,11 @@ export type SuccessEntityState = {
   readonly status?: undefined;
 
   /**
+   * True if the response was of the problem details type
+   */
+  readonly isProblem: false;
+
+  /**
    *
    */
   readonly headers?: Headers;
@@ -699,6 +715,11 @@ export type SuccessAlternativeState = {
   readonly status?: undefined;
 
   /**
+   * True if the response was of the problem details type
+   */
+  readonly isProblem: false;
+
+  /**
    *
    */
   readonly headers?: Headers;
@@ -712,6 +733,7 @@ export type SuccessAlternativeState = {
 
 export type FailureEntityState = {
   readonly type: 'entity-failure';
+
   /**
    * True if this entity has an in progress request.
    */
@@ -736,6 +758,11 @@ export type FailureEntityState = {
    * The response status. Only used for failure responses.
    */
   readonly status: number;
+
+  /**
+   * True if the response was of the problem details type
+   */
+  readonly isProblem: boolean;
 
   /**
    *
@@ -780,6 +807,20 @@ export type ErrorDetails = {
 
 export type ErrorView = (errorDetails: ErrorDetails) => Children;
 
+export type ProblemDetailsError = {
+  detail: string;
+  pointer: string;
+};
+
+export type ProblemDetails = {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  instance?: string;
+  errors?: ProblemDetailsError[];
+}
+
 export interface IntegrationState {
   integrationType: IntegrationType;
   iri: string;
@@ -793,6 +834,7 @@ export interface IntegrationState {
 
 export type PrimaryState = Map<string, EntityState>;
 export type AlternativesState = Map<string, Map<string, IntegrationState>>;
+export type ProblemDetailsState = Map<string, ProblemDetails>;
 
 export type Method =
   | string

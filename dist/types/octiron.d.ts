@@ -232,10 +232,10 @@ export interface Origin {
     root(selector: Selector, args: OctironSelectArgs<any>, view: SelectView): Children;
 }
 export interface EntryPoint {
-    enter(selector: Selector): Children;
-    enter(selector: Selector, args: OctironSelectArgs<any>): Children;
-    enter(selector: Selector, view: SelectView): Children;
-    enter(selector: Selector, args: OctironSelectArgs<any>, view: SelectView): Children;
+    enter(selector: Selector | URL): Children;
+    enter(selector: Selector | URL, args: OctironSelectArgs<any>): Children;
+    enter(selector: Selector | URL, view: SelectView): Children;
+    enter(selector: Selector | URL, args: OctironSelectArgs<any>, view: SelectView): Children;
 }
 export interface Queryable {
     get(termOrType: string): JSONValue;
