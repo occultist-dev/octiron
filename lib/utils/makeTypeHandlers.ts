@@ -39,8 +39,12 @@ export function makeTypeHandlers<
 
   if (storeOrTypeHandler instanceof Store) {
     for (const typeHandler of typeHandlers) {
+      if (typeHandler.type === '@id') {
+        config['@id'] = typeHandler;
+      } else {
       // deno-lint-ignore no-explicit-any
-      (config as any)[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
+        config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
+      }
     }
   } else {
     // deno-lint-ignore no-explicit-any

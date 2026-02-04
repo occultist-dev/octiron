@@ -25,12 +25,12 @@ export function parseSelectorString(selector: string, store: Store): SelectorObj
 
     if (typeof filter === 'string' && typeof subject === 'string') {
       selectors.push({
-        subject: store.expand(subject),
+        subject: subject === '@id' ? '@id' : store.expand(subject),
         filter,
       });
     } else if (typeof subject === 'string') {
       selectors.push({
-        subject: store.expand(subject),
+        subject: subject === '@id' ? '@id' : store.expand(subject),
       });
     } else {
       throw new Error(`Invalid selector: ${selector}`);

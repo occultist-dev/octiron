@@ -620,13 +620,13 @@ function parseSelectorString(selector, store) {
         const filter = match.groups?.filter;
         if (typeof filter === 'string' && typeof subject === 'string') {
             selectors.push({
-                subject: store.expand(subject),
+                subject: subject === '@id' ? '@id' : store.expand(subject),
                 filter,
             });
         }
         else if (typeof subject === 'string') {
             selectors.push({
-                subject: store.expand(subject),
+                subject: subject === '@id' ? '@id' : store.expand(subject),
             });
         }
         else {
@@ -3253,16 +3253,29 @@ storeOrTypeHandler, ...typeHandlers) {
     const config = {};
     if (storeOrTypeHandler instanceof Store) {
         for (const typeHandler of typeHandlers) {
-            // deno-lint-ignore no-explicit-any
-            config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
+            if (typeHandler.type === '@id') {
+                config['@id'] = typeHandler;
+            }
+            else {
+                // deno-lint-ignore no-explicit-any
+                config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
+            }
         }
     }
     else {
-        // deno-lint-ignore no-explicit-any
-        config[storeOrTypeHandler.type] = storeOrTypeHandler;
+        if (storeOrTypeHandler.type === '@id') {
+            config['@id'] = storeOrTypeHandler;
+        }
+        else {
+            config[storeOrTypeHandler.type] = storeOrTypeHandler;
+        }
         for (const typeHandler of typeHandlers) {
-            // deno-lint-ignore no-explicit-any
-            config[typeHandler.type] = typeHandler;
+            if (storeOrTypeHandler.type === '@id') {
+                config['@id'] = typeHandler;
+            }
+            else {
+                config[typeHandler.type] = typeHandler;
+            }
         }
     }
     return config;
