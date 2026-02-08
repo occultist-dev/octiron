@@ -1,0 +1,11 @@
+{
+  "version": "v1",
+  "packages": {
+    "@occultist/mini-jsonld": {
+      "signature": "01d6924e14d51e87b713fd07f5f69f6c"
+    },
+    "@longform/longform": {
+      "signature": "23bbd67154f2d250f2a5d3bc7f322ad2"
+    }
+  }
+}
