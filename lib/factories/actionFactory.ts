@@ -41,6 +41,7 @@ export function actionFactory<
   }
 
   async function submit() {
+    let isError: false;
     const { url, method, body, contentType, encodingType } = getSubmitDetails({
       payload,
       action: rendererArgs.value as SCMAction,
@@ -52,6 +53,10 @@ export function actionFactory<
     mithrilRedraw();
 
     try {
+      if (typeof args.onSubmit === 'function') {
+        args.onSubmit();
+      }
+
       submitResult = await parentArgs.store.submit(url, {
         method,
         body,
@@ -60,11 +65,19 @@ export function actionFactory<
       });
     } catch (err) {
       console.error(err);
+      
+      isError = true;
     }
 
     self.submitting = false;
 
     mithrilRedraw();
+
+    if (isError && typeof args.onSubmitFailure === 'function') {
+      args.onSubmitFailure();
+    } else if (!isError && typeof args.onSubmitSuccess === 'function') {
+      args.onSubmitSuccess();
+    }
   }
 
   function update(value: JSONObject) {
