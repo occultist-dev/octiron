@@ -585,11 +585,9 @@ function isMetadataObject(value) {
             term === '@value' ||
             term === '@list' ||
             term === '@set') {
-            console.log('NOT METADATA OBJ');
             return false;
         }
     }
-    console.log('IS METADATA OBJ');
     return true;
 }
 
@@ -1158,7 +1156,6 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
-            console.log('VALUE', cache);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -1329,7 +1326,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         console.warn('o.perform() only supports receiving JSON objects as initial values.');
     }
     async function submit() {
-        let isError;
+        let isError = false;
         const { url, method, body, contentType, encodingType } = getSubmitDetails({
             payload,
             action: rendererArgs.value,
@@ -1339,7 +1336,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         mithrilRedraw();
         try {
             if (typeof args.onSubmit === 'function') {
-                args.onSubmit();
+                args.onSubmit(self);
             }
             submitResult = await parentArgs.store.submit(url, {
                 method,
@@ -1355,10 +1352,13 @@ function actionFactory(args, parentArgs, rendererArgs) {
         self.submitting = false;
         mithrilRedraw();
         if (isError && typeof args.onSubmitFailure === 'function') {
-            args.onSubmitFailure();
+            args.onSubmitFailure(self);
         }
         else if (!isError && typeof args.onSubmitSuccess === 'function') {
-            args.onSubmitSuccess();
+            console.log('CALLING SUBMIT SUCCESS');
+            console.log(args.onSubmitSuccess);
+            console.log('OCTIRON', self);
+            args.onSubmitSuccess(self);
         }
     }
     function update(value) {
@@ -1871,8 +1871,6 @@ const SelectionRenderer = (vnode) => {
             listener,
             mainEntity: currentAttrs.args.mainEntity,
         });
-        if (entity)
-            console.log('DETAILS', details);
         fetchRequired(details.required);
         createInstances();
     }
@@ -3333,9 +3331,7 @@ const jsonLDHandler = {
     handler: async ({ res }) => {
         const { expand } = await import('@occultist/mini-jsonld');
         const json = await res.json();
-        console.log('INPUT', structuredClone(json));
         const jsonld = await expand(json);
-        console.log('JSONLD', jsonld);
         return {
             jsonld,
         };

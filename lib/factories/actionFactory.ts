@@ -3,7 +3,7 @@ import { JsonPointer } from 'json-ptr';
 import { ActionStateRenderer } from "../renderers/ActionStateRenderer.js";
 import type { Store } from "../store.js";
 import type { JSONArray, JSONObject, JSONValue, SCMAction } from "../types/common.js";
-import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeHandlers, UpdateArgs, UpdatePointer } from "../types/octiron.js";
+import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironRoot, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeHandlers, UpdateArgs, UpdatePointer } from "../types/octiron.js";
 import type { EntityState } from "../types/store.js";
 import { getSubmitDetails } from "../utils/getSubmitDetails.js";
 import { unravelArgs } from "../utils/unravelArgs.js";
@@ -41,7 +41,7 @@ export function actionFactory<
   }
 
   async function submit() {
-    let isError: false;
+    let isError = false;
     const { url, method, body, contentType, encodingType } = getSubmitDetails({
       payload,
       action: rendererArgs.value as SCMAction,
@@ -54,7 +54,7 @@ export function actionFactory<
 
     try {
       if (typeof args.onSubmit === 'function') {
-        args.onSubmit();
+        args.onSubmit(self as unknown as OctironAction);
       }
 
       submitResult = await parentArgs.store.submit(url, {
@@ -74,9 +74,9 @@ export function actionFactory<
     mithrilRedraw();
 
     if (isError && typeof args.onSubmitFailure === 'function') {
-      args.onSubmitFailure();
+      args.onSubmitFailure(self as unknown as OctironAction);
     } else if (!isError && typeof args.onSubmitSuccess === 'function') {
-      args.onSubmitSuccess();
+      args.onSubmitSuccess(self as unknown as OctironAction);
     }
   }
 

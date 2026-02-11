@@ -313,9 +313,9 @@ export type InterceptableArgs = {
   interceptor?: Interceptor;
 };
 
-export type OnSubmit = () => void;
-export type OnSubmitSuccess = () => void;
-export type OnSubmitFailure = () => void;
+export type OnSubmit = (o: OctironAction) => void;
+export type OnSubmitSuccess = (o: OctironAction) => void;
+export type OnSubmitFailure = (o: OctironAction) => void;
 
 export type SubmittableArgs = {
   submitOnInit?: boolean;

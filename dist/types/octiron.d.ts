@@ -191,9 +191,9 @@ actionValue: JSONObject) => JSONObject;
 export type InterceptableArgs = {
     interceptor?: Interceptor;
 };
-export type OnSubmit = () => void;
-export type OnSubmitSuccess = () => void;
-export type OnSubmitFailure = () => void;
+export type OnSubmit = (o: OctironAction) => void;
+export type OnSubmitSuccess = (o: OctironAction) => void;
+export type OnSubmitFailure = (o: OctironAction) => void;
 export type SubmittableArgs = {
     submitOnInit?: boolean;
     submitOnChange?: boolean;
@@ -238,7 +238,7 @@ export interface EntryPoint {
     enter(selector: Selector | URL, args: OctironSelectArgs<any>, view: SelectView): Children;
 }
 export interface Queryable {
-    get(termOrType: string): JSONValue;
+    get<Value extends JSONValue = JSONValue>(termOrType: string): Value;
 }
 export interface Selectable {
     select(selector: Selector): Children;
