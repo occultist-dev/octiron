@@ -380,7 +380,7 @@ export interface EntryPoint {
 }
 
 export interface Queryable {
-  get(termOrType: string): JSONValue;
+  get<Value extends JSONValue = JSONValue>(termOrType: string): Value;
 };
 
 export interface Selectable {
