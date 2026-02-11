@@ -744,12 +744,12 @@ export class Store {
       this.#listeners.get(key)?.cleanup();
     }
 
-    public async fetch(iri: string, accept?: string, {
+    public async fetch(iri: string | URL, accept?: string, {
       mainEntity,
     }: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri, { accept, mainEntity });
+      await this.#callFetcher(iri.toString(), { accept, mainEntity });
 
-      return this.#primary.get(iri) as SuccessEntityState | FailureEntityState;
+      return this.#primary.get(iri.toString()) as SuccessEntityState | FailureEntityState;
     }
 
     /**

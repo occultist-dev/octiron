@@ -587,9 +587,11 @@ function isMetadataObject(value) {
             term === '@value' ||
             term === '@list' ||
             term === '@set') {
+            console.log('NOT METADATA OBJ');
             return false;
         }
     }
+    console.log('IS METADATA OBJ');
     return true;
 }
 
@@ -1158,6 +1160,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
+            console.log('VALUE', cache);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -1328,6 +1331,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         console.warn('o.perform() only supports receiving JSON objects as initial values.');
     }
     async function submit() {
+        let isError;
         const { url, method, body, contentType, encodingType } = getSubmitDetails({
             payload,
             action: rendererArgs.value,
@@ -1336,6 +1340,9 @@ function actionFactory(args, parentArgs, rendererArgs) {
         self.url = new URL(url, self.store.rootIRI);
         mithrilRedraw();
         try {
+            if (typeof args.onSubmit === 'function') {
+                args.onSubmit();
+            }
             submitResult = await parentArgs.store.submit(url, {
                 method,
                 body,
@@ -1345,9 +1352,16 @@ function actionFactory(args, parentArgs, rendererArgs) {
         }
         catch (err) {
             console.error(err);
+            isError = true;
         }
         self.submitting = false;
         mithrilRedraw();
+        if (isError && typeof args.onSubmitFailure === 'function') {
+            args.onSubmitFailure();
+        }
+        else if (!isError && typeof args.onSubmitSuccess === 'function') {
+            args.onSubmitSuccess();
+        }
     }
     function update(value) {
         const prev = payload;
@@ -1859,6 +1873,8 @@ const SelectionRenderer = (vnode) => {
             listener,
             mainEntity: currentAttrs.args.mainEntity,
         });
+        if (entity)
+            console.log('DETAILS', details);
         fetchRequired(details.required);
         createInstances();
     }
@@ -3105,8 +3121,8 @@ class Store {
         this.#listeners.get(key)?.cleanup();
     }
     async fetch(iri, accept, { mainEntity, } = {}) {
-        await this.#callFetcher(iri, { accept, mainEntity });
-        return this.#primary.get(iri);
+        await this.#callFetcher(iri.toString(), { accept, mainEntity });
+        return this.#primary.get(iri.toString());
     }
     /**
      * Submits an action. Like fetch this will overwrite
@@ -3265,19 +3281,11 @@ storeOrTypeHandler, ...typeHandlers) {
         }
     }
     else {
-        if (storeOrTypeHandler.type === '@id') {
-            config['@id'] = storeOrTypeHandler;
-        }
-        else {
-            config[storeOrTypeHandler.type] = storeOrTypeHandler;
-        }
+        // deno-lint-ignore no-explicit-any
+        config[storeOrTypeHandler.type] = storeOrTypeHandler;
         for (const typeHandler of typeHandlers) {
-            if (storeOrTypeHandler.type === '@id') {
-                config['@id'] = typeHandler;
-            }
-            else {
-                config[typeHandler.type] = typeHandler;
-            }
+            // deno-lint-ignore no-explicit-any
+            config[typeHandler.type] = typeHandler;
         }
     }
     return config;
@@ -3327,7 +3335,9 @@ const jsonLDHandler = {
     handler: async ({ res }) => {
         const { expand } = await import('@occultist/mini-jsonld');
         const json = await res.json();
+        console.log('INPUT', structuredClone(json));
         const jsonld = await expand(json);
+        console.log('JSONLD', jsonld);
         return {
             jsonld,
         };

@@ -102,7 +102,7 @@ export declare class Store {
         mainEntity?: boolean;
     }): SelectionDetails<ReadonlySelectionResult>;
     unsubscribe(key: symbol): void;
-    fetch(iri: string, accept?: string, { mainEntity, }?: FetchArgs): Promise<SuccessEntityState | FailureEntityState>;
+    fetch(iri: string | URL, accept?: string, { mainEntity, }?: FetchArgs): Promise<SuccessEntityState | FailureEntityState>;
     /**
      * Submits an action. Like fetch this will overwrite
      * entities in the store with any entities returned
