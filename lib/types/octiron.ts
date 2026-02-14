@@ -142,6 +142,7 @@ export type FallbackView = (
 export type Fallback = FallbackView | Children;
 
 export type SSRArgs = {
+  
   /**
    * Used in SSR to mark the first request produced by this selection
    * as the main entity of the page.
@@ -278,6 +279,26 @@ export type OctironDefaultArgs<
   | OctironEditArgs<Attrs>
 ;
 
+export type InterceptorArgs = {
+
+  /**
+   * The incoming intercepted value
+   */
+  next: JSONObject;
+
+  /**
+   * The value held before the intercepted change.
+   */
+  prev: JSONObject;
+
+  /**
+   * The action or value which specifies the root of the selection.
+   */
+  actionValue: JSONObject;
+
+  o: OctironAction | OctironActionSelection;
+};
+
 /**
  * A function that intercepts changes to an action
  * payload value and allows the intercepter to transform
@@ -292,22 +313,7 @@ export type OctironDefaultArgs<
  * @param actionValue The action, or point in the action, which
  *                    relates to the edited value.
  */
-export type Interceptor = (
-  /**
-   * The incoming intercepted value
-   */
-  next: JSONObject,
-
-  /**
-   * The value held before the intercepted change.
-   */
-  prev: JSONObject,
-
-  /**
-   * The action or value which specifies the root of the selection.
-   */
-  actionValue: JSONObject,
-) => JSONObject;
+export type Interceptor = (args: InterceptorArgs) => JSONObject | false;
 
 export type InterceptableArgs = {
   interceptor?: Interceptor;

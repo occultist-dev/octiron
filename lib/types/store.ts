@@ -847,6 +847,18 @@ export type Method =
 ;
 
 export type SubmitArgs = {
+
+  /**
+   * Used in SSR to mark the first request produced by this selection
+   * as the main entity of the page.
+   *
+   * When marked as the main entity, the HTTP status of the first response
+   * triggered by this selection will be saved to the `store.httpStatus` value
+   * allowing the framework SSR rendering the Octiron app to use that status
+   * code when responding with the rendered HTML.
+   */
+  mainEntity?: boolean;
+
   /**
    * The http method of the request.
    */

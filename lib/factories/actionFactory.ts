@@ -58,6 +58,7 @@ export function actionFactory<
       }
 
       submitResult = await parentArgs.store.submit(url, {
+        mainEntity: args.mainEntity,
         method,
         body,
         contentType,
@@ -80,7 +81,7 @@ export function actionFactory<
     }
   }
 
-  function update(value: JSONObject) {
+  function update(value: JSONObject): boolean | void {
     const prev = payload;
     const next = {
       ...prev,
@@ -88,11 +89,18 @@ export function actionFactory<
     };
 
     if (typeof args.interceptor === 'function') {
-      payload = args.interceptor(
+      const res = args.interceptor({
         next,
         prev,
-        parentArgs.parent.value as SCMAction,
-      );
+        actionValue: parentArgs.parent.value as SCMAction,
+        o: self as unknown as OctironAction,
+      });
+
+      if (res === false) {
+        return false;
+      }
+
+      payload = res;
     } else {
       payload = next;
     }
@@ -164,11 +172,11 @@ export function actionFactory<
   self.submit = async function (
     arg1?: PayloadValueMapper<JSONObject> | JSONObject
   ): Promise<void> {
-    if (typeof arg1 === 'function') {
-      update(arg1(payload));
-    } else if (arg1 != null) {
-      update(arg1);
-    }
+    const res = typeof arg1 === 'function'
+      ? update(arg1(payload))
+      : update(arg1);
+
+    if (res === false) return;
 
     return await submit();
   } as OctironAction['submit'];
@@ -177,11 +185,11 @@ export function actionFactory<
     arg1: PayloadValueMapper<JSONObject> | JSONObject,
     args?: UpdateArgs,
   ): Promise<void> {
-    if (typeof arg1 === 'function') {
-      update(arg1(payload));
-    } else if (arg1 != null) {
-      update(arg1);
-    }
+    const res = typeof arg1 === 'function'
+      ? update(arg1(payload))
+      : update(arg1);
+
+    if (res === false) return;
 
     if (args?.submit || args?.submitOnChange) {
       await submit();

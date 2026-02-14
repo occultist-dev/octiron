@@ -1339,6 +1339,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
                 args.onSubmit(self);
             }
             submitResult = await parentArgs.store.submit(url, {
+                mainEntity: args.mainEntity,
                 method,
                 body,
                 contentType,
@@ -1355,9 +1356,6 @@ function actionFactory(args, parentArgs, rendererArgs) {
             args.onSubmitFailure(self);
         }
         else if (!isError && typeof args.onSubmitSuccess === 'function') {
-            console.log('CALLING SUBMIT SUCCESS');
-            console.log(args.onSubmitSuccess);
-            console.log('OCTIRON', self);
             args.onSubmitSuccess(self);
         }
     }
@@ -1368,7 +1366,16 @@ function actionFactory(args, parentArgs, rendererArgs) {
             ...value,
         };
         if (typeof args.interceptor === 'function') {
-            payload = args.interceptor(next, prev, parentArgs.parent.value);
+            const res = args.interceptor({
+                next,
+                prev,
+                actionValue: parentArgs.parent.value,
+                o: self,
+            });
+            if (res === false) {
+                return false;
+            }
+            payload = res;
         }
         else {
             payload = next;
@@ -1411,21 +1418,19 @@ function actionFactory(args, parentArgs, rendererArgs) {
         });
     };
     self.submit = async function (arg1) {
-        if (typeof arg1 === 'function') {
-            update(arg1(payload));
-        }
-        else if (arg1 != null) {
-            update(arg1);
-        }
+        const res = typeof arg1 === 'function'
+            ? update(arg1(payload))
+            : update(arg1);
+        if (res === false)
+            return;
         return await submit();
     };
     self.update = async function (arg1, args) {
-        if (typeof arg1 === 'function') {
-            update(arg1(payload));
-        }
-        else if (arg1 != null) {
-            update(arg1);
-        }
+        const res = typeof arg1 === 'function'
+            ? update(arg1(payload))
+            : update(arg1);
+        if (res === false)
+            return;
         if (args?.submit || args?.submitOnChange) {
             await submit();
         }
