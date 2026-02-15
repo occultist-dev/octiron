@@ -28,15 +28,6 @@ export const EditRenderer: m.ComponentTypes<EditRendererAttrs> = ({
   );
 
   return {
-    //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
-      // [attrs, component] = selectComponentFromArgs(
-      //   'present',
-      //   parentArgs,
-      //   rendererArgs,
-      //   args,
-      //   factoryArgs,
-      // );
-    //},
     view({ attrs: { o, rendererArgs }, children }) {
       if (component == null) {
         return null;

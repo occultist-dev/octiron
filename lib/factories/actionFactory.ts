@@ -156,27 +156,26 @@ export function actionFactory<
   ): m.Children => {
     const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-    return m(
-      ActionSelectionRenderer,
-      {
-        parentArgs: childArgs as ActionSelectionParentArgs,
-        selector,
-        value: self.value,
-        actionValue: parentArgs.parent.value as JSONObject,
-        args,
-        view,
-      }
-    );
+    return m(ActionSelectionRenderer, {
+      parentArgs: childArgs as ActionSelectionParentArgs,
+      selector,
+      value: self.value,
+      actionValue: parentArgs.parent.value as JSONObject,
+      args,
+      view,
+    });
   };
 
   self.submit = async function (
     arg1?: PayloadValueMapper<JSONObject> | JSONObject
   ): Promise<void> {
-    const res = typeof arg1 === 'function'
-      ? update(arg1(payload))
-      : update(arg1);
+    if (arg1 != null) {
+      const res = typeof arg1 === 'function'
+        ? update(arg1(payload))
+        : update(arg1);
 
-    if (res === false) return;
+      if (res === false) return;
+    }
 
     return await submit();
   } as OctironAction['submit'];

@@ -9,10 +9,12 @@ import type {Store} from '../store.js';
  * @param value   - A JSON object to expand.
  */
 export function expandValue(store: Store, value: JSONObject): JSONObject {
-  let expanded: JSONObject = {};
+  let expanded: JSONObject = Object.create(null);
 
   for (let [key, item] of Object.entries(value)) {
-    expanded[store.expand(key)] = item;
+    if (item != null) {
+      expanded[store.expand(key)] = item;
+    }
   }
 
   return expanded;

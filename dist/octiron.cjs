@@ -328,15 +328,6 @@ const selectComponentFromArgs = (style, parentArgs, rendererArgs, args, factoryA
 const EditRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs, }, }) => {
     const [attrs, component] = selectComponentFromArgs('edit', parentArgs, rendererArgs, args, factoryArgs);
     return {
-        //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
-        // [attrs, component] = selectComponentFromArgs(
-        //   'present',
-        //   parentArgs,
-        //   rendererArgs,
-        //   args,
-        //   factoryArgs,
-        // );
-        //},
         view({ attrs: { o, rendererArgs }, children }) {
             if (component == null) {
                 return null;
@@ -408,9 +399,11 @@ function getIterableValue(value) {
  * @param value   - A JSON object to expand.
  */
 function expandValue(store, value) {
-    let expanded = {};
+    let expanded = Object.create(null);
     for (let [key, item] of Object.entries(value)) {
-        expanded[store.expand(key)] = item;
+        if (item != null) {
+            expanded[store.expand(key)] = item;
+        }
     }
     return expanded;
 }
@@ -1420,11 +1413,13 @@ function actionFactory(args, parentArgs, rendererArgs) {
         });
     };
     self.submit = async function (arg1) {
-        const res = typeof arg1 === 'function'
-            ? update(arg1(payload))
-            : update(arg1);
-        if (res === false)
-            return;
+        if (arg1 != null) {
+            const res = typeof arg1 === 'function'
+                ? update(arg1(payload))
+                : update(arg1);
+            if (res === false)
+                return;
+        }
         return await submit();
     };
     self.update = async function (arg1, args) {
@@ -3332,13 +3327,17 @@ function makeTypeHandler(typeHandler) {
     return typeHandler;
 }
 
+let store;
 const jsonLDHandler = {
     integrationType: 'jsonld',
     contentType: 'application/ld+json',
     handler: async ({ res }) => {
-        const { expand } = await import('@occultist/mini-jsonld');
+        const { expand, JSONLDContextStore } = await import('@occultist/mini-jsonld');
+        if (store == undefined) {
+            store = new JSONLDContextStore({ cacheMethod: 'cache' });
+        }
         const json = await res.json();
-        const jsonld = await expand(json);
+        const jsonld = await expand(json, { store, url: res.url });
         return {
             jsonld,
         };
