@@ -16,7 +16,12 @@ function selectionFactory(args, parentArgs, rendererArgs) {
         // value: parentArgs.value,
         value: rendererArgs.value,
     };
-    const self = octironFactory('selection', factoryArgs, parentArgs, rendererArgs, childArgs);
+    const self = octironFactory('selection', {
+        factoryArgs,
+        parentArgs,
+        rendererArgs,
+        childArgs,
+    });
     return self;
 }
 
@@ -167,7 +172,7 @@ function getSubmitDetails({ payload, action, }) {
         if (valueName != null) {
             const propType = type.replace(/-input$/, '');
             fillArgs[valueName] = payload[propType];
-            delete submitBody[valueName];
+            delete submitBody[propType];
         }
     }
     const template = uriTemplates(urlTemplate);
@@ -413,13 +418,19 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         submitting: parentArgs.submitting,
         value: rendererArgs.value,
     };
-    const self = octironFactory('action-selection', factoryArgs, parentArgs, rendererArgs, childArgs);
+    const refs = {
+        factoryArgs,
+        parentArgs,
+        rendererArgs,
+        childArgs,
+    };
+    const self = octironFactory('action-selection', refs);
     self.readonly = rendererArgs.spec == null ? true : (rendererArgs.spec.readonly ?? false);
     self.inputName = rendererArgs.spec?.name != null ? rendererArgs.spec?.name : rendererArgs.propType;
     self.submitting = parentArgs.submitting;
     self.action = parentArgs.action;
     childArgs.updatePointer = (pointer, value, args, interceptor = factoryArgs.interceptor) => {
-        const prev = rendererArgs.value;
+        const prev = refs.rendererArgs.value;
         if (!isJSONObject(prev)) {
             console.warn(`Non object action change intercepted.`);
             return;
@@ -433,41 +444,41 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
             ptr.set(next, value, true);
         }
         if (typeof interceptor === 'function') {
-            next = interceptor(next, prev, rendererArgs.actionValue?.value);
+            next = interceptor(next, prev, refs.rendererArgs.actionValue?.value);
         }
-        parentArgs.updatePointer(rendererArgs.pointer, next, args);
+        refs.parentArgs.updatePointer(refs.rendererArgs.pointer, next, args);
     };
     self.update = async (arg1, args) => {
-        const value = rendererArgs.value;
+        const value = refs.rendererArgs.value;
         if (!isJSONObject(value)) {
             throw new Error(`Cannot call update on a non object selection instance`);
         }
         if (typeof arg1 === 'function') {
-            rendererArgs.update(arg1(value));
+            refs.rendererArgs.update(arg1(value));
         }
         else if (arg1 != null) {
-            rendererArgs.update(arg1);
+            refs.rendererArgs.update(arg1);
         }
         if (args?.submit || args?.submitOnChange) {
-            await parentArgs.submit();
+            await refs.parentArgs.submit();
         }
         else {
             mithrilRedraw();
         }
     };
     self.submit = () => {
-        return parentArgs.submit();
+        return refs.parentArgs.submit();
     };
     self.select = (arg1, arg2, arg3) => {
-        if (!isJSONObject(rendererArgs.value)) {
+        if (!isJSONObject(refs.rendererArgs.value)) {
             return null;
         }
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
         return m(ActionSelectionRenderer, {
             parentArgs: childArgs,
             selector,
-            value: rendererArgs.value,
-            actionValue: rendererArgs.actionValue.value,
+            value: refs.rendererArgs.value,
+            actionValue: refs.rendererArgs.actionValue.value,
             args,
             view,
         });
@@ -480,8 +491,8 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
             o: self,
             args,
             factoryArgs,
-            parentArgs,
-            rendererArgs,
+            parentArgs: refs.parentArgs,
+            rendererArgs: refs.rendererArgs,
         });
     };
     self.default = (args) => {
@@ -491,31 +502,31 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
     self.success = parentArgs.action.success;
     self.failure = parentArgs.action.failure;
     self.remove = (_args = {}) => {
-        if (rendererArgs.propType == null) {
+        if (refs.rendererArgs.propType == null) {
             return;
         }
-        const parentValue = parentArgs.parent.value;
-        const value = parentValue[rendererArgs.propType];
+        const parentValue = refs.parentArgs.parent.value;
+        const value = parentValue[refs.rendererArgs.propType];
         if (isIterable(value)) {
             const arrValue = getIterableValue(value);
             arrValue.splice(self.index, 1);
             if (arrValue.length === 0) {
-                delete parentValue[rendererArgs.propType];
+                delete parentValue[refs.rendererArgs.propType];
             }
         }
         else if (isJSONObject(value)) {
-            delete parentValue[rendererArgs.propType];
+            delete parentValue[refs.rendererArgs.propType];
         }
         mithrilRedraw();
     };
     self.append = (termOrType, value = {}, args = {}) => {
-        if (!isJSONObject(rendererArgs.value)) {
+        if (!isJSONObject(refs.rendererArgs.value)) {
             console.warn(`Attempt to append to non object octiron selection ${termOrType}`);
             return;
         }
         let nextValue;
-        const type = parentArgs.store.expand(termOrType);
-        const lastValue = rendererArgs.value[type];
+        const type = refs.parentArgs.store.expand(termOrType);
+        const lastValue = refs.rendererArgs.value[type];
         if (isJSONObject(value)) {
             value = expandValue(self.store, value);
         }
@@ -528,7 +539,7 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         else {
             nextValue = [lastValue, value];
         }
-        return parentArgs.updatePointer(rendererArgs.pointer, Object.assign({}, rendererArgs.value, { [type]: nextValue }), args);
+        return refs.parentArgs.updatePointer(refs.rendererArgs.pointer, Object.assign({}, refs.rendererArgs.value, { [type]: nextValue }), args);
     };
     return self;
 }
@@ -1189,10 +1200,30 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
     return;
 }
 
+function cachePrev$1(attrs) {
+    return {
+        selector: attrs.selector,
+        value: attrs.value,
+        actionValue: attrs.actionValue,
+        args: {
+            fragment: attrs.args.fragment,
+        },
+        parentArgs: {
+            store: attrs.parentArgs.store,
+        },
+    };
+}
+function shouldReselect$1(next, prev) {
+    return next.parentArgs.store !== prev.parentArgs.store ||
+        next.selector !== prev.selector ||
+        next.args.fragment !== prev.args.fragment ||
+        next.value !== prev.value;
+}
 const ActionSelectionRenderer = (vnode) => {
     let currentAttrs = vnode.attrs;
     let details;
-    const instances = {};
+    let prev;
+    const instances = new Map();
     function createInstances() {
         let hasChanges = false;
         const { parentArgs, selectionArgs } = currentAttrs;
@@ -1200,8 +1231,8 @@ const ActionSelectionRenderer = (vnode) => {
         for (let index = 0; index < details.result.length; index++) {
             const selectionResult = details.result[index];
             nextKeys.push(selectionResult.pointer);
-            if (instances[selectionResult.pointer] != null) {
-                const { rendererArgs, octiron } = instances[selectionResult.pointer];
+            if (instances.has(selectionResult.pointer)) {
+                const { rendererArgs, octiron } = instances.get(selectionResult.pointer);
                 const update = (value) => {
                     return parentArgs.updatePointer(selectionResult.pointer, value, selectionArgs);
                 };
@@ -1230,18 +1261,18 @@ const ActionSelectionRenderer = (vnode) => {
                 spec: selectionResult.spec,
             };
             const actionSelection = actionSelectionFactory(currentAttrs.args, parentArgs, rendererArgs);
-            instances[selectionResult.pointer] = {
+            instances.set(selectionResult.pointer, {
                 rendererArgs,
                 selection: actionValue,
                 octiron: actionSelection,
                 selectionResult,
-            };
+            });
         }
-        const prevKeys = Object.keys(instances);
+        const prevKeys = instances.keys();
         for (const key of prevKeys) {
             if (!nextKeys.includes(key)) {
                 hasChanges = true;
-                delete instances[key];
+                instances.delete(key);
             }
         }
         if (hasChanges && typeof window !== 'undefined') {
@@ -1266,12 +1297,19 @@ const ActionSelectionRenderer = (vnode) => {
     return {
         oninit: ({ attrs }) => {
             currentAttrs = attrs;
+            prev = cachePrev$1(attrs);
             updateSelection();
         },
         onbeforeupdate: ({ attrs }) => {
+            const reselect = shouldReselect$1(attrs, prev);
             currentAttrs = attrs;
-            for (const instance of Object.values(instances)) {
-                instance.octiron._updateArgs('args', attrs.args);
+            if (reselect) {
+                updateSelection();
+            }
+            else {
+                for (const instance of instances.values()) {
+                    instance.octiron._updateArgs(attrs.args);
+                }
             }
             updateSelection();
         },
@@ -1283,7 +1321,7 @@ const ActionSelectionRenderer = (vnode) => {
             if (typeof view === 'undefined') {
                 return;
             }
-            const list = Object.values(instances);
+            const list = Array.from(instances.values());
             const children = [pre];
             for (let index = 0; index < list.length; index++) {
                 const { octiron, selectionResult } = list[index];
@@ -1322,7 +1360,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         let isError = false;
         const { url, method, body, contentType, encodingType } = getSubmitDetails({
             payload,
-            action: rendererArgs.value,
+            action: refs.rendererArgs.value,
         });
         self.submitting = true;
         self.url = new URL(url, self.store.rootIRI);
@@ -1331,7 +1369,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
             if (typeof args.onSubmit === 'function') {
                 args.onSubmit(self);
             }
-            submitResult = await parentArgs.store.submit(url, {
+            submitResult = await refs.parentArgs.store.submit(url, {
                 mainEntity: args.mainEntity,
                 method,
                 body,
@@ -1362,7 +1400,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
             const res = args.interceptor({
                 next,
                 prev,
-                actionValue: parentArgs.parent.value,
+                actionValue: refs.parentArgs.parent.value,
                 o: self,
             });
             if (res === false) {
@@ -1374,7 +1412,12 @@ function actionFactory(args, parentArgs, rendererArgs) {
             payload = next;
         }
         childArgs.value = self.value = value;
-        mithrilRedraw();
+        if (args.submitOnChange) {
+            submit();
+        }
+        else {
+            mithrilRedraw();
+        }
     }
     const updatePointer = (pointer, value, _args) => {
         const next = Object.assign({}, payload);
@@ -1393,7 +1436,13 @@ function actionFactory(args, parentArgs, rendererArgs) {
         submit,
         updatePointer,
     };
-    const self = octironFactory('action', factoryArgs, parentArgs, rendererArgs, childArgs);
+    const refs = {
+        factoryArgs,
+        parentArgs,
+        rendererArgs,
+        childArgs,
+    };
+    const self = octironFactory('action', refs);
     self.value = payload;
     self.action = parentArgs.parent;
     self.actionValue = rendererArgs.actionValue;
@@ -1405,7 +1454,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
             parentArgs: childArgs,
             selector,
             value: self.value,
-            actionValue: parentArgs.parent.value,
+            actionValue: refs.parentArgs.parent.value,
             args,
             view,
         });
@@ -1418,15 +1467,15 @@ function actionFactory(args, parentArgs, rendererArgs) {
             if (res === false)
                 return;
         }
-        return await submit();
+        return submit();
     };
-    self.update = async function (arg1, args) {
+    self.update = async function (arg1, arg2) {
         const res = typeof arg1 === 'function'
             ? update(arg1(payload))
             : update(arg1);
         if (res === false)
             return;
-        if (args?.submit || args?.submitOnChange) {
+        if (arg2?.submit || args.submitOnChange) {
             await submit();
         }
         else {
@@ -1434,7 +1483,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         }
     };
     self.append = (termOrType, value = {}, args = {}) => {
-        const type = parentArgs.store.expand(termOrType);
+        const type = refs.parentArgs.store.expand(termOrType);
         if (!isJSONObject(self.value)) {
             return;
         }
@@ -1486,7 +1535,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
     try {
         const submitDetails = getSubmitDetails({
             payload: self.value,
-            action: rendererArgs.value,
+            action: refs.rendererArgs.value,
         });
         self.url = new URL(submitDetails.url);
         self.method = submitDetails.method;
@@ -1495,7 +1544,7 @@ function actionFactory(args, parentArgs, rendererArgs) {
         console.error(err);
     }
     if (self.url != null) {
-        submitResult = parentArgs.store.entity(self.url.toString());
+        submitResult = refs.parentArgs.store.entity(self.url.toString());
     }
     if (typeof window === 'undefined' && args.submitOnInit &&
         submitResult == null) {
@@ -1623,6 +1672,7 @@ const PerformRenderer = ({ attrs }) => {
                 complete: true,
                 hasErrors: false,
                 hasMissing: false,
+                isProblem: false,
                 dependencies: [],
                 required: [],
                 result: [result],
@@ -1652,7 +1702,7 @@ const PerformRenderer = ({ attrs }) => {
             }
             currentAttrs = attrs;
             for (const instance of Object.values(instances)) {
-                instance.action._updateArgs('args', attrs.args);
+                instance.action._updateArgs(attrs.args);
             }
         },
         onbeforeremove: ({ attrs }) => {
@@ -1756,17 +1806,17 @@ const SelectionRenderer = (vnode) => {
     let currentAttrs = vnode.attrs;
     let details;
     let prev;
-    const instances = {};
+    const instances = new Map();
     function createInstances() {
         let hasChanges = false;
         let initialDetails = details == null;
         const nextKeys = [];
         if (details == null) {
-            const prevKeys = Reflect.ownKeys(instances);
+            const prevKeys = instances.keys();
             for (const key of prevKeys) {
                 if (!nextKeys.includes(key)) {
                     hasChanges = true;
-                    delete instances[key];
+                    instances.delete(key);
                 }
             }
             if (hasChanges) {
@@ -1778,9 +1828,9 @@ const SelectionRenderer = (vnode) => {
             const selectionResult = details.result[index];
             const key = Symbol.for(selectionResult.pointer);
             nextKeys.push(key);
-            if (Object.hasOwn(instances, key)) {
+            if (instances.has(key)) {
                 const next = selectionResult;
-                const prev = instances[key].selectionResult;
+                const prev = instances.get(key).selectionResult;
                 if (prev.type === 'value' &&
                     next.type === 'value' &&
                     next.value === prev.value) {
@@ -1801,16 +1851,15 @@ const SelectionRenderer = (vnode) => {
                 propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
             };
             const octiron = selectionFactory(currentAttrs.args, currentAttrs.parentArgs, rendererArgs);
-            instances[key] = {
+            instances.set(key, {
                 octiron,
                 selectionResult,
-            };
+            });
         }
-        const prevKeys = Reflect.ownKeys(instances);
-        for (const key of prevKeys) {
+        for (const key of instances.keys()) {
             if (!nextKeys.includes(key)) {
                 hasChanges = true;
-                delete instances[key];
+                instances.delete(key);
             }
         }
         if (!initialDetails && hasChanges) {
@@ -1887,6 +1936,11 @@ const SelectionRenderer = (vnode) => {
                 attrs.parentArgs.store.unsubscribe(key);
                 subscribe();
             }
+            else {
+                for (const value of instances.values()) {
+                    value.octiron._updateArgs(attrs.args);
+                }
+            }
             prev = cachePrev(attrs);
         },
         onbeforeremove: ({ attrs }) => {
@@ -1915,12 +1969,12 @@ const SelectionRenderer = (vnode) => {
             }
             const view = attrs.view;
             const { pre, sep, post, start, end, predicate, fallback, } = currentAttrs.args;
+            let list = [];
             const children = [];
-            let list = Reflect.ownKeys(instances).map(((key) => {
-                const instance = instances[key];
+            for (const instance of instances.values()) {
                 instance.octiron.position = -1;
-                return instance;
-            }));
+                list.push(instance);
+            }
             if (start != null || end != null) {
                 list = list.slice(start ?? 0, end);
             }
@@ -1928,27 +1982,28 @@ const SelectionRenderer = (vnode) => {
                 list = list.filter(({ octiron }) => predicate(octiron));
             }
             if (pre != null) {
-                children.push(m.fragment({}, [pre]));
+                children.push(m.fragment({ key: `pre` }, [pre]));
             }
             for (let index = 0; index < list.length; index++) {
                 const { selectionResult, octiron } = list[index];
+                const key = selectionResult.key;
                 octiron.position = index + 1;
                 if (index !== 0) {
-                    children.push(m.fragment({}, [sep]));
+                    children.push(m.fragment({ key: `0:${key}` }, [sep]));
                 }
                 if (selectionResult.type === 'value') {
-                    children.push(m.fragment({}, [view(octiron)]));
+                    children.push(m.fragment({ key: `1:${key}` }, [view(octiron)]));
                 }
                 else if (!selectionResult.ok && typeof fallback === 'function') ;
                 else if (!selectionResult.ok) {
-                    children.push(m.fragment({}, [fallback]));
+                    children.push(m.fragment({ key: `2:${key}` }, [fallback]));
                 }
                 else {
-                    children.push(m.fragment({}, [view(octiron)]));
+                    children.push(m.fragment({ key: `3:${key}` }, [view(octiron)]));
                 }
             }
             if (post != null) {
-                children.push(m.fragment({}, [post]));
+                children.push(m.fragment({ key: `post` }, [post]));
             }
             return children;
         },
@@ -1970,9 +2025,12 @@ const TypeKeys = {
  * @param rendererArgs - Args passed from the Mithril renderer component.
  * @param childArgs - Args to pass through to any child renderers, to be their parent args.
  */
-function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {}, childArgs = {}) {
+function octironFactory(octironType, refs) {
+    refs.rendererArgs ??= {};
+    refs.childArgs ??= {};
     const typeKey = TypeKeys[octironType];
-    const name = isIRIObject(rendererArgs.value) ? rendererArgs.value['@id'] : rendererArgs.propType ?? 'octiron';
+    const name = isIRIObject(refs.rendererArgs.value)
+        ? refs.rendererArgs.value['@id'] : refs.rendererArgs.propType ?? 'octiron';
     // hack to give the function a dynamically set name...
     const self = ({ [name]: (predicate, children) => {
             const passes = predicate(self);
@@ -1981,24 +2039,24 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
             }
             return null;
         } })[name];
-    self.id = parentArgs.store.key();
+    self.id = refs.parentArgs.store.key();
     self.isOctiron = true;
     self.octironType = octironType;
     self.readonly = true;
-    self.value = rendererArgs.value ?? null;
-    self.store = parentArgs.store;
-    self.index = rendererArgs.index ?? 0;
+    self.value = refs.rendererArgs.value ?? null;
+    self.store = refs.parentArgs.store;
+    self.index = refs.rendererArgs.index ?? 0;
     self.position = -1;
-    self.expand = (typeOrTerm) => parentArgs.store.expand(typeOrTerm);
+    self.expand = (typeOrTerm) => refs.parentArgs.store.expand(typeOrTerm);
     // easiest to define the common child args here
     // but the object is passed in from the parent factory
     // so it has references and control over the values.
-    childArgs.parent = self;
-    childArgs.store = factoryArgs.store ?? parentArgs.store;
-    childArgs.typeHandlers = factoryArgs.typeHandlers ?? parentArgs.typeHandlers;
+    refs.childArgs.parent = self;
+    refs.childArgs.store = refs.factoryArgs.store ?? refs.parentArgs.store;
+    refs.childArgs.typeHandlers = refs.factoryArgs.typeHandlers ?? refs.parentArgs.typeHandlers;
     if (typeKey !== TypeKeys['root']) {
-        self.propType = rendererArgs.propType;
-        self.dataType = getDataType(rendererArgs.value);
+        self.propType = refs.rendererArgs.propType;
+        self.dataType = getDataType(refs.rendererArgs.value);
     }
     self.not = (predicate, children) => {
         if (self == null) {
@@ -2031,21 +2089,21 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
             selector,
             args,
             view,
-            parentArgs: childArgs,
+            parentArgs: refs.childArgs,
         });
     };
     const rootChildArgs = {
-        ...childArgs,
-        value: parentArgs.store.entity(parentArgs.store.rootIRI)?.value,
+        ...refs.childArgs,
+        value: refs.parentArgs.store.entity(refs.parentArgs.store.rootIRI)?.value,
     };
     self.root = (arg1, arg2, arg3) => {
         let selector;
         const [childSelector, args, view] = unravelArgs(arg1, arg2, arg3);
         if (childSelector == null) {
-            selector = parentArgs.store.rootIRI;
+            selector = refs.parentArgs.store.rootIRI;
         }
         else {
-            selector = `${parentArgs.store.rootIRI} ${childSelector}`;
+            selector = `${refs.parentArgs.store.rootIRI} ${childSelector}`;
         }
         return m(SelectionRenderer, {
             entity: true,
@@ -2054,7 +2112,6 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
             view,
             parentArgs: rootChildArgs,
         });
-        // return self.enter(selector, args, view);
     };
     // action and action selection define their own select method
     switch (typeKey) {
@@ -2064,14 +2121,14 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
         case TypeKeys['selection']:
             self.select = ((arg1, arg2, arg3) => {
                 const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-                if (!isJSONObject(rendererArgs.value)) {
+                if (!isJSONObject(refs.rendererArgs.value)) {
                     return null;
                 }
                 return m(SelectionRenderer, {
                     selector,
                     args,
                     view,
-                    parentArgs: childArgs,
+                    parentArgs: refs.childArgs,
                 });
             });
     }
@@ -2084,9 +2141,9 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
                 return m(PresentRenderer, {
                     o: self,
                     args: args,
-                    factoryArgs: factoryArgs,
-                    parentArgs,
-                    rendererArgs,
+                    factoryArgs: refs.factoryArgs,
+                    parentArgs: refs.parentArgs,
+                    rendererArgs: refs.rendererArgs,
                 });
             };
     }
@@ -2110,28 +2167,15 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
                     selector,
                     args,
                     view,
-                    parentArgs: childArgs,
+                    parentArgs: refs.childArgs,
                 });
             };
             break;
         }
     }
     if (typeKey !== TypeKeys['root']) {
-        const updateArgs = (type, args) => {
-            const currentArgs = type === 'args'
-                ? factoryArgs
-                : type === 'parent'
-                    ? parentArgs
-                    : rendererArgs;
-            // Hack, still don't know if it will work...
-            for (const key of Object.keys(currentArgs)) {
-                // deno-lint-ignore no-explicit-any
-                delete currentArgs[key];
-            }
-            for (const [key, value] of Object.entries(args)) {
-                // deno-lint-ignore no-explicit-any
-                currentArgs[key] = value;
-            }
+        const updateArgs = (factoryArgs) => {
+            refs.factoryArgs = factoryArgs;
         };
         // deno-lint-ignore no-explicit-any
         self._updateArgs = updateArgs;
@@ -2141,7 +2185,10 @@ function octironFactory(octironType, factoryArgs, parentArgs, rendererArgs = {},
 
 function rootFactory(parentArgs) {
     const factoryArgs = {};
-    const self = octironFactory('root', factoryArgs, parentArgs);
+    const self = octironFactory('root', {
+        factoryArgs,
+        parentArgs,
+    });
     return self;
 }
 

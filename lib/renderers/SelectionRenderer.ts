@@ -1,24 +1,24 @@
-import type { JSONObject, Mutable } from "../types/common.js";
+import type {JSONValue} from "@occultist/mini-jsonld";
+import m from "mithril";
+import {isBrowserRender} from "../consts.ts";
+import {type InstanceHooks} from "../factories/octironFactory.ts";
+import {selectionFactory} from "../factories/selectionFactory.ts";
+import {Store} from "../store.ts";
+import type {JSONObject, Mutable} from "../types/common.ts";
 import type {
-CommonRendererArgs,
+  CommonRendererArgs,
   OctironSelectArgs,
   OctironSelection,
   SelectionParentArgs,
   Selector,
   SelectView,
-} from "../types/octiron.js";
+} from "../types/octiron.ts";
 import type {
-  Failure,
   ReadonlySelectionResult,
-  SelectionDetails,
-} from "../types/store.js";
-import m from "mithril";
-import { selectionFactory } from "../factories/selectionFactory.js";
-import { isJSONObject } from "../utils/isJSONObject.js";
-import { mithrilRedraw } from "../utils/mithrilRedraw.js";
-import {isBrowserRender} from "../consts.js";
-import {Store} from "../store.js";
-import {JSONValue} from "@occultist/mini-jsonld";
+  SelectionDetails
+} from "../types/store.ts";
+import {isJSONObject} from "../utils/isJSONObject.ts";
+import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
 
 
 export type SelectionRendererAttrs = {
@@ -87,10 +87,12 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
   let details: undefined | SelectionDetails<ReadonlySelectionResult>;
   let prev!: InternalPrevCache;
 
-  const instances: Record<symbol, {
-    octiron: OctironSelection;
+  type Instance = {
+    octiron: OctironSelection & InstanceHooks;
     selectionResult: ReadonlySelectionResult;
-  }> = {};
+  };
+
+  const instances: Map<symbol, Instance> = new Map();
 
   function createInstances() {
     let hasChanges = false;
@@ -98,13 +100,13 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     const nextKeys: Array<symbol> = [];
 
     if (details == null) {
-      const prevKeys = Reflect.ownKeys(instances) as symbol[];
+      const prevKeys = instances.keys();
 
       for (const key of prevKeys) {
         if (!nextKeys.includes(key)) {
           hasChanges = true;
 
-          delete instances[key];
+          instances.delete(key);
         }
       }
 
@@ -121,9 +123,9 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
 
       nextKeys.push(key);
 
-      if (Object.hasOwn(instances, key)) {
+      if (instances.has(key)) {
         const next = selectionResult;
-        const prev = instances[key].selectionResult;
+        const prev = instances.get(key).selectionResult;
 
         if (
           prev.type === 'value' &&
@@ -155,19 +157,17 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         rendererArgs,
       );
 
-      instances[key] = {
+      instances.set(key, {
         octiron,
         selectionResult,
-      };
+      });
     }
 
-    const prevKeys = Reflect.ownKeys(instances) as symbol[];
-
-    for (const key of prevKeys) {
+    for (const key of instances.keys()) {
       if (!nextKeys.includes(key)) {
         hasChanges = true;
 
-        delete instances[key];
+        instances.delete(key);
       }
     }
 
@@ -267,6 +267,10 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       if (reselect) {
         attrs.parentArgs.store.unsubscribe(key);
         subscribe();
+      } else {
+        for (const value of instances.values()) {
+          value.octiron._updateArgs(attrs.args);
+        }
       }
 
       prev = cachePrev(attrs);
@@ -311,14 +315,14 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         fallback,
       } = currentAttrs.args;
 
+      let list: Array<Instance> = [];
       const children: m.Children = [];
-      let list = Reflect.ownKeys(instances).map(((key) => {
-        const instance = instances[key as symbol];
 
+      for (const instance of instances.values()) {
         (instance.octiron as Mutable<OctironSelection>).position = -1;
 
-        return instance;
-      }));
+        list.push(instance);
+      }
 
       if (start != null || end != null) {
         list = list.slice(
@@ -332,34 +336,34 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
       }
 
       if (pre != null) {
-        children.push(m.fragment({}, [pre]));
+        children.push(m.fragment({ key: `pre` }, [pre]));
       }
 
       for (let index = 0; index < list.length; index++) {
         const { selectionResult, octiron } = list[index];
+        const key = selectionResult.key;
 
         (octiron as Mutable<OctironSelection>).position = index + 1;
 
-
         if (index !== 0) {
-          children.push(m.fragment({}, [sep]));
+          children.push(m.fragment({ key: `0:${key}` }, [sep]));
         }
 
         if (selectionResult.type === 'value') {
-          children.push(m.fragment({}, [view(octiron)]));
+          children.push(m.fragment({ key: `1:${key}` }, [view(octiron)]));
         } else if (!selectionResult.ok && typeof fallback === 'function') {
           //children.push(
           //  m.fragment({}, [fallback(octiron, selectionResult.reason as Failure)]),
           //);
         } else if (!selectionResult.ok) {
-          children.push(m.fragment({}, [fallback as m.Children]));
+          children.push(m.fragment({ key: `2:${key}` }, [fallback as m.Children]));
         } else {
-          children.push(m.fragment({}, [view(octiron)]));
+          children.push(m.fragment({ key: `3:${key}` }, [view(octiron)]));
         }
       }
 
       if (post != null) {
-        children.push(m.fragment({}, [post]));
+        children.push(m.fragment({ key: `post` }, [post]));
       }
 
       return children;

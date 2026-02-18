@@ -1,17 +1,16 @@
-import { JsonPointer } from 'json-ptr';
+import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
-import { EditRenderer } from '../renderers/EditRenderer.js';
-import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.js";
-import type { JSONObject, JSONValue } from "../types/common.js";
-import type { Spec, ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPresentArgs, PayloadValueMapper, Selector, UpdateArgs, OctironSelection, Octiron } from "../types/octiron.js";
-import { isJSONObject } from "../utils/isJSONObject.js";
-import { mithrilRedraw } from "../utils/mithrilRedraw.js";
-import { unravelArgs } from "../utils/unravelArgs.js";
-import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.js";
-import { isIterable } from "../utils/isIterable.js";
-import { getIterableValue } from "../utils/getIterableValue.js";
-import { selectComponentFromArgs } from "../utils/selectComponentFromArgs.js";
-import {expandValue} from '../utils/expandValue.js';
+import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
+import {EditRenderer} from '../renderers/EditRenderer.ts';
+import type {JSONObject, JSONValue} from "../types/common.ts";
+import type {ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, BaseAttrs, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPresentArgs, PayloadValueMapper, Selector, UpdateArgs} from "../types/octiron.ts";
+import {expandValue} from '../utils/expandValue.ts';
+import {getIterableValue} from "../utils/getIterableValue.ts";
+import {isIterable} from "../utils/isIterable.ts";
+import {isJSONObject} from "../utils/isJSONObject.ts";
+import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
+import {unravelArgs} from "../utils/unravelArgs.ts";
+import {type ChildArgs, type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
 
 
 export type OnActionSelectionSubmit = () => Promise<void>;
@@ -38,12 +37,15 @@ export function actionSelectionFactory<
     value: rendererArgs.value,
   };
 
+  const refs = {
+    factoryArgs,
+    parentArgs,
+    rendererArgs,
+    childArgs,
+  } as unknown as FactoryRefs;
   const self = octironFactory(
     'action-selection',
-    factoryArgs as unknown as CommonArgs,
-    parentArgs as CommonParentArgs,
-    rendererArgs as CommonRendererArgs,
-    childArgs as ChildArgs,
+    refs,
   );
 
   self.readonly = rendererArgs.spec == null ? true : (rendererArgs.spec.readonly ?? false);
@@ -57,7 +59,7 @@ export function actionSelectionFactory<
     args?: UpdateArgs,
     interceptor = factoryArgs.interceptor,
   ) => {
-    const prev = rendererArgs.value as JSONObject;
+    const prev = refs.rendererArgs.value as JSONObject;
 
     if (!isJSONObject(prev)) {
       console.warn(`Non object action change intercepted.`);
@@ -74,37 +76,37 @@ export function actionSelectionFactory<
     }
 
     if (typeof interceptor === 'function') {
-      next = interceptor(next, prev, rendererArgs.actionValue?.value as JSONObject);
+      next = interceptor(next, prev, refs.rendererArgs.actionValue?.value as JSONObject);
     }
 
-    parentArgs.updatePointer(rendererArgs.pointer, next, args);
+    refs.parentArgs.updatePointer(refs.rendererArgs.pointer, next, args);
   }
 
   self.update = async (
     arg1: PayloadValueMapper<JSONObject> | JSONObject,
     args?: UpdateArgs,
   ): Promise<void> => {
-    const value = rendererArgs.value;
+    const value = refs.rendererArgs.value;
 
     if (!isJSONObject(value)) {
       throw new Error(`Cannot call update on a non object selection instance`);
     }
 
     if (typeof arg1 === 'function') {
-      rendererArgs.update(arg1(value));
+      refs.rendererArgs.update(arg1(value));
     } else if (arg1 != null) {
-      rendererArgs.update(arg1);
+      refs.rendererArgs.update(arg1);
     }
 
     if (args?.submit || args?.submitOnChange) {
-      await parentArgs.submit();
+      await refs.parentArgs.submit();
     } else {
       mithrilRedraw();
     }
   };
 
   self.submit = (): Promise<void> => {
-    return parentArgs.submit();
+    return refs.parentArgs.submit();
   };
 
   self.select = (
@@ -112,7 +114,7 @@ export function actionSelectionFactory<
     arg2?: OctironActionSelectionArgs | ActionSelectView,
     arg3?: ActionSelectView,
   ): m.Children => {
-    if (!isJSONObject(rendererArgs.value)) {
+    if (!isJSONObject(refs.rendererArgs.value)) {
       return null;
     }
 
@@ -123,8 +125,8 @@ export function actionSelectionFactory<
       {
         parentArgs: childArgs as ActionSelectionParentArgs,
         selector,
-        value: rendererArgs.value,
-        actionValue: rendererArgs.actionValue.value as JSONObject,
+        value: refs.rendererArgs.value,
+        actionValue: refs.rendererArgs.actionValue.value as JSONObject,
         args,
         view,
       },
@@ -142,8 +144,8 @@ export function actionSelectionFactory<
       o: self as unknown as OctironActionSelection,
       args,
       factoryArgs,
-      parentArgs,
-      rendererArgs,
+      parentArgs: refs.parentArgs,
+      rendererArgs: refs.rendererArgs,
     });
   };
 
@@ -158,12 +160,12 @@ export function actionSelectionFactory<
   self.remove = (
     _args: UpdateArgs = {},
   ) => {
-    if (rendererArgs.propType == null) {
+    if (refs.rendererArgs.propType == null) {
       return;
     }
 
-    const parentValue = parentArgs.parent.value as JSONObject;
-    const value = parentValue[rendererArgs.propType];
+    const parentValue = refs.parentArgs.parent.value as JSONObject;
+    const value = parentValue[refs.rendererArgs.propType];
 
     if (isIterable(value)) {
       const arrValue = getIterableValue(value);
@@ -171,10 +173,10 @@ export function actionSelectionFactory<
       arrValue.splice(self.index, 1);
 
       if (arrValue.length === 0) {
-        delete parentValue[rendererArgs.propType];
+        delete parentValue[refs.rendererArgs.propType];
       }
     } else if (isJSONObject(value)) {
-      delete parentValue[rendererArgs.propType];
+      delete parentValue[refs.rendererArgs.propType];
     }
 
     mithrilRedraw()
@@ -185,14 +187,14 @@ export function actionSelectionFactory<
     value: JSONValue = {},
     args: UpdateArgs = {},
   ) => {
-    if (!isJSONObject(rendererArgs.value)) {
+    if (!isJSONObject(refs.rendererArgs.value)) {
       console.warn(`Attempt to append to non object octiron selection ${termOrType}`);
       return;
     }
 
     let nextValue: JSONValue;
-    const type = parentArgs.store.expand(termOrType);
-    const lastValue = rendererArgs.value[type];
+    const type = refs.parentArgs.store.expand(termOrType);
+    const lastValue = refs.rendererArgs.value[type];
 
     if (isJSONObject(value)) {
       value = expandValue(self.store, value);
@@ -206,9 +208,9 @@ export function actionSelectionFactory<
       nextValue = [lastValue, value];
     }
 
-    return parentArgs.updatePointer(
-      rendererArgs.pointer,
-      Object.assign({}, rendererArgs.value, { [type]: nextValue }),
+    return refs.parentArgs.updatePointer(
+      refs.rendererArgs.pointer,
+      Object.assign({}, refs.rendererArgs.value, { [type]: nextValue }),
       args,
     );
   };

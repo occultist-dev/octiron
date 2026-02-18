@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { Spec, OctironActionSelection, OctironEditArgs, ActionSelectionParentArgs, ActionSelectionRendererArgs } from '../types/octiron.js';
-import { selectComponentFromArgs } from '../utils/selectComponentFromArgs.js';
+import type { Spec, OctironActionSelection, OctironEditArgs, ActionSelectionParentArgs, ActionSelectionRendererArgs } from '../types/octiron.ts';
+import { selectComponentFromArgs } from '../utils/selectComponentFromArgs.ts';
 
 
 export type EditRendererAttrs = {

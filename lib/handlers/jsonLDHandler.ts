@@ -1,6 +1,6 @@
 import type {JSONLDContextStore} from "@occultist/mini-jsonld";
-import type {JSONObject} from "../types/common.js";
-import type { Handler } from "../types/store.js";
+import type {JSONObject} from "../types/common.ts";
+import type { Handler } from "../types/store.ts";
 
 let store: JSONLDContextStore | undefined;
 

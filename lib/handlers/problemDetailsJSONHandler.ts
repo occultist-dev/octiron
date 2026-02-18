@@ -1,4 +1,4 @@
-import type {Handler} from '../types/store.js';
+import type {Handler} from '../types/store.ts';
 
 
 export const problemDetailsJSONHandler: Handler = {

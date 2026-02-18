@@ -671,3 +671,6 @@ export type ActionSelectionRendererArgs = CommonRendererArgs & {
     actionValue?: Octiron;
     update: Update;
 };
+export type UnlistenFn = () => void;
+export type OnParentArgsChange<T> = (parentArgs: T) => void;
+export type RegisterParentArgsChangeListener<T> = (onChange: OnParentArgsChange<T>) => UnlistenFn;

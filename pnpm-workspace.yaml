@@ -1,2 +1,1 @@
-overrides:
-  longform: link:../longform
+useNodeVersion: 24.12.0

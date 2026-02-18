@@ -1,5 +1,5 @@
-import type { CommonParentArgs, OctironRoot } from '../types/octiron.js';
-import { octironFactory } from "./octironFactory.js";
+import type { CommonParentArgs, OctironRoot } from '../types/octiron.ts';
+import { octironFactory } from "./octironFactory.ts";
 
 
 export function rootFactory(
@@ -8,8 +8,10 @@ export function rootFactory(
   const factoryArgs = {};
   const self = octironFactory(
     'root',
-    factoryArgs,
-    parentArgs,
+    {
+      factoryArgs,
+      parentArgs,
+    },
   );
 
   return self as unknown as OctironRoot;

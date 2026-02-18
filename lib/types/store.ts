@@ -1,8 +1,8 @@
 import type { Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.js';
-import type { Store } from '../store.js';
-import type { Octiron, Spec } from "./octiron.js";
-import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.js';
+import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.ts';
+import type { Store } from '../store.ts';
+import type { Octiron, Spec } from "./octiron.ts";
+import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.ts';
 
 
 export type Aliases = Record<string, string>;

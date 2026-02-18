@@ -17,9 +17,33 @@ export type CommonArgs = {
 };
 export type ChildArgs = Partial<SelectionParentArgs> & Partial<ActionParentArgs> & Partial<ActionSelectionParentArgs> & CommonParentArgs;
 export type InstanceHooks = {
-    _updateArgs: (type: 'args' | 'renderer' | 'parent', args: OctironSelectArgs | OctironPerformArgs | OctironActionSelectionArgs) => void;
+    _updateArgs: (args: OctironSelectArgs | OctironPerformArgs | OctironActionSelectionArgs) => void;
 };
-export declare function octironFactory(octironType: 'root', factoryArgs: CommonArgs, parentArgs: CommonParentArgs): Mutable<OctironRoot>;
-export declare function octironFactory(octironType: 'selection', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironSelection & InstanceHooks>;
-export declare function octironFactory(octironType: 'action', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironAction & InstanceHooks>;
-export declare function octironFactory(octironType: 'action-selection', factoryArgs: CommonArgs, parentArgs: CommonParentArgs, rendererArgs: CommonRendererArgs, childArgs: ChildArgs): Mutable<OctironActionSelection & InstanceHooks>;
+export type FactoryRefs = {
+    factoryArgs: CommonArgs;
+    parentArgs: CommonParentArgs;
+    rendererArgs: CommonRendererArgs;
+    childArgs: ChildArgs;
+};
+export declare function octironFactory(octironType: 'root', refs: {
+    factoryArgs: CommonArgs;
+    parentArgs: CommonParentArgs;
+}): Mutable<OctironRoot>;
+export declare function octironFactory(octironType: 'selection', refs: {
+    factoryArgs: CommonArgs;
+    parentArgs: CommonParentArgs;
+    rendererArgs: CommonRendererArgs;
+    childArgs: ChildArgs;
+}): Mutable<OctironSelection & InstanceHooks>;
+export declare function octironFactory(octironType: 'action', refs: {
+    factoryArgs: CommonArgs;
+    parentArgs: CommonParentArgs;
+    rendererArgs: CommonRendererArgs;
+    childArgs: ChildArgs;
+}): Mutable<OctironAction & InstanceHooks>;
+export declare function octironFactory(octironType: 'action-selection', refs: {
+    factoryArgs: CommonArgs;
+    parentArgs: CommonParentArgs;
+    rendererArgs: CommonRendererArgs;
+    childArgs: ChildArgs;
+}): Mutable<OctironActionSelection & InstanceHooks>;

@@ -1,7 +1,7 @@
 import uriTemplates from 'uri-templates';
-import type { JSONObject, SCMAction } from '../types/common.js';
-import { isJSONObject } from './isJSONObject.js';
-import { isTypeObject } from "./isTypedObject.js";
+import type { JSONObject, SCMAction } from '../types/common.ts';
+import { isJSONObject } from './isJSONObject.ts';
+import { isTypeObject } from "./isTypedObject.ts";
 
 
 export type SubmitDetails = {
@@ -92,7 +92,7 @@ export function getSubmitDetails({
       const propType = type.replace(/-input$/, '');
 
       fillArgs[valueName] = payload[propType];
-      delete submitBody[valueName];
+      delete submitBody[propType];
     }
   }
 

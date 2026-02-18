@@ -1,23 +1,23 @@
-import type { OctironRoot, TypeHandler } from "./types/octiron.js";
-import { rootFactory } from "./factories/rootFactory.js";
-import { makeTypeHandlers } from "./utils/makeTypeHandlers.js";
-import { Store } from "./store.js";
+import type { OctironRoot, TypeHandler } from "./types/octiron.ts";
+import { rootFactory } from "./factories/rootFactory.ts";
+import { makeTypeHandlers } from "./utils/makeTypeHandlers.ts";
+import { Store } from "./store.ts";
 
-export * from './types/common.js';
-export * from './types/store.js';
-export * from './types/octiron.js';
-export * from './store.js';
-export * from './utils/classes.js';
-export * from './utils/makeTypeHandler.js';
-export * from './utils/makeTypeHandlers.js';
-export * from './handlers/jsonLDHandler.js';
-export * from './handlers/longformHandler.js';
-export * from './handlers/problemDetailsJSONHandler.js';
-export * from './components/OctironJSON.js';
-export * from './components/OctironDebug.js';
-export * from './components/OctironExplorer.js';
-export * from './components/OctironForm.js';
-export * from './components/OctironSubmitButton.js';
+export * from './types/common.ts';
+export * from './types/store.ts';
+export * from './types/octiron.ts';
+export * from './store.ts';
+export * from './utils/classes.ts';
+export * from './utils/makeTypeHandler.ts';
+export * from './utils/makeTypeHandlers.ts';
+export * from './handlers/jsonLDHandler.ts';
+export * from './handlers/longformHandler.ts';
+export * from './handlers/problemDetailsJSONHandler.ts';
+export * from './components/OctironJSON.ts';
+export * from './components/OctironDebug.ts';
+export * from './components/OctironExplorer.ts';
+export * from './components/OctironForm.ts';
+export * from './components/OctironSubmitButton.ts';
 
 /**
  * Creates a root octiron instance.

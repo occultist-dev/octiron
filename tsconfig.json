@@ -3,6 +3,9 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "es2022",
+    "lib": [
+      "es2024"
+    ],
     "moduleResolution": "bundler",
     "preserveConstEnums": true,
     "sourceRoot": "lib/octiron.ts",
@@ -11,7 +14,8 @@
     "outDir": "dist",
     "sourceMap": true,
     "noEmit": true,
-    "declaration": true
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true
   },
   "include": [
     "lib/**/*.ts"

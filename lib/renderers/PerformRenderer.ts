@@ -1,12 +1,12 @@
 import type m from 'mithril';
-import { actionFactory } from '../factories/actionFactory.js';
-import { selectionFactory } from '../factories/selectionFactory.js';
-import type { JSONObject, Mutable } from '../types/common.js';
-import type { ActionParentArgs, CommonRendererArgs, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, SelectionParentArgs, Selector } from '../types/octiron.js';
-import type { Failure, ReadonlySelectionResult, SelectionDetails } from '../types/store.js';
-import { isIRIObject } from '../utils/isIRIObject.js';
-import { mithrilRedraw } from '../utils/mithrilRedraw.js';
-import type { InstanceHooks } from "../factories/octironFactory.js";
+import { actionFactory } from '../factories/actionFactory.ts';
+import { selectionFactory } from '../factories/selectionFactory.ts';
+import type { JSONObject, Mutable } from '../types/common.ts';
+import type { ActionParentArgs, CommonRendererArgs, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, RegisterParentArgsChangeListener, SelectionParentArgs, Selector, UnlistenFn } from '../types/octiron.ts';
+import type { Failure, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
+import { isIRIObject } from '../utils/isIRIObject.ts';
+import { mithrilRedraw } from '../utils/mithrilRedraw.ts';
+import type { InstanceHooks } from "../factories/octironFactory.ts";
 
 
 export type PerformRendererAttrs = {
@@ -14,10 +14,12 @@ export type PerformRendererAttrs = {
   selector?: Selector;
   args: OctironPerformArgs;
   view: PerformView;
+  register: RegisterParentArgsChangeListener<SelectionParentArgs & ActionParentArgs>;
 };
 
 export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs> = ({ attrs }) => {
   const key = Symbol('PerformRenderer');
+  let unlisten!: UnlistenFn;
   let currentAttrs = attrs;
   let details: SelectionDetails<ReadonlySelectionResult>;
 
@@ -177,6 +179,7 @@ export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs> = ({ attr
         complete: true,
         hasErrors: false,
         hasMissing: false,
+        isProblem: false,
         dependencies: [],
         required: [],
         result: [result],
@@ -212,7 +215,7 @@ export const PerformRenderer: m.FactoryComponent<PerformRendererAttrs> = ({ attr
       currentAttrs = attrs;
 
       for (const instance of Object.values(instances)) {
-        instance.action._updateArgs('args', attrs.args);
+        instance.action._updateArgs(attrs.args);
       }
     },
     onbeforeremove: ({ attrs }) => {

@@ -1,5 +1,5 @@
 import m from 'mithril';
-import { isBrowserRender } from "../consts.js";
+import { isBrowserRender } from "../consts.ts";
 
 /**
  * @description

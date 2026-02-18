@@ -1,8 +1,8 @@
 import m from 'mithril';
 import {processTemplate} from '@longform/longform';
-import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.js";
-import type { Octiron } from "../types/octiron.js";
-import {isBrowserRender} from '../consts.js';
+import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.ts";
+import type { Octiron } from "../types/octiron.ts";
+import {isBrowserRender} from '../consts.ts';
 
 function fragmentToHTML(fragment: Element[]) {
   let html: string = '';

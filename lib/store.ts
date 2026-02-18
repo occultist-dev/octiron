@@ -1,12 +1,12 @@
-import {HTMLFragmentsIntegration} from "./alternatives/htmlFragments.js";
-import {UnrecognizedIntegration} from "./alternatives/unrecognized.js";
-import {isBrowserRender} from "./consts.js";
-import {HTTPFailure} from "./failures.js";
-import type {JSONObject} from "./types/common.js";
-import type {Aliases, AlternativeSelectionResult, AlternativesState, Context, EntitySelectionResult, EntityState, FailureEntityState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, PrimaryState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState, ValueSelectionResult} from "./types/store.js";
-import {flattenIRIObjects} from "./utils/flattenIRIObjects.js";
-import {getSelection} from './utils/getSelection.js';
-import {mithrilRedraw} from "./utils/mithrilRedraw.js";
+import {HTMLFragmentsIntegration} from "./alternatives/htmlFragments.ts";
+import {UnrecognizedIntegration} from "./alternatives/unrecognized.ts";
+import {isBrowserRender} from "./consts.ts";
+import {HTTPFailure} from "./failures.ts";
+import type {JSONObject} from "./types/common.ts";
+import type {Aliases, AlternativeSelectionResult, AlternativesState, Context, EntitySelectionResult, EntityState, FailureEntityState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, PrimaryState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState, ValueSelectionResult} from "./types/store.ts";
+import {flattenIRIObjects} from "./utils/flattenIRIObjects.ts";
+import {getSelection} from './utils/getSelection.ts';
+import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
 
 const defaultAccept = 'application/problem+json, application/ld+json';
 const integrationClasses = {

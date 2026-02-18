@@ -1,16 +1,16 @@
-import type {Store} from '../store.js';
-import type {JSONArray, JSONObject, JSONValue, SCMPropertyValueSpecification} from '../types/common.js';
-import type {EntityState, SelectionDetails, SelectionResult} from '../types/store.js';
-import {escapeJSONPointerParts} from './escapeJSONPointerParts.js';
-import {getIterableValue} from "./getIterableValue.js";
-import {isIRIObject} from "./isIRIObject.js";
-import {isIterable} from "./isIterable.js";
-import {isJSONObject} from './isJSONObject.js';
-import {isMetadataObject} from "./isMetadataObject.js";
-import {isTypeObject} from "./isTypedObject.js";
-import {isValueObject} from "./isValueObject.js";
-import {parseSelectorString, type SelectorObject} from './parseSelectorString.js';
-import {resolvePropertyValueSpecification} from "./resolvePropertyValueSpecification.js";
+import type {Store} from '../store.ts';
+import type {JSONArray, JSONObject, JSONValue, SCMPropertyValueSpecification} from '../types/common.ts';
+import type {EntityState, SelectionDetails, SelectionResult} from '../types/store.ts';
+import {escapeJSONPointerParts} from './escapeJSONPointerParts.ts';
+import {getIterableValue} from "./getIterableValue.ts";
+import {isIRIObject} from "./isIRIObject.ts";
+import {isIterable} from "./isIterable.ts";
+import {isJSONObject} from './isJSONObject.ts';
+import {isMetadataObject} from "./isMetadataObject.ts";
+import {isTypeObject} from "./isTypedObject.ts";
+import {isValueObject} from "./isValueObject.ts";
+import {parseSelectorString, type SelectorObject} from './parseSelectorString.ts';
+import {resolvePropertyValueSpecification} from "./resolvePropertyValueSpecification.ts";
 
 /**
  * A circular selection error occurs when two or more

@@ -1,5 +1,5 @@
-import type { ActionParentArgs, BaseAttrs, CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs } from '../types/octiron.js';
-import { type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.js";
+import type { ActionParentArgs, BaseAttrs, CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs } from '../types/octiron.ts';
+import { type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.ts";
 
 /**
   * Creates an Octiron selection instance.
@@ -20,10 +20,12 @@ export function selectionFactory<Attrs extends BaseAttrs>(
   } as SelectionParentArgs & ActionParentArgs;
   const self = octironFactory(
     'selection',
-    factoryArgs as unknown as CommonArgs,
-    parentArgs,
-    rendererArgs,
-    childArgs,
+    {
+      factoryArgs,
+      parentArgs,
+      rendererArgs,
+      childArgs,
+    },
   );
 
   return self as OctironSelection & InstanceHooks;

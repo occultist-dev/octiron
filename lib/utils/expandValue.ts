@@ -1,5 +1,5 @@
-import type {JSONObject} from '../types/common.js';
-import type {Store} from '../store.js';
+import type {JSONObject} from '../types/common.ts';
+import type {Store} from '../store.ts';
 
 
 /**

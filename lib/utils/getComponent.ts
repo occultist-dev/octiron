@@ -1,4 +1,4 @@
-import type { AnyComponent, BaseAttrs, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.js";
+import type { AnyComponent, BaseAttrs, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.ts";
 
 /**
  * @description

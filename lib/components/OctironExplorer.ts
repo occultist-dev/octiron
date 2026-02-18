@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { AnyComponent, Octiron } from "../types/octiron.js";
-import { OctironDebug, OctironDebugPresentationStyle } from "./OctironDebug.js";
+import type { AnyComponent, Octiron } from "../types/octiron.ts";
+import { OctironDebug, type OctironDebugPresentationStyle } from "./OctironDebug.ts";
 
 
 export type OctironExplorerAttrs = {

@@ -1,17 +1,17 @@
+import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
-import { JsonPointer } from 'json-ptr';
-import { ActionStateRenderer } from "../renderers/ActionStateRenderer.js";
-import type { Store } from "../store.js";
-import type { JSONArray, JSONObject, JSONValue, SCMAction } from "../types/common.js";
-import type { ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, CommonParentArgs, CommonRendererArgs, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironRoot, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, Predicate, PresentComponent, SelectionParentArgs, Selector, SelectView, Submitable, TypeHandlers, UpdateArgs, UpdatePointer } from "../types/octiron.js";
-import type { EntityState } from "../types/store.js";
-import { getSubmitDetails } from "../utils/getSubmitDetails.js";
-import { unravelArgs } from "../utils/unravelArgs.js";
-import { mithrilRedraw } from "../utils/mithrilRedraw.js";
-import { ActionSelectionRenderer } from "../renderers/ActionSelectionRenderer.js";
-import { isJSONObject } from "../utils/isJSONObject.js";
-import { type ChildArgs, type CommonArgs, type InstanceHooks, octironFactory } from "./octironFactory.js";
-import {expandValue} from '../utils/expandValue.js';
+import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
+import {ActionStateRenderer} from "../renderers/ActionStateRenderer.ts";
+import type {Store} from "../store.ts";
+import type {JSONArray, JSONObject, JSONValue, SCMAction} from "../types/common.ts";
+import type {ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
+import type {EntityState} from "../types/store.ts";
+import {expandValue} from '../utils/expandValue.ts';
+import {getSubmitDetails} from "../utils/getSubmitDetails.ts";
+import {isJSONObject} from "../utils/isJSONObject.ts";
+import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
+import {unravelArgs} from "../utils/unravelArgs.ts";
+import {type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
 
 export type ActionRefs = {
   url?: string;
@@ -44,7 +44,7 @@ export function actionFactory<
     let isError = false;
     const { url, method, body, contentType, encodingType } = getSubmitDetails({
       payload,
-      action: rendererArgs.value as SCMAction,
+      action: refs.rendererArgs.value as SCMAction,
     });
 
     self.submitting = true;
@@ -57,7 +57,7 @@ export function actionFactory<
         args.onSubmit(self as unknown as OctironAction);
       }
 
-      submitResult = await parentArgs.store.submit(url, {
+      submitResult = await refs.parentArgs.store.submit(url, {
         mainEntity: args.mainEntity,
         method,
         body,
@@ -92,7 +92,7 @@ export function actionFactory<
       const res = args.interceptor({
         next,
         prev,
-        actionValue: parentArgs.parent.value as SCMAction,
+        actionValue: refs.parentArgs.parent.value as SCMAction,
         o: self as unknown as OctironAction,
       });
 
@@ -107,7 +107,11 @@ export function actionFactory<
 
     childArgs.value = self.value = value;
 
-    mithrilRedraw();
+    if (args.submitOnChange) {
+      submit();
+    } else {
+      mithrilRedraw();
+    }
   }
 
   const updatePointer: UpdatePointer = (
@@ -134,12 +138,16 @@ export function actionFactory<
     updatePointer,
   } as Partial<SelectionParentArgs & ActionParentArgs & ActionSelectionParentArgs>;
 
+  const refs = {
+    factoryArgs,
+    parentArgs,
+    rendererArgs,
+    childArgs,
+  } as FactoryRefs;
+
   const self = octironFactory(
     'action',
-    factoryArgs as CommonArgs,
-    parentArgs as CommonParentArgs,
-    rendererArgs as CommonRendererArgs,
-    childArgs as ChildArgs,
+    refs,
   );
 
   self.value = payload;
@@ -160,7 +168,7 @@ export function actionFactory<
       parentArgs: childArgs as ActionSelectionParentArgs,
       selector,
       value: self.value,
-      actionValue: parentArgs.parent.value as JSONObject,
+      actionValue: refs.parentArgs.parent.value as JSONObject,
       args,
       view,
     });
@@ -177,12 +185,12 @@ export function actionFactory<
       if (res === false) return;
     }
 
-    return await submit();
+    return submit();
   } as OctironAction['submit'];
 
   self.update = async function (
     arg1: PayloadValueMapper<JSONObject> | JSONObject,
-    args?: UpdateArgs,
+    arg2?: UpdateArgs,
   ): Promise<void> {
     const res = typeof arg1 === 'function'
       ? update(arg1(payload))
@@ -190,7 +198,7 @@ export function actionFactory<
 
     if (res === false) return;
 
-    if (args?.submit || args?.submitOnChange) {
+    if (arg2?.submit || args.submitOnChange) {
       await submit();
     } else {
       mithrilRedraw();
@@ -202,7 +210,7 @@ export function actionFactory<
     value: JSONValue = {},
     args: UpdateArgs = {},
   ) => {
-    const type = parentArgs.store.expand(termOrType);
+    const type = refs.parentArgs.store.expand(termOrType);
 
     if (!isJSONObject(self.value)) {
       return;
@@ -277,7 +285,7 @@ export function actionFactory<
   try {
     const submitDetails = getSubmitDetails({
       payload: self.value,
-      action: rendererArgs.value as SCMAction,
+      action: refs.rendererArgs.value as SCMAction,
     });
     self.url = new URL(submitDetails.url);
     self.method = submitDetails.method;
@@ -286,7 +294,7 @@ export function actionFactory<
   }
 
   if (self.url != null) {
-    submitResult = parentArgs.store.entity(self.url.toString());
+    submitResult = refs.parentArgs.store.entity(self.url.toString());
   }
 
   if (

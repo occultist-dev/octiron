@@ -1,11 +1,11 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONPrimitive, JSONValue } from './common.js'
-import type { Store } from '../store.js';
+import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts'
+import type { Store } from '../store.ts';
 import type {
   ContentHandlingFailure,
   HTTPFailure,
   UndefinedFailure,
-} from '../failures.js';
+} from '../failures.ts';
 
 /**
  * An iri (see url) to an entity.
@@ -999,4 +999,12 @@ export type ActionSelectionRendererArgs = CommonRendererArgs & {
   actionValue?: Octiron;
   update: Update;
 };
+
+
+export type UnlistenFn = () => void;
+export type OnParentArgsChange<T> = (parentArgs: T) => void;
+
+export type RegisterParentArgsChangeListener<T> = (
+  onChange: OnParentArgsChange<T>,
+) => UnlistenFn;
 

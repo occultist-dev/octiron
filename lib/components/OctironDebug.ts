@@ -1,8 +1,8 @@
 import m from 'mithril';
-import { mithrilRedraw } from "../utils/mithrilRedraw.js";
-import type { JSONObject } from "../types/common.js";
-import type { Octiron } from "../types/octiron.js";
-import { OctironJSON } from "./OctironJSON.js";
+import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
+import type { JSONObject } from "../types/common.ts";
+import type { Octiron } from "../types/octiron.ts";
+import { OctironJSON } from "./OctironJSON.ts";
 
 export type OctironDebugPresentationStyle =
   | 'value'

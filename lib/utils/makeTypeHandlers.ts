@@ -1,5 +1,5 @@
-import { Store } from "../store.js";
-import type { TypeHandler, TypeHandlers } from "../types/octiron.js";
+import { Store } from "../store.ts";
+import type { TypeHandler, TypeHandlers } from "../types/octiron.ts";
 
 
 export function makeTypeHandlers<

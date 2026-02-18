@@ -1,14 +1,14 @@
 import type m from "mithril";
-import { actionSelectionFactory } from '../factories/actionSelectionFactory.js';
-import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, Octiron, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update } from '../types/octiron.js';
-import type { ActionSelectionResult, SelectionDetails } from '../types/store.js';
-import { getSelection } from '../utils/getSelection.js';
-import { isJSONObject } from '../utils/isJSONObject.js';
-import { mithrilRedraw } from '../utils/mithrilRedraw.js';
-import type { JSONObject, JSONValue, Mutable } from '../types/common.js';
-import { selectionFactory } from '../factories/selectionFactory.js';
-import type { InstanceHooks } from "../factories/octironFactory.js";
-import {ReadOptions} from "node:fs";
+import {actionSelectionFactory} from '../factories/actionSelectionFactory.ts';
+import type {InstanceHooks} from "../factories/octironFactory.ts";
+import {selectionFactory} from '../factories/selectionFactory.ts';
+import type {Store} from "../store.ts";
+import type {JSONObject, JSONValue, Mutable} from '../types/common.ts';
+import type {ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update} from '../types/octiron.ts';
+import type {ActionSelectionResult, SelectionDetails} from '../types/store.ts';
+import {getSelection} from '../utils/getSelection.ts';
+import {isJSONObject} from '../utils/isJSONObject.ts';
+import {mithrilRedraw} from '../utils/mithrilRedraw.ts';
 
 
 export type ActionSelectionRendererAttrs = {
@@ -21,18 +21,57 @@ export type ActionSelectionRendererAttrs = {
   selectionArgs?: OctironActionSelectionArgs;
 };
 
+type InternalPrevCache = {
+  selector: Selector;
+  value: JSONValue;
+  actionValue: JSONValue;
+  args: {
+    fragment?: string;
+  };
+  parentArgs: {
+    store: Store;
+  },
+};
+
+
+function cachePrev(attrs: ActionSelectionRendererAttrs): InternalPrevCache {
+  return {
+    selector: attrs.selector,
+    value: attrs.value,
+    actionValue: attrs.actionValue,
+    args: {
+      fragment: attrs.args.fragment,
+    },
+    parentArgs: {
+      store: attrs.parentArgs.store,
+    },
+  };
+}
+
+function shouldReselect(
+  next: ActionSelectionRendererAttrs,
+  prev: InternalPrevCache,
+) {
+  return next.parentArgs.store !== prev.parentArgs.store ||
+    next.selector !== prev.selector ||
+    next.args.fragment !== prev.args.fragment ||
+    next.value !== prev.value;
+}
+
+
 export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRendererAttrs> = (
   vnode,
 ) => {
   let currentAttrs = vnode.attrs;
   let details: SelectionDetails<ActionSelectionResult>;
+  let prev!: InternalPrevCache;
 
-  const instances: Record<string, {
+  const instances: Map<string, {
     rendererArgs: ActionSelectionRendererArgs;
     selection: OctironSelection;
     octiron: OctironActionSelection & InstanceHooks;
     selectionResult: ActionSelectionResult;
-  }> = {};
+  }> = new Map();
 
   function createInstances() {
     let hasChanges = false;
@@ -45,8 +84,8 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
 
       nextKeys.push(selectionResult.pointer);
 
-      if (instances[selectionResult.pointer] != null) {
-        const { rendererArgs, octiron } = instances[selectionResult.pointer];
+      if (instances.has(selectionResult.pointer)) {
+        const { rendererArgs, octiron } = instances.get(selectionResult.pointer);
 
         const update: Update = (value) => {
           return parentArgs.updatePointer(
@@ -101,21 +140,21 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
         rendererArgs,
       );
 
-      instances[selectionResult.pointer] = {
+      instances.set(selectionResult.pointer, {
         rendererArgs,
         selection: actionValue,
         octiron: actionSelection,
         selectionResult,
-      };
+      });
     }
 
-    const prevKeys = Object.keys(instances);
+    const prevKeys = instances.keys();
 
     for (const key of prevKeys) {
       if (!nextKeys.includes(key)) {
         hasChanges = true;
 
-        delete instances[key];
+        instances.delete(key);
       }
     }
 
@@ -146,14 +185,21 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
   return {
     oninit: ({ attrs }) => {
       currentAttrs = attrs;
+      prev = cachePrev(attrs);
 
       updateSelection();
     },
     onbeforeupdate: ({ attrs }) => {
+      const reselect = shouldReselect(attrs, prev);
+
       currentAttrs = attrs;
 
-      for (const instance of Object.values(instances)) {
-        instance.octiron._updateArgs('args', attrs.args);
+      if (reselect) {
+        updateSelection();
+      } else {
+        for (const instance of instances.values()) {
+          instance.octiron._updateArgs(attrs.args);
+        }
       }
 
       updateSelection();
@@ -174,7 +220,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
         return;
       }
 
-      const list = Object.values(instances);
+      const list = Array.from(instances.values());
       const children = [pre];
 
       for (let index = 0; index < list.length; index++) {

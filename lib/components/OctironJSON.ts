@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { JSONArray, JSONObject, JSONPrimitive, JSONValue } from "../types/common.js";
-import { isJSONObject } from "../utils/isJSONObject.js";
+import type { JSONArray, JSONObject, JSONPrimitive, JSONValue } from "../types/common.ts";
+import { isJSONObject } from "../utils/isJSONObject.ts";
 
 
 export type OctironJSONAttrs = {
