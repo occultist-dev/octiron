@@ -1,5 +1,5 @@
 import m from 'mithril';
-import type { Octiron } from "../types/octiron.js";
+import type { Octiron } from "../types/octiron.ts";
 export type OctironDebugPresentationStyle = 'value' | 'action-value' | 'component' | 'log';
 export type OctironDebugAttrs = {
     o: Octiron;

@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { Octiron } from "../types/octiron.js";
-import { OctironDebugPresentationStyle } from "./OctironDebug.js";
+import type { Octiron } from "../types/octiron.ts";
+import { type OctironDebugPresentationStyle } from "./OctironDebug.ts";
 export type OctironExplorerAttrs = {
     autofocus?: boolean;
     selector?: string;

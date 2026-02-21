@@ -1,8 +1,8 @@
-import type { Store } from "../store.js";
-import type { JSONObject } from "../types/common.js";
-import type { ActionParentArgs, OctironAction, OctironPerformArgs, PerformRendererArgs, TypeHandlers } from "../types/octiron.js";
-import type { EntityState } from "../types/store.js";
-import { type InstanceHooks } from "./octironFactory.js";
+import type { Store } from "../store.ts";
+import type { JSONObject } from "../types/common.ts";
+import type { ActionParentArgs, OctironAction, OctironPerformArgs, PerformRendererArgs, TypeHandlers } from "../types/octiron.ts";
+import type { EntityState } from "../types/store.ts";
+import { type InstanceHooks } from "./octironFactory.ts";
 export type ActionRefs = {
     url?: string;
     method?: string;

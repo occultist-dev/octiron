@@ -661,6 +661,7 @@ function selectEntity({
     } else if (!handledIRIs.has(value['@id'])) {
       handledIRIs.add(value['@id']);
     } else {
+      console.log('CIRCULAR', value);
       throw new CircularSelectionError(`Circular selection loop detected`);
     }
 

@@ -35,13 +35,20 @@ export function domTest() {
   `);
   const window = dom.window;
   const document = dom.window.document;
+  globalThis.window = window;
   globalThis.document = dom.window.document;
   const registry = new Registry({
     rootIRI: 'https://example.com',
   });
   const scope = registry.scope('/actions');
   let promises: Array<Promise<Response>> = [];
-  const fetcher: StoreArgs['fetcher'] = async (iri, args) => await registry.handleRequest(new Request(iri, args));
+  const fetcher: StoreArgs['fetcher'] = async (iri, args) => {
+    const res = await registry.handleRequest(new Request(iri, args));
+    //const clone = res.clone();
+    //console.log('RES', iri, await clone.text());
+
+    return res;
+  };
   const responseHook: StoreArgs['responseHook'] = (res) => promises.push(res);
   const o = octiron({
     rootIRI: 'https://example.com',
@@ -58,7 +65,7 @@ export function domTest() {
     redraw();
     await scheduler.handleScheduled();
 
-    while (promises.length === 0 && limit !== 0) {
+    while (promises.length !== 0) {
       await Promise.all(promises);
       promises = [];
       redraw();

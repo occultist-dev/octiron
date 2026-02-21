@@ -1,4 +1,4 @@
-import type { ActionSelectView, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPerformArgs, OctironPresentArgs, OctironSelectArgs, PerformView, Selector, SelectView } from '../types/octiron.js';
+import type { ActionSelectView, OctironActionSelectionArgs, OctironDefaultArgs, OctironEditArgs, OctironPerformArgs, OctironPresentArgs, OctironSelectArgs, PerformView, Selector, SelectView } from '../types/octiron.ts';
 /**
  * @description
  * Numerous Octiron view functions take a combination of string selector,

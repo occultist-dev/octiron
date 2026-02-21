@@ -3,7 +3,7 @@ import {UnrecognizedIntegration} from "./alternatives/unrecognized.ts";
 import {isBrowserRender} from "./consts.ts";
 import {HTTPFailure} from "./failures.ts";
 import type {JSONObject} from "./types/common.ts";
-import type {Aliases, AlternativeSelectionResult, AlternativesState, Context, EntitySelectionResult, EntityState, FailureEntityState, Fetcher, Handler, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, PrimaryState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState, ValueSelectionResult} from "./types/store.ts";
+import type {Aliases, AlternativeSelectionResult, AlternativesState, Context, EntitySelectionResult, EntityState, FailureEntityState, Fetcher, Handler, IntegrationState, IntegrationStateInfo, IntegrationType, JSONLDHandlerResult, PrimaryState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState, ValueSelectionResult} from "./types/store.ts";
 import {flattenIRIObjects} from "./utils/flattenIRIObjects.ts";
 import {getSelection} from './utils/getSelection.ts';
 import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
@@ -159,7 +159,7 @@ export class Store {
     #primary: PrimaryState = new Map();
     #loading: Set<string> = new Set();
     #integrations: AlternativesState = new Map();
-    #handlers: Map<string, Handler>;
+    #handlers: Map<string, Handler> = new Map();
     #keys: Set<string> = new Set();
     #context: Context;
     #termExpansions: Map<symbol, string | null> = new Map();
@@ -181,7 +181,11 @@ export class Store {
       [this.#headers, this.#origins] = getInternalHeaderValues(args.headers, args.origins);
       [this.#aliases,this.#context] = getJSONLdValues(args.vocab, args.aliases);
 
-      this.#handlers = new Map(args.handlers?.map?.((handler) => [handler.contentType, handler]));
+      if (args.handlers != null) {
+        for (let i = 0, l = args.handlers.length; i < l; i++) {
+          this.#handlers.set(args.handlers[i].contentType, args.handlers[i]);
+        }
+      }
 
       if (args.primary != null) {
         this.#primary = new Map(Object.entries(args.primary));
@@ -262,6 +266,12 @@ export class Store {
         isProblem: false,
         integration,
       };
+    }
+
+    integration(contentType: string): IntegrationState {
+      const integrationType = this.#handlers.get(contentType)?.integrationType;
+
+      return integrationClasses[integrationType];
     }
 
     /**
@@ -507,7 +517,7 @@ export class Store {
       res: Response,
       iri: string = res.url.toString(),
     ) {
-      const contentType = res.headers.get('content-type')?.split?.(';')?.[0];
+      const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
 
       if (contentType == null) {
         throw new Error('Content type not specified in response');
@@ -627,48 +637,46 @@ export class Store {
       mithrilRedraw();
 
       // This promise wrapping is so SSR can hook in and await the promise.
-      const promise = new Promise<Response>((resolve) => {
-        (async () => {
-          let res: Response;
+      const promise = new Promise<Response>(async (resolve) => {
+        let res: Response;
 
-          if (this.#fetcher != null) {
-            res = await this.#fetcher(dispatchURL, {
-              method,
-              headers,
-              body: args.body,
-            });
-          } else {
-            res = await fetch(dispatchURL, {
-              method,
-              headers,
-              body: args.body,
-            });
-          }
+        if (this.#fetcher != null) {
+          res = await this.#fetcher(dispatchURL, {
+            method,
+            headers,
+            body: args.body,
+          });
+        } else {
+          res = await fetch(dispatchURL, {
+            method,
+            headers,
+            body: args.body,
+          });
+        }
 
-          if (args?.mainEntity &&
-              !isBrowserRender &&
-              (this.#httpStatus == null || this.#httpStatus < 400) &&
-              !res.status.toString().startsWith('3')
-          ) {
-            // if SSR store the first 400+ status for the final HTTP response
-            this.#httpStatus = res.status;
-          }
+        if (args?.mainEntity &&
+            !isBrowserRender &&
+            (this.#httpStatus == null || this.#httpStatus < 400) &&
+            !res.status.toString().startsWith('3')
+        ) {
+          // if SSR store the first 400+ status for the final HTTP response
+          this.#httpStatus = res.status;
+        }
 
-          if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
-            this.#acceptMap
-              .get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
-          } else if (args.accept != null) {
-            this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type') as string]]));
-          }
+        if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
+          this.#acceptMap
+            .get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
+        } else if (args.accept != null) {
+          this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type') as string]]));
+        }
 
-          await this.handleResponse(res, iri);
+        await this.handleResponse(res, iri);
 
-          this.#loading.delete(loadingKey);
+        this.#loading.delete(loadingKey);
 
-          mithrilRedraw();
+        mithrilRedraw();
 
-          resolve(res);
-        })();
+        resolve(res);
       });
 
       if (this.#responseHook != null) {
@@ -763,13 +771,10 @@ export class Store {
      * @param {string} [args.contentType] The content type header value.
      * @param {string} [args.body]        The body of the request.
      */
-    public async submit(iri: string, args: SubmitArgs): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri, {
-        ...args,
-        contentType: 'application/ld+json',
-      });
+    public async submit(iri: string, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState> {
+      await this.#callFetcher(iri, args);
 
-      return this.entity(iri) as SuccessEntityState | FailureEntityState;
+      return this.entity(iri, args?.accept) as SuccessEntityState | FailureEntityState;
     }
 
     /**
@@ -920,6 +925,11 @@ export class Store {
       html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}</script>`
 
       return html;
+    }
+
+    public debug() {
+
+      console.log(this.#primary.entries());
     }
 
 }

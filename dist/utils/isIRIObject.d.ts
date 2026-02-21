@@ -1,4 +1,4 @@
-import type { IRIObject, JSONObject, JSONValue } from "../types/common.js";
+import type { IRIObject, JSONObject, JSONValue } from "../types/common.ts";
 /**
  * @description
  * Returns true if the given value is a JSON object with a JSON-ld @id value.

@@ -1,7 +1,7 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONPrimitive, JSONValue } from './common.js';
-import type { Store } from '../store.js';
-import type { ContentHandlingFailure, HTTPFailure, UndefinedFailure } from '../failures.js';
+import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts';
+import type { Store } from '../store.ts';
+import type { ContentHandlingFailure, HTTPFailure, UndefinedFailure } from '../failures.ts';
 /**
  * An iri (see url) to an entity.
  * In theory this could use other protocols (see 'tel:*') but http is the only

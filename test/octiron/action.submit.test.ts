@@ -1,11 +1,20 @@
-import assert from 'node:assert';
 import {describe, it} from "node:test";
-import {domTest} from '../utils/dom.ts';
+import {domTest} from "../utils/dom.ts";
+import {makeTypeDef, makeTypeDefs, contextBuilder} from "@occultist/occultist";
+import assert from "node:assert";
 
 
-describe('o.select()', () => {
+
+describe('o.submit()', () => {
   it('Re-orders DOM children on updates to store data ordering', async () => {
-    const { m, o, document, registry, mount, redraw } = domTest();
+    const typeDefs = makeTypeDefs([
+      makeTypeDef('ListTodosAction', 'https://schema.example.com/'),
+    ]);
+    const context = contextBuilder({
+      vocab: 'https://schema.example.com',
+      typeDefs,
+    })
+    const { m, o, dom, document, registry, scope, mount, redraw } = domTest();
 
     let jsonld = {
       '@context': { '@vocab': 'https://schema.example.com/' },
@@ -19,20 +28,28 @@ describe('o.select()', () => {
       .public()
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
-          '@context': { '@vocab': 'https://schema.example.com/' },
+          '@context': {
+            '@vocab': 'https://schema.example.com/'
+          },
           '@id': ctx.url,
-          'todoListing': { '@id': 'https://example.com/todos' },
+          actions: { '@id': scope.url() },
         });
       });
 
-    registry.http.get('/todos')
+    scope.http.get('/todos', { name: 'list-todos' })
       .public()
+      .define({
+        typeDef: makeTypeDef('ListValuesAction', 'https://schema.example.com/'),
+        spec: {},
+      })
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
           '@id': ctx.url,
           ...jsonld,
-        })
+        });
       });
+
+    const res = await registry.handleRequest(new Request('https://example.com/actions'));
 
     const PresentName = {
       view({ attrs: { value } }) {
@@ -43,9 +60,11 @@ describe('o.select()', () => {
     mount(document.body, {
       view() {
         return [
-          o.root('todoListing', o =>
+          o.perform('actions ListValuesAction', {
+            submitOnInit: true,
+          }, o =>
             m('ul',
-              o.select('members', o =>
+              o.success('members', o =>
                 m('li', { 'data-position': o.get('position') },
                   o.select('name', { component: PresentName }),
                 ),
@@ -57,6 +76,8 @@ describe('o.select()', () => {
     });
     
     await redraw();
+
+    console.log(dom.serialize())
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
@@ -73,9 +94,11 @@ describe('o.select()', () => {
       ],
     };
 
-    await o.store.fetch('https://example.com/todos');
+    console.log('SUBMITTING');
+    await o.store.submit('https://example.com/todos');
     await redraw();
 
+    console.log(dom.serialize())
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
     assert.equal(listElements[0].textContent, 'Second');
@@ -83,4 +106,5 @@ describe('o.select()', () => {
     assert.equal(listElements[1].textContent, 'First');
     assert.equal(listElements[1].dataset.position, 2);
   });
+
 });

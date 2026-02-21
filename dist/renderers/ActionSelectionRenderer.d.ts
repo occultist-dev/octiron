@@ -1,6 +1,6 @@
 import type m from "mithril";
-import type { ActionSelectionParentArgs, ActionSelectView, OctironActionSelectionArgs, Selector } from '../types/octiron.js';
-import type { JSONObject } from '../types/common.js';
+import type { JSONObject } from '../types/common.ts';
+import type { ActionSelectionParentArgs, ActionSelectView, OctironActionSelectionArgs, Selector } from '../types/octiron.ts';
 export type ActionSelectionRendererAttrs = {
     value: JSONObject;
     actionValue: JSONObject;

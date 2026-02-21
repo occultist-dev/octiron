@@ -1,5 +1,5 @@
-import type { JSONObject } from "./types/common.js";
-import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.js";
+import type { JSONObject } from "./types/common.ts";
+import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.ts";
 type FetchArgs = {
     mainEntity?: boolean;
 };
@@ -114,7 +114,7 @@ export declare class Store {
      * @param {string} [args.contentType] The content type header value.
      * @param {string} [args.body]        The body of the request.
      */
-    submit(iri: string, args: SubmitArgs): Promise<SuccessEntityState | FailureEntityState>;
+    submit(iri: string, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState>;
     /**
      * Creates an Octiron store from initial state written to the page's HTML.
      *
@@ -148,5 +148,6 @@ export declare class Store {
      * with `oct-`, avoid using these ids to prevent id collision.
      */
     toInitialState(): string;
+    debug(): void;
 }
 export {};

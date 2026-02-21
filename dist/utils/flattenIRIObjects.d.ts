@@ -1,4 +1,4 @@
-import type { IRIObject, JSONValue } from '../types/common.js';
+import type { IRIObject, JSONValue } from '../types/common.ts';
 /**
  * @description
  * Locates all IRI objects in a potentially deeply nested JSON-ld structure and

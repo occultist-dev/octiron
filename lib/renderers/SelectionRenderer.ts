@@ -198,7 +198,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
         mainEntity: currentAttrs.args.mainEntity,
       }));
     }
-
+    
     await Promise.allSettled(promises);
   }
 
@@ -256,7 +256,7 @@ export const SelectionRenderer: m.FactoryComponent<SelectionRendererAttrs> = (
     oninit: ({ attrs }) => {
       currentAttrs = attrs;
       prev = cachePrev(attrs);
-
+      
       subscribe();
     },
     onbeforeupdate: ({ attrs }) => {

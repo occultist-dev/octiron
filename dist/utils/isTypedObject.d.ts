@@ -1,4 +1,4 @@
-import type { JSONObject, JSONValue, TypeObject } from '../types/common.js';
+import type { JSONObject, JSONValue, TypeObject } from '../types/common.ts';
 /**
  * @description
  * Returns true if the given value is a JSON object with a JSON-ld @type value.

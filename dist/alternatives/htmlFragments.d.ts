@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.js";
-import type { Octiron } from "../types/octiron.js";
+import type { HTMLFragmentsHandler, HTMLFragmentsHandlerResult, IntegrationState } from "../types/store.ts";
+import type { Octiron } from "../types/octiron.ts";
 export type HTMLFragmentsIntegrationComponentAttrs = {
     o: Octiron;
     integration: HTMLFragmentsIntegration;

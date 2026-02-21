@@ -1,5 +1,5 @@
 import m from 'mithril';
-import type { Octiron, OctironPresentArgs, CommonParentArgs, CommonRendererArgs } from '../types/octiron.js';
+import type { Octiron, OctironPresentArgs, CommonParentArgs, CommonRendererArgs } from '../types/octiron.ts';
 export type PresentRendererAttrs = {
     o: Octiron;
     args: OctironPresentArgs;

@@ -1,4 +1,4 @@
-import type { Store } from "../store.js";
+import type { Store } from "../store.ts";
 export type SelectorObject = {
     subject?: string;
     filter?: string;

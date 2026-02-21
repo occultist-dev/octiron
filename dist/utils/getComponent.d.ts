@@ -1,4 +1,4 @@
-import type { AnyComponent, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.js";
+import type { AnyComponent, EditComponent, PresentComponent, TypeHandlers } from "../types/octiron.ts";
 /**
  * @description
  * Returns a component based of Octiron's selection rules:

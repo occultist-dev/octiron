@@ -1,9 +1,10 @@
 import type m from 'mithril';
 import { selectionFactory } from '../factories/selectionFactory.ts';
 import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.ts';
-import type { EntityState } from '../types/store.ts';
+import type { EntityState, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
 import type { Store } from "../store.ts";
 import type { Mutable } from "../types/common.ts";
+import {SelectionRenderer} from './SelectionRenderer.ts';
 
 export type ActionRendererRef = {
   submitting: boolean;
@@ -24,6 +25,7 @@ export type ActionStateRendererAttrs = {
 };
 
 export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> = () => {
+  let key = Symbol('ActionStateRenderer');
   let submitResult: EntityState | undefined;
   let o: OctironSelection | undefined;
 
@@ -51,11 +53,41 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
     }
   }
 
+  let unsubscribe;
+
+  function listener(next: SelectionDetails<ReadonlySelectionResult>) {
+    console.log('SUBSCRIPTION UPDATED', next.result[0].value);
+    if (next.result.length === 1 && next.result[0].value != null) {
+      submitResult.value = next.result[0].value;
+    }
+  }
+
+  function updateSubscription(attrs: ActionStateRendererAttrs) {
+    if (attrs.submitResult == null || attrs.submitResult.loading) {
+      attrs.parentArgs.store.unsubscribe(key);
+      return;
+    }
+    
+    console.log('UPDATING SUBSCRIPTION', attrs.submitResult.iri);
+
+    attrs.parentArgs.store.unsubscribe(key);
+    attrs.parentArgs.store.subscribe({
+      key,
+      listener,
+      selector: attrs.submitResult.iri,
+      accept: attrs.args.accept,
+      fragment: attrs.args.fragment,
+      mainEntity: attrs.args.mainEntity,
+    });
+  }
+
   return {
     oninit: ({ attrs }) => {
+      updateSubscription(attrs);
       setInstance(attrs);
     },
     onbeforeupdate: ({ attrs }) => {
+      updateSubscription(attrs);
       setInstance(attrs);
     },
     view: ({ attrs: { type, selector, args, view, ...attrs }, children }) => {

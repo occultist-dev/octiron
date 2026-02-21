@@ -12,6 +12,7 @@ import {isJSONObject} from "../utils/isJSONObject.ts";
 import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
 import {unravelArgs} from "../utils/unravelArgs.ts";
 import {type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
+import {isBrowserRender} from '../consts.ts';
 
 export type ActionRefs = {
   url?: string;
@@ -47,6 +48,7 @@ export function actionFactory<
       action: refs.rendererArgs.value as SCMAction,
     });
 
+
     self.submitting = true;
     self.url = new URL(url, self.store.rootIRI);
 
@@ -74,9 +76,9 @@ export function actionFactory<
 
     mithrilRedraw();
 
-    if (isError && typeof args.onSubmitFailure === 'function') {
+    if (isError && typeof args.onSubmitFailure === 'function' && isBrowserRender) {
       args.onSubmitFailure(self as unknown as OctironAction);
-    } else if (!isError && typeof args.onSubmitSuccess === 'function') {
+    } else if (!isError && typeof args.onSubmitSuccess === 'function' && isBrowserRender) {
       args.onSubmitSuccess(self as unknown as OctironAction);
     }
   }
@@ -287,6 +289,7 @@ export function actionFactory<
       payload: self.value,
       action: refs.rendererArgs.value as SCMAction,
     });
+
     self.url = new URL(submitDetails.url);
     self.method = submitDetails.method;
   } catch (err) {
@@ -294,16 +297,22 @@ export function actionFactory<
   }
 
   if (self.url != null) {
-    submitResult = refs.parentArgs.store.entity(self.url.toString());
+    submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
+
+    console.log('SUBMIT RESULT')
+    console.log(JSON.stringify(submitResult, null, 2));
   }
 
   if (
-    typeof window === 'undefined' && args.submitOnInit &&
+    isBrowserRender &&
+    args.submitOnInit &&
     submitResult == null
   ) {
-    self.submit();
-  } else if (typeof window !== 'undefined' && args.submitOnInit) {
-    self.submit();
+    submit();
+  } else if (
+    !isBrowserRender &&
+    args.submitOnInit) {
+    submit();
   }
 
   return self as OctironAction & InstanceHooks;

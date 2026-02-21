@@ -1,4 +1,4 @@
-import type { IterableJSONLD, JSONValue } from '../types/common.js';
+import type { IterableJSONLD, JSONValue } from '../types/common.ts';
 /**
  * @description
  * Returns true if a json-ld value is an array or has an iterable value,

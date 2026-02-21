@@ -1,11 +1,13 @@
-import assert from 'node:assert';
 import {describe, it} from "node:test";
-import {domTest} from '../utils/dom.ts';
+import {domTest} from "../utils/dom.ts";
+import {makeTypeDef} from "@occultist/occultist";
+import assert from "node:assert";
 
 
-describe('o.select()', () => {
+
+describe('o.submit()', () => {
   it('Re-orders DOM children on updates to store data ordering', async () => {
-    const { m, o, document, registry, mount, redraw } = domTest();
+    const { m, o, dom, document, registry, scope, mount, redraw } = domTest();
 
     let jsonld = {
       '@context': { '@vocab': 'https://schema.example.com/' },
@@ -19,20 +21,27 @@ describe('o.select()', () => {
       .public()
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
-          '@context': { '@vocab': 'https://schema.example.com/' },
+          '@context': {
+            '@vocab': 'https://schema.example.com/'
+          },
           '@id': ctx.url,
-          'todoListing': { '@id': 'https://example.com/todos' },
+          actions: { '@id': scope.url() },
         });
       });
 
-    registry.http.get('/todos')
+    scope.http.get('/todos', { name: 'list-todos' })
       .public()
+      .define({
+        typeDef: makeTypeDef('ListValuesAction', 'https://schema.example.com/'),
+      })
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
           '@id': ctx.url,
           ...jsonld,
-        })
+        });
       });
+
+    console.log('TEST', await (await registry.handleRequest(new Request('https://example.com/'))).text())
 
     const PresentName = {
       view({ attrs: { value } }) {
@@ -43,9 +52,11 @@ describe('o.select()', () => {
     mount(document.body, {
       view() {
         return [
-          o.root('todoListing', o =>
+          o.perform('actions ', {
+            submitOnInit: true,
+          }, o =>
             m('ul',
-              o.select('members', o =>
+              o.success('members', o =>
                 m('li', { 'data-position': o.get('position') },
                   o.select('name', { component: PresentName }),
                 ),
@@ -83,4 +94,5 @@ describe('o.select()', () => {
     assert.equal(listElements[1].textContent, 'First');
     assert.equal(listElements[1].dataset.position, 2);
   });
+
 });

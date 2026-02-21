@@ -188,6 +188,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
       prev = cachePrev(attrs);
 
       updateSelection();
+      console.log('INIT', details);
     },
     onbeforeupdate: ({ attrs }) => {
       const reselect = shouldReselect(attrs, prev);
@@ -203,6 +204,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
       }
 
       updateSelection();
+      console.log('UPDATE', details);
     },
     view: ({ attrs: { view, args } }) => {
       if (details == null) {

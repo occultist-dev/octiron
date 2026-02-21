@@ -1,4 +1,4 @@
-import type { AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironEditArgs, OctironPresentArgs, PresentComponent } from "../types/octiron.js";
+import type { AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditComponent, OctironEditArgs, OctironPresentArgs, PresentComponent } from "../types/octiron.ts";
 /**
  * Selects the component and attrs to render with from args provided to an Octiron
  * factory instance or the render method.

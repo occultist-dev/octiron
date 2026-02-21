@@ -1,4 +1,4 @@
-import type { JSONObject, SCMAction } from '../types/common.js';
+import type { JSONObject, SCMAction } from '../types/common.ts';
 export type SubmitDetails = {
     url: string;
     method: string;

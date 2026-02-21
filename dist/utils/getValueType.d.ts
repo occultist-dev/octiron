@@ -1,4 +1,4 @@
-import type { JSONValue } from "../types/common.js";
+import type { JSONValue } from "../types/common.ts";
 /**
  * @description
  * Returns the type value of the input if it is a type object.

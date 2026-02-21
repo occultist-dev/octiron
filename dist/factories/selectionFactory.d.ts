@@ -1,5 +1,5 @@
-import type { BaseAttrs, CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs } from '../types/octiron.js';
-import { type InstanceHooks } from "./octironFactory.js";
+import type { BaseAttrs, CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs } from '../types/octiron.ts';
+import { type InstanceHooks } from "./octironFactory.ts";
 /**
   * Creates an Octiron selection instance.
   *

@@ -1,4 +1,4 @@
-import type { IRIObject, JSONObject } from '../types/common.js';
+import type { IRIObject, JSONObject } from '../types/common.ts';
 /**
  * @description
  * Some JSON-ld objects contain special JSON-ld values, such as @type which

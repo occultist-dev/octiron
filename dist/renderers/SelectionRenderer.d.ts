@@ -1,5 +1,5 @@
-import type { OctironSelectArgs, SelectionParentArgs, Selector, SelectView } from "../types/octiron.js";
 import m from "mithril";
+import type { OctironSelectArgs, SelectionParentArgs, Selector, SelectView } from "../types/octiron.ts";
 export type SelectionRendererAttrs = {
     entity?: boolean;
     selector: Selector;

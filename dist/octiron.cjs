@@ -6,254 +6,6 @@ var uriTemplates = require('uri-templates');
 var longform = require('@longform/longform');
 
 /**
-  * Creates an Octiron selection instance.
-  *
-  * @param args - User specified args passed to the Octiron method creating the factory.
-  * @param parentArgs - Args passed from the Octiron parent instance of this instance.
-  * @param rendererArgs - Args passed from the Mithril renderer component.
-  */
-function selectionFactory(args, parentArgs, rendererArgs) {
-    const factoryArgs = Object.assign({}, args);
-    const childArgs = {
-        // value: parentArgs.value,
-        value: rendererArgs.value,
-    };
-    const self = octironFactory('selection', {
-        factoryArgs,
-        parentArgs,
-        rendererArgs,
-        childArgs,
-    });
-    return self;
-}
-
-const ActionStateRenderer = () => {
-    let submitResult;
-    let o;
-    function setInstance(attrs) {
-        if (attrs.submitResult == null) {
-            submitResult = undefined;
-            o = undefined;
-        }
-        else if (submitResult == null ||
-            attrs.submitResult.ok !== submitResult.ok ||
-            attrs.submitResult.status !== submitResult.status ||
-            attrs.submitResult.value !== submitResult.value) {
-            submitResult = attrs.submitResult;
-            const rendererArgs = {
-                index: 0,
-                value: attrs.submitResult.value,
-            };
-            o = selectionFactory(attrs.args, attrs.parentArgs, rendererArgs);
-        }
-    }
-    return {
-        oninit: ({ attrs }) => {
-            setInstance(attrs);
-        },
-        onbeforeupdate: ({ attrs }) => {
-            setInstance(attrs);
-        },
-        view: ({ attrs: { type, selector, args, view, ...attrs }, children }) => {
-            if (type === 'initial' && submitResult == null) {
-                return children;
-            }
-            else if (submitResult == null || o == null) {
-                return null;
-            }
-            let shouldRender = (type === 'success' && submitResult.ok) ||
-                (type === 'failure' && !submitResult.ok);
-            if (attrs.not) {
-                shouldRender = !shouldRender;
-            }
-            o.position = 1;
-            if (shouldRender && selector != null) {
-                return o.select(selector, args, view);
-            }
-            else if (shouldRender && view != null) {
-                return view(o);
-            }
-            else if (shouldRender && args != null) {
-                return o.present(args);
-            }
-            o.position = -1;
-            return null;
-        },
-    };
-};
-
-/**
- * @description
- * Returns true if the input value is an object.
- *
- * @param value Any value which should come from a JSON source.
- */
-function isJSONObject(value) {
-    return typeof value === 'object' && !Array.isArray(value) && value !== null;
-}
-
-/**
- * @description
- * Returns true if the given value is a JSON object with a JSON-ld @type value.
- *
- * @param value Any value which should come from a JSON source.
- */
-function isTypeObject(value) {
-    if (!isJSONObject(value)) {
-        return false;
-    }
-    else if (typeof value['@type'] === 'string') {
-        return true;
-    }
-    else if (!Array.isArray(value['@type'])) {
-        return false;
-    }
-    for (const item of value['@type']) {
-        if (typeof item !== 'string') {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Gets the details on how to perform a submission
- * based off an action, payload and other context.
- *
- * @param args.payload The current payload value.
- * @param args.action The schema.org styled action object.
- */
-function getSubmitDetails({ payload, action, }) {
-    let urlTemplate;
-    let body;
-    let method = 'get';
-    let contentType;
-    let encodingType;
-    let target = action['https://schema.org/target'];
-    if (Array.isArray(target)) {
-        for (const item of target) {
-            if (item === 'string') {
-                target = item;
-                break;
-            }
-            else if (isJSONObject(target) && (target['https://schema.org/contentType'] == null || (target['https://schema.org/contentType'] === 'mutipart/form-data' ||
-                target['https://schema.org/contentType'] === 'application/ld+json'))) {
-                target = item;
-                break;
-            }
-        }
-    }
-    if (typeof target === 'string') {
-        urlTemplate = target;
-    }
-    else if (isJSONObject(target)) {
-        if (typeof target['https://schema.org/urlTemplate'] === 'string') {
-            urlTemplate = target['https://schema.org/urlTemplate'];
-        }
-        if (typeof target['https://schema.org/httpMethod'] === 'string') {
-            method = target['https://schema.org/httpMethod'].toLowerCase();
-        }
-        if (typeof target['https://schema.org/contentType'] === 'string') {
-            contentType = target['https://schema.org/contentType'];
-        }
-        if (typeof target['https://schema.org/encodingType'] === 'string') {
-            encodingType = target['https://schema.org/encodingType'];
-        }
-    }
-    if (typeof urlTemplate !== 'string') {
-        throw new Error('Action has invalid https://schema.org/target');
-    }
-    const fillArgs = {};
-    const submitBody = Object.assign({}, payload);
-    for (const [type, value] of Object.entries(action)) {
-        if (!isTypeObject(value) ||
-            value['@type'] !== 'https://schema.org/PropertyValueSpecification') {
-            continue;
-        }
-        const valueName = value['https://schema.org/valueName'];
-        if (valueName != null) {
-            const propType = type.replace(/-input$/, '');
-            fillArgs[valueName] = payload[propType];
-            delete submitBody[propType];
-        }
-    }
-    const template = uriTemplates(urlTemplate);
-    // deno-lint-ignore no-explicit-any
-    const url = template.fill(fillArgs);
-    // only add body if supporting HTTP method
-    if (method !== 'get' && method !== 'delete') {
-        body = JSON.stringify(submitBody);
-    }
-    else {
-        contentType = undefined;
-        encodingType = undefined;
-    }
-    return {
-        url,
-        method,
-        contentType,
-        encodingType,
-        body,
-    };
-}
-
-/**
- * @description
- * Numerous Octiron view functions take a combination of string selector,
- * object args and function view arguments.
- *
- * This `unravelArgs` identifies which arguments are present and returns
- * defaults for the missing arguments.
- *
- * @param arg1 - A selector string, args object or view function if present.
- * @param arg2 - An args object or view function if present.
- * @param arg3 - A view function if present.
- */
-function unravelArgs(arg1, arg2, arg3) {
-    let selector;
-    let args = {};
-    let view;
-    if (typeof arg1 === "string") {
-        selector = arg1;
-    }
-    else if (typeof arg1 === "function") {
-        view = arg1;
-    }
-    else if (arg1 != null) {
-        args = arg1;
-    }
-    if (typeof arg2 === 'function') {
-        view = arg2;
-    }
-    else if (arg2 != null) {
-        args = arg2;
-    }
-    if (typeof arg3 === 'function') {
-        view = arg3;
-    }
-    if (typeof view === "undefined") {
-        view = ((o) => o.default(args));
-    }
-    return [
-        selector,
-        args,
-        view,
-    ];
-}
-
-const isBrowserRender = typeof window !== 'undefined';
-
-/**
- * @description
- * Calls Mithril's redraw function if the window object exists.
- */
-function mithrilRedraw() {
-    if (isBrowserRender) {
-        m.redraw();
-    }
-}
-
-/**
  * @description
  * Returns a component based of Octiron's selection rules:
  *
@@ -295,6 +47,40 @@ function getComponent({ style, propType, type, firstPickComponent, typeHandlers,
     if (fallbackComponent != null) {
         return fallbackComponent;
     }
+}
+
+/**
+ * @description
+ * Returns true if the input value is an object.
+ *
+ * @param value Any value which should come from a JSON source.
+ */
+function isJSONObject(value) {
+    return typeof value === 'object' && !Array.isArray(value) && value !== null;
+}
+
+/**
+ * @description
+ * Returns true if the given value is a JSON object with a JSON-ld @type value.
+ *
+ * @param value Any value which should come from a JSON source.
+ */
+function isTypeObject(value) {
+    if (!isJSONObject(value)) {
+        return false;
+    }
+    else if (typeof value['@type'] === 'string') {
+        return true;
+    }
+    else if (!Array.isArray(value['@type'])) {
+        return false;
+    }
+    for (const item of value['@type']) {
+        if (typeof item !== 'string') {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
@@ -353,25 +139,19 @@ const EditRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs, },
 };
 
 /**
- * @description
- * Returns true if a json-ld value is an array or has an iterable value,
- * i.e.: an object with an `@list` or `@set` array value.
+ * Expands a object's keys to be their RDF type equivlent.
  *
- * @param {JSONValue} value - A json-ld value
+ * @param store   - An Octiron store with expansion context.
+ * @param value   - A JSON object to expand.
  */
-function isIterable(value) {
-    if (Array.isArray(value)) {
-        return true;
-    }
-    else if (isJSONObject(value)) {
-        if (Array.isArray(value["@list"])) {
-            return true;
-        }
-        else if (Array.isArray(value["@set"])) {
-            return true;
+function expandValue(store, value) {
+    let expanded = Object.create(null);
+    for (let [key, item] of Object.entries(value)) {
+        if (item != null) {
+            expanded[store.expand(key)] = item;
         }
     }
-    return false;
+    return expanded;
 }
 
 /**
@@ -398,19 +178,81 @@ function getIterableValue(value) {
 }
 
 /**
- * Expands a object's keys to be their RDF type equivlent.
+ * @description
+ * Returns true if a json-ld value is an array or has an iterable value,
+ * i.e.: an object with an `@list` or `@set` array value.
  *
- * @param store   - An Octiron store with expansion context.
- * @param value   - A JSON object to expand.
+ * @param {JSONValue} value - A json-ld value
  */
-function expandValue(store, value) {
-    let expanded = Object.create(null);
-    for (let [key, item] of Object.entries(value)) {
-        if (item != null) {
-            expanded[store.expand(key)] = item;
+function isIterable(value) {
+    if (Array.isArray(value)) {
+        return true;
+    }
+    else if (isJSONObject(value)) {
+        if (Array.isArray(value["@list"])) {
+            return true;
+        }
+        else if (Array.isArray(value["@set"])) {
+            return true;
         }
     }
-    return expanded;
+    return false;
+}
+
+const isBrowserRender = typeof window !== 'undefined';
+
+/**
+ * @description
+ * Calls Mithril's redraw function if the window object exists.
+ */
+function mithrilRedraw() {
+    if (isBrowserRender) {
+        m.redraw();
+    }
+}
+
+/**
+ * @description
+ * Numerous Octiron view functions take a combination of string selector,
+ * object args and function view arguments.
+ *
+ * This `unravelArgs` identifies which arguments are present and returns
+ * defaults for the missing arguments.
+ *
+ * @param arg1 - A selector string, args object or view function if present.
+ * @param arg2 - An args object or view function if present.
+ * @param arg3 - A view function if present.
+ */
+function unravelArgs(arg1, arg2, arg3) {
+    let selector;
+    let args = {};
+    let view;
+    if (typeof arg1 === "string") {
+        selector = arg1;
+    }
+    else if (typeof arg1 === "function") {
+        view = arg1;
+    }
+    else if (arg1 != null) {
+        args = arg1;
+    }
+    if (typeof arg2 === 'function') {
+        view = arg2;
+    }
+    else if (arg2 != null) {
+        args = arg2;
+    }
+    if (typeof arg3 === 'function') {
+        view = arg3;
+    }
+    if (typeof view === "undefined") {
+        view = ((o) => o.default(args));
+    }
+    return [
+        selector,
+        args,
+        view,
+    ];
 }
 
 function actionSelectionFactory(args, parentArgs, rendererArgs) {
@@ -543,6 +385,28 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         }
         return refs.parentArgs.updatePointer(refs.rendererArgs.pointer, Object.assign({}, refs.rendererArgs.value, { [type]: nextValue }), args);
     };
+    return self;
+}
+
+/**
+  * Creates an Octiron selection instance.
+  *
+  * @param args - User specified args passed to the Octiron method creating the factory.
+  * @param parentArgs - Args passed from the Octiron parent instance of this instance.
+  * @param rendererArgs - Args passed from the Mithril renderer component.
+  */
+function selectionFactory(args, parentArgs, rendererArgs) {
+    const factoryArgs = Object.assign({}, args);
+    const childArgs = {
+        // value: parentArgs.value,
+        value: rendererArgs.value,
+    };
+    const self = octironFactory('selection', {
+        factoryArgs,
+        parentArgs,
+        rendererArgs,
+        childArgs,
+    });
     return self;
 }
 
@@ -1162,6 +1026,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
+            console.log('CIRCULAR', value);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -1301,6 +1166,7 @@ const ActionSelectionRenderer = (vnode) => {
             currentAttrs = attrs;
             prev = cachePrev$1(attrs);
             updateSelection();
+            console.log('INIT', details);
         },
         onbeforeupdate: ({ attrs }) => {
             const reselect = shouldReselect$1(attrs, prev);
@@ -1314,6 +1180,7 @@ const ActionSelectionRenderer = (vnode) => {
                 }
             }
             updateSelection();
+            console.log('UPDATE', details);
         },
         view: ({ attrs: { view, args } }) => {
             if (details == null) {
@@ -1347,6 +1214,167 @@ const ActionSelectionRenderer = (vnode) => {
         },
     };
 };
+
+const ActionStateRenderer = () => {
+    let key = Symbol('ActionStateRenderer');
+    let submitResult;
+    let o;
+    function setInstance(attrs) {
+        if (attrs.submitResult == null) {
+            submitResult = undefined;
+            o = undefined;
+        }
+        else if (submitResult == null ||
+            attrs.submitResult.ok !== submitResult.ok ||
+            attrs.submitResult.status !== submitResult.status ||
+            attrs.submitResult.value !== submitResult.value) {
+            submitResult = attrs.submitResult;
+            const rendererArgs = {
+                index: 0,
+                value: attrs.submitResult.value,
+            };
+            o = selectionFactory(attrs.args, attrs.parentArgs, rendererArgs);
+        }
+    }
+    function listener(next) {
+        console.log('SUBSCRIPTION UPDATED', next.result[0].value);
+        if (next.result.length === 1 && next.result[0].value != null) {
+            submitResult.value = next.result[0].value;
+        }
+    }
+    function updateSubscription(attrs) {
+        if (attrs.submitResult == null || attrs.submitResult.loading) {
+            attrs.parentArgs.store.unsubscribe(key);
+            return;
+        }
+        console.log('UPDATING SUBSCRIPTION', attrs.submitResult.iri);
+        attrs.parentArgs.store.unsubscribe(key);
+        attrs.parentArgs.store.subscribe({
+            key,
+            listener,
+            selector: attrs.submitResult.iri,
+            accept: attrs.args.accept,
+            fragment: attrs.args.fragment,
+            mainEntity: attrs.args.mainEntity,
+        });
+    }
+    return {
+        oninit: ({ attrs }) => {
+            updateSubscription(attrs);
+            setInstance(attrs);
+        },
+        onbeforeupdate: ({ attrs }) => {
+            updateSubscription(attrs);
+            setInstance(attrs);
+        },
+        view: ({ attrs: { type, selector, args, view, ...attrs }, children }) => {
+            if (type === 'initial' && submitResult == null) {
+                return children;
+            }
+            else if (submitResult == null || o == null) {
+                return null;
+            }
+            let shouldRender = (type === 'success' && submitResult.ok) ||
+                (type === 'failure' && !submitResult.ok);
+            if (attrs.not) {
+                shouldRender = !shouldRender;
+            }
+            o.position = 1;
+            if (shouldRender && selector != null) {
+                return o.select(selector, args, view);
+            }
+            else if (shouldRender && view != null) {
+                return view(o);
+            }
+            else if (shouldRender && args != null) {
+                return o.present(args);
+            }
+            o.position = -1;
+            return null;
+        },
+    };
+};
+
+/**
+ * Gets the details on how to perform a submission
+ * based off an action, payload and other context.
+ *
+ * @param args.payload The current payload value.
+ * @param args.action The schema.org styled action object.
+ */
+function getSubmitDetails({ payload, action, }) {
+    let urlTemplate;
+    let body;
+    let method = 'get';
+    let contentType;
+    let encodingType;
+    let target = action['https://schema.org/target'];
+    if (Array.isArray(target)) {
+        for (const item of target) {
+            if (item === 'string') {
+                target = item;
+                break;
+            }
+            else if (isJSONObject(target) && (target['https://schema.org/contentType'] == null || (target['https://schema.org/contentType'] === 'mutipart/form-data' ||
+                target['https://schema.org/contentType'] === 'application/ld+json'))) {
+                target = item;
+                break;
+            }
+        }
+    }
+    if (typeof target === 'string') {
+        urlTemplate = target;
+    }
+    else if (isJSONObject(target)) {
+        if (typeof target['https://schema.org/urlTemplate'] === 'string') {
+            urlTemplate = target['https://schema.org/urlTemplate'];
+        }
+        if (typeof target['https://schema.org/httpMethod'] === 'string') {
+            method = target['https://schema.org/httpMethod'].toLowerCase();
+        }
+        if (typeof target['https://schema.org/contentType'] === 'string') {
+            contentType = target['https://schema.org/contentType'];
+        }
+        if (typeof target['https://schema.org/encodingType'] === 'string') {
+            encodingType = target['https://schema.org/encodingType'];
+        }
+    }
+    if (typeof urlTemplate !== 'string') {
+        throw new Error('Action has invalid https://schema.org/target');
+    }
+    const fillArgs = {};
+    const submitBody = Object.assign({}, payload);
+    for (const [type, value] of Object.entries(action)) {
+        if (!isTypeObject(value) ||
+            value['@type'] !== 'https://schema.org/PropertyValueSpecification') {
+            continue;
+        }
+        const valueName = value['https://schema.org/valueName'];
+        if (valueName != null) {
+            const propType = type.replace(/-input$/, '');
+            fillArgs[valueName] = payload[propType];
+            delete submitBody[propType];
+        }
+    }
+    const template = uriTemplates(urlTemplate);
+    // deno-lint-ignore no-explicit-any
+    const url = template.fill(fillArgs);
+    // only add body if supporting HTTP method
+    if (method !== 'get' && method !== 'delete') {
+        body = JSON.stringify(submitBody);
+    }
+    else {
+        contentType = undefined;
+        encodingType = undefined;
+    }
+    return {
+        url,
+        method,
+        contentType,
+        encodingType,
+        body,
+    };
+}
 
 function actionFactory(args, parentArgs, rendererArgs) {
     const factoryArgs = Object.assign(Object.create(null), args);
@@ -1385,10 +1413,10 @@ function actionFactory(args, parentArgs, rendererArgs) {
         }
         self.submitting = false;
         mithrilRedraw();
-        if (isError && typeof args.onSubmitFailure === 'function') {
+        if (isError && typeof args.onSubmitFailure === 'function' && isBrowserRender) {
             args.onSubmitFailure(self);
         }
-        else if (!isError && typeof args.onSubmitSuccess === 'function') {
+        else if (!isError && typeof args.onSubmitSuccess === 'function' && isBrowserRender) {
             args.onSubmitSuccess(self);
         }
     }
@@ -1546,14 +1574,18 @@ function actionFactory(args, parentArgs, rendererArgs) {
         console.error(err);
     }
     if (self.url != null) {
-        submitResult = refs.parentArgs.store.entity(self.url.toString());
+        submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
+        console.log('SUBMIT RESULT');
+        console.log(JSON.stringify(submitResult, null, 2));
     }
-    if (typeof window === 'undefined' && args.submitOnInit &&
+    if (isBrowserRender &&
+        args.submitOnInit &&
         submitResult == null) {
-        self.submit();
+        submit();
     }
-    else if (typeof window !== 'undefined' && args.submitOnInit) {
-        self.submit();
+    else if (!isBrowserRender &&
+        args.submitOnInit) {
+        submit();
     }
     return self;
 }
@@ -2983,7 +3015,7 @@ class Store {
         }
     }
     async handleResponse(res, iri = res.url.toString()) {
-        const contentType = res.headers.get('content-type')?.split?.(';')?.[0];
+        const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
         if (contentType == null) {
             throw new Error('Content type not specified in response');
         }
@@ -3080,42 +3112,40 @@ class Store {
         this.#loading.add(loadingKey);
         mithrilRedraw();
         // This promise wrapping is so SSR can hook in and await the promise.
-        const promise = new Promise((resolve) => {
-            (async () => {
-                let res;
-                if (this.#fetcher != null) {
-                    res = await this.#fetcher(dispatchURL, {
-                        method,
-                        headers,
-                        body: args.body,
-                    });
-                }
-                else {
-                    res = await fetch(dispatchURL, {
-                        method,
-                        headers,
-                        body: args.body,
-                    });
-                }
-                if (args?.mainEntity &&
-                    !isBrowserRender &&
-                    (this.#httpStatus == null || this.#httpStatus < 400) &&
-                    !res.status.toString().startsWith('3')) {
-                    // if SSR store the first 400+ status for the final HTTP response
-                    this.#httpStatus = res.status;
-                }
-                if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
-                    this.#acceptMap
-                        .get(dispatchURL)?.set(args.accept, res.headers.get('content-type'));
-                }
-                else if (args.accept != null) {
-                    this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type')]]));
-                }
-                await this.handleResponse(res, iri);
-                this.#loading.delete(loadingKey);
-                mithrilRedraw();
-                resolve(res);
-            })();
+        const promise = new Promise(async (resolve) => {
+            let res;
+            if (this.#fetcher != null) {
+                res = await this.#fetcher(dispatchURL, {
+                    method,
+                    headers,
+                    body: args.body,
+                });
+            }
+            else {
+                res = await fetch(dispatchURL, {
+                    method,
+                    headers,
+                    body: args.body,
+                });
+            }
+            if (args?.mainEntity &&
+                !isBrowserRender &&
+                (this.#httpStatus == null || this.#httpStatus < 400) &&
+                !res.status.toString().startsWith('3')) {
+                // if SSR store the first 400+ status for the final HTTP response
+                this.#httpStatus = res.status;
+            }
+            if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
+                this.#acceptMap
+                    .get(dispatchURL)?.set(args.accept, res.headers.get('content-type'));
+            }
+            else if (args.accept != null) {
+                this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type')]]));
+            }
+            await this.handleResponse(res, iri);
+            this.#loading.delete(loadingKey);
+            mithrilRedraw();
+            resolve(res);
         });
         if (this.#responseHook != null) {
             this.#responseHook(promise);
@@ -3181,10 +3211,7 @@ class Store {
      * @param {string} [args.body]        The body of the request.
      */
     async submit(iri, args) {
-        await this.#callFetcher(iri, {
-            ...args,
-            contentType: 'application/ld+json',
-        });
+        await this.#callFetcher(iri, args);
         return this.entity(iri);
     }
     /**
@@ -3300,6 +3327,9 @@ class Store {
         }
         html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}</script>`;
         return html;
+    }
+    debug() {
+        console.log(this.#primary.entries());
     }
 }
 
