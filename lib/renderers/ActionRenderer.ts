@@ -1,15 +1,14 @@
 import m from 'mithril';
-import type {ActionParentArgs, AlternativeSelectionResult, EntityState, OctironPerformArgs, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionResult, Selector, ValueSelectionResult} from "../octiron";
-import {isIRIObject} from '../utils/isIRIObject';
-
-
-export type ActionSelectionDetailsListener = (selectionDetails: SelectionDetails<ReadonlySelectionResult>) => void;
+import type {ActionEvents, ActionParentArgs, ActionSelectionDetailsListener, AlternativeSelectionResult, EntityState, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionResult, Selector, Store, ValueSelectionResult} from "../octiron.ts";
+import {isIRIObject} from '../utils/isIRIObject.ts';
+import {actionFactory} from '../factories/actionFactory.ts';
 
 
 export type ActionRendererAttrs = {
   args: OctironPerformArgs;
   parentArgs: ActionParentArgs;
   rendererArgs: PerformRendererArgs;
+  selection: OctironSelection;
   selector?: Selector;
   view: PerformView;
 };
@@ -30,6 +29,9 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
 
   state = new class {
     key: symbol = Symbol('ActionRenderer');
+    events!: ActionEvents;
+    octiron!: OctironAction;
+    store!: Store;
     attrs!: ActionRendererAttrs;
     submitResult?: EntityState;
     selectionDetails?: SelectionDetails<ReadonlySelectionResult>;
@@ -44,7 +46,12 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
   addChildLister = (listener: ActionSelectionDetailsListener) => {
     this.listeners.push(listener);
 
-    listener(this.state.selectionDetails);
+    if (this.state.submitResult != null) {
+      listener(
+        this.state.submitResult,
+        this.state.selectionDetails,
+      );
+    }
   }
 
   removeChildListener = (listener: ActionSelectionDetailsListener) => {
@@ -57,7 +64,10 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
     this.state.selectionDetails = selectionDetails;
 
     for (let i = 0, l = this.listeners.length; i < l; i++) {
-      this.listeners[i](this.state.selectionDetails);
+      this.listeners[i](
+        this.state.submitResult,
+        this.state.selectionDetails,
+      );
     }
   }
 
@@ -70,7 +80,7 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
       // If the response is an IRI object subscribe to it so any
       // updates to that entity in the store automatically apply to
       // the value held by this action.
-      this.state.selectionDetails = this.state.attrs.parentArgs.store.subscribe({
+      this.state.selectionDetails = this.state.store.subscribe({
         key: this.state.key,
         listener: this.storeListener,
         selector: submitResult.iri,
@@ -88,7 +98,7 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
           status: submitResult.status,
           contentType: submitResult.contentType,
           reason: submitResult.reason,
-          integration: this.state.attrs.parentArgs.store.integration(submitResult.contentType),
+          integration: this.state.store.integration(submitResult.contentType),
         } satisfies AlternativeSelectionResult;
       } else if (submitResult.type === 'entity-success') {
         selectionResult = {
@@ -102,7 +112,7 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
         } satisfies ValueSelectionResult;
       }
 
-      this.state.attrs.parentArgs.store.unsubscribe(this.state.key);
+      this.state.store.unsubscribe(this.state.key);
   
       this.state.selectionDetails = {
         complete: true,
@@ -119,24 +129,50 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
     }
 
     for (let i = 0, l = this.listeners.length; i < l; i++) {
-      this.listeners[i](this.state.selectionDetails);
+      this.listeners[i](
+        this.state.submitResult,
+        this.state.selectionDetails,
+      );
     }
   }
 
   oninit(vnode: m.Vnode<ActionRendererAttrs>) {
+    this.state.octiron = actionFactory(
+      vnode.attrs.args,
+      vnode.attrs.parentArgs,
+      vnode.attrs.rendererArgs,
+      {
+        onSubmitResult: this.onSubmitResult,
+        addListener: this.addChildLister,
+        removeListener: this.removeChildListener,
+      },
+    );
+    this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
     this.state.attrs = vnode.attrs;
   }
 
   onbeforeupdate(vnode: m.Vnode<ActionRendererAttrs>): boolean | void {
+    const store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
     this.state.attrs = vnode.attrs;
+
+    if (store !== this.state.store) {
+      this.state.store.unsubscribe(this.state.key);
+      this.state.store = store;
+
+      if (this.state.submitResult != null) {
+        this.onSubmitResult(this.state.submitResult);
+      }
+    } else {
+      this.state.store = store;
+    }
   }
 
   onbeforeremove() {
-    this.state.attrs.parentArgs.store.unsubscribe(this.state.key);
+    this.state.store.unsubscribe(this.state.key);
   }
 
-  view() {
-
+  view(vnode: m.Vnode<ActionRendererAttrs>) {
+    return vnode.attrs.view(this.state.octiron);
   }
 
 }

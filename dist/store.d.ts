@@ -1,5 +1,5 @@
 import type { JSONObject } from "./types/common.ts";
-import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.ts";
+import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, IntegrationState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.ts";
 type FetchArgs = {
     mainEntity?: boolean;
 };
@@ -68,6 +68,7 @@ export declare class Store {
      * Retrieves an entity state object relating to an IRI.
      */
     entity(iri: string, accept?: string): EntityState | null;
+    integration(contentType: string): IntegrationState;
     /**
      * Retrieves a text representation of a value in the store
      * if it is supported by the int4egration.

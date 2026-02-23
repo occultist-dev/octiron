@@ -1,5 +1,5 @@
 import m from 'mithril';
-import {PerformRenderer} from "../renderers/PerformRenderer.ts";
+import {PerformRenderer} from "../renderers/PerformRenderer2.ts";
 import {PresentRenderer} from '../renderers/PresentRenderer.ts';
 import {SelectionRenderer} from "../renderers/SelectionRenderer.ts";
 import type {Store} from "../store.ts";
@@ -291,8 +291,12 @@ export function octironFactory<O extends Octiron>(
         arg3?: PerformView,
     ) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-        
-        return self.root(selector, args, (o) => o.perform(args, view));
+
+        if (typeof selector === 'string') {
+          return self.select(selector, args, o => o.perform(args, view));
+        }
+
+        return self.root(o => o.perform(args, view));
       };
       break;
     default: {
@@ -302,10 +306,6 @@ export function octironFactory<O extends Octiron>(
         arg3?: PerformView,
       ) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-
-        if (typeof selector === 'string') {
-          return self.select(selector, args, (o) => o.perform(args, view));
-        }
 
         return m(PerformRenderer, {
           selector,

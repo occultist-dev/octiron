@@ -41,7 +41,7 @@ export function getSubmitDetails({
       } else if (
         isJSONObject(target) && (
           target['https://schema.org/contentType'] == null || (
-            target['https://schema.org/contentType'] === 'mutipart/form-data' ||
+            target['https://schema.org/contentType'] === 'multipart/form-data' ||
             target['https://schema.org/contentType'] === 'application/ld+json'
           )
         )

@@ -77,8 +77,6 @@ describe('o.submit()', () => {
     
     await redraw();
 
-    console.log(dom.serialize())
-
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
     assert.equal(listElements[0].textContent, 'First');
@@ -94,11 +92,9 @@ describe('o.submit()', () => {
       ],
     };
 
-    console.log('SUBMITTING');
     await o.store.submit('https://example.com/todos');
     await redraw();
 
-    console.log(dom.serialize())
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
     assert.equal(listElements[0].textContent, 'Second');

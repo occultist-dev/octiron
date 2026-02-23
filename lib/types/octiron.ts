@@ -6,6 +6,7 @@ import type {
   HTTPFailure,
   UndefinedFailure,
 } from '../failures.ts';
+import type {EntityState, ReadonlySelectionResult, SelectionDetails} from './store.ts';
 
 /**
  * An iri (see url) to an entity.
@@ -987,6 +988,17 @@ export type PerformRendererArgs = CommonRendererArgs & {
   actionValue: Octiron;
 };
 
+export type ActionSelectionDetailsListener = (
+  submitResult: EntityState,
+  selectionDetails: SelectionDetails<ReadonlySelectionResult>,
+) => void;
+
+export interface ActionEvents {
+  onSubmitResult(submitResult: EntityState): void;
+  addListener(listener: ActionSelectionDetailsListener): void;
+  removeListener(listener: ActionSelectionDetailsListener): void;
+};
+
 export type Update = (value: JSONValue) => void;
 
 /**
@@ -1007,4 +1019,7 @@ export type OnParentArgsChange<T> = (parentArgs: T) => void;
 export type RegisterParentArgsChangeListener<T> = (
   onChange: OnParentArgsChange<T>,
 ) => UnlistenFn;
+
+
+
 

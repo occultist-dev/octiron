@@ -2,6 +2,7 @@ import type { Attributes, Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts';
 import type { Store } from '../store.ts';
 import type { ContentHandlingFailure, HTTPFailure, UndefinedFailure } from '../failures.ts';
+import type { EntityState, ReadonlySelectionResult, SelectionDetails } from './store.ts';
 /**
  * An iri (see url) to an entity.
  * In theory this could use other protocols (see 'tel:*') but http is the only
@@ -660,6 +661,12 @@ export type CommonRendererArgs = {
 export type PerformRendererArgs = CommonRendererArgs & {
     actionValue: Octiron;
 };
+export type ActionSelectionDetailsListener = (submitResult: EntityState, selectionDetails: SelectionDetails<ReadonlySelectionResult>) => void;
+export interface ActionEvents {
+    onSubmitResult(submitResult: EntityState): void;
+    addListener(listener: ActionSelectionDetailsListener): void;
+    removeListener(listener: ActionSelectionDetailsListener): void;
+}
 export type Update = (value: JSONValue) => void;
 /**
  * Arguments passed from the action selection renderer

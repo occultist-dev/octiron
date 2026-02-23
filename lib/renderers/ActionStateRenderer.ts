@@ -4,7 +4,7 @@ import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, Selection
 import type { EntityState, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
 import type { Store } from "../store.ts";
 import type { Mutable } from "../types/common.ts";
-import {SelectionRenderer} from './SelectionRenderer.ts';
+
 
 export type ActionRendererRef = {
   submitting: boolean;
@@ -56,7 +56,6 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
   let unsubscribe;
 
   function listener(next: SelectionDetails<ReadonlySelectionResult>) {
-    console.log('SUBSCRIPTION UPDATED', next.result[0].value);
     if (next.result.length === 1 && next.result[0].value != null) {
       submitResult.value = next.result[0].value;
     }
@@ -68,8 +67,6 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
       return;
     }
     
-    console.log('UPDATING SUBSCRIPTION', attrs.submitResult.iri);
-
     attrs.parentArgs.store.unsubscribe(key);
     attrs.parentArgs.store.subscribe({
       key,

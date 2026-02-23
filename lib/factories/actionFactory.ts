@@ -1,10 +1,11 @@
 import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
 import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
+import {ActionStateRenderer2} from "../renderers/ActionStateRenderer2.ts";
 import {ActionStateRenderer} from "../renderers/ActionStateRenderer.ts";
 import type {Store} from "../store.ts";
 import type {JSONArray, JSONObject, JSONValue, SCMAction} from "../types/common.ts";
-import type {ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
+import type {ActionEvents, ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
 import type {EntityState} from "../types/store.ts";
 import {expandValue} from '../utils/expandValue.ts';
 import {getSubmitDetails} from "../utils/getSubmitDetails.ts";
@@ -30,6 +31,7 @@ export function actionFactory<
   args: OctironPerformArgs<Attrs>,
   parentArgs: ActionParentArgs,
   rendererArgs: PerformRendererArgs,
+  events: ActionEvents,
 ): OctironAction & InstanceHooks {
   const factoryArgs = Object.assign(Object.create(null), args);
   let payload: JSONObject = Object.create(null);
@@ -43,7 +45,7 @@ export function actionFactory<
 
   async function submit() {
     let isError = false;
-    const { url, method, body, contentType, encodingType } = getSubmitDetails({
+    const { url, method, body } = getSubmitDetails({
       payload,
       action: refs.rendererArgs.value as SCMAction,
     });
@@ -63,9 +65,10 @@ export function actionFactory<
         mainEntity: args.mainEntity,
         method,
         body,
-        contentType,
-        encodingType,
+        accept: args.accept,
       });
+      
+      events.onSubmitResult(submitResult);
     } catch (err) {
       console.error(err);
       
@@ -265,14 +268,14 @@ export function actionFactory<
     ) => {
       const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-      return m(ActionStateRenderer, {
+      return m(ActionStateRenderer2, {
         not,
         type,
         selector,
         args,
         view,
-        submitResult,
         parentArgs: childArgs as SelectionParentArgs,
+        events,
       });
     }
   }
@@ -298,9 +301,6 @@ export function actionFactory<
 
   if (self.url != null) {
     submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
-
-    console.log('SUBMIT RESULT')
-    console.log(JSON.stringify(submitResult, null, 2));
   }
 
   if (

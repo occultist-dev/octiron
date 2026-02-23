@@ -180,6 +180,10 @@ export type EntitySelectionResult = {
      */
     readonly reason?: Failure;
     /**
+     * The content type of the response.
+     */
+    readonly contentType: string;
+    /**
      * The accept header to use when performing API requests for this entity.
      */
     readonly accept?: string;
@@ -269,6 +273,10 @@ export type ValueSelectionResult = {
      */
     readonly reason?: Failure;
     /**
+     * The content type of the response.
+     */
+    readonly contentType?: undefined;
+    /**
      * The integration state instance for this content type.
      *
      * N/A for value selection results.
@@ -347,6 +355,10 @@ export type ActionSelectionResult = {
      * N/A for value selection results.
      */
     readonly status?: undefined;
+    /**
+     * The content type of the response.
+     */
+    readonly contentType?: string;
     /**
      * The error type.
      */
@@ -528,9 +540,13 @@ export type SuccessEntityState = {
      */
     readonly isProblem: false;
     /**
-     *
+     * Response content type value if present.
      */
-    readonly headers?: Headers;
+    readonly contentType: string;
+    /**
+     * Response etag value if present.
+     */
+    readonly etag?: string;
     /**
      * Component to render if the returned content type is
      * not jsonld or problem detail types.
@@ -565,9 +581,13 @@ export type SuccessAlternativeState = {
      */
     readonly isProblem: false;
     /**
-     *
+     * Response content type value if present.
      */
-    readonly headers?: Headers;
+    readonly contentType: string;
+    /**
+     * Response etag value if present.
+     */
+    readonly etag?: string;
     /**
      * Component to render if the returned content type is
      * not jsonld or problem detail types.
@@ -597,13 +617,17 @@ export type FailureEntityState = {
      */
     readonly status: number;
     /**
-     * True if the response was of the problem details type
+     * True if the response was of the problem details type.
      */
     readonly isProblem: boolean;
     /**
-     *
+     * Response content type value if present.
      */
-    readonly headers?: Headers;
+    readonly contentType?: string;
+    /**
+     * Response etag value if present.
+     */
+    readonly etag?: string;
     /**
      * An object describing the reason and source of the failure.
      */
@@ -671,13 +695,9 @@ export type SubmitArgs = {
      */
     method?: Method;
     /**
-     * The content type header value.
+     * The accept header to use when submitting the request.
      */
-    contentType?: string;
-    /**
-     * The encoding type header value.
-     */
-    encodingType?: string;
+    accept?: string;
     /**
      * The body of the request.
      */

@@ -1,21 +1,23 @@
-import m from 'mithril';
-import {parseArgs} from "node:util";
-import {ActionParentArgs, CommonRendererArgs, EntitySelectionResult, JSONObject, OctironPerformArgs, OctironSelection, PerformRendererArgs, ReadonlySelectionResult, SelectionDetails, SelectionParentArgs, SelectionResult, Store, ValueSelectionResult} from "../octiron";
-import {isIRIObject} from "../utils/isIRIObject";
 import {isJSONObject} from "@occultist/mini-jsonld";
-import {selectionFactory} from "../factories/selectionFactory";
-import {mithrilRedraw} from "../utils/mithrilRedraw";
+import m from 'mithril';
+import {selectionFactory} from "../factories/selectionFactory.ts";
+import {Store} from '../store.ts';
+import type {ActionParentArgs, CommonRendererArgs, JSONObject, Mutable, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionParentArgs, ValueSelectionResult} from "../octiron.ts";
+import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
+import {ActionRenderer} from "./ActionRenderer.ts";
 
 
 export type PerformRendererAttrs = {
   selector?: string;
   args: OctironPerformArgs;
+  view: PerformView;
   parentArgs: ActionParentArgs;
 };
 
 type Instance = {
   octiron: OctironSelection;
   selectionResult: ReadonlySelectionResult;
+  rendererArgs: PerformRendererArgs;
 };
 
 /**
@@ -29,6 +31,7 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
   state = new class {
     key: symbol = Symbol('PerformRenderer');
     store!: Store;
+    selector?: string;
     attrs!: PerformRendererAttrs;
     instances!: Map<string, Instance>;
     selectionDetails!: SelectionDetails<ReadonlySelectionResult>;
@@ -80,20 +83,27 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
       }
 
       hasChanges = true;
-
+      const selectionRendererArgs = {
+        index,
+        value: selectionResult.value,
+        propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+      } satisfies CommonRendererArgs;
       const octiron = selectionFactory(
         this.state.attrs.args,
         this.state.attrs.parentArgs as SelectionParentArgs,
-        {
-          index,
-          value: selectionResult.value,
-          propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-        } satisfies CommonRendererArgs,
+        selectionRendererArgs,
       );
+      const rendererArgs: PerformRendererArgs = {
+        index,
+        value: selectionResult.value,
+        propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+        actionValue: octiron as OctironSelection,
+      };
 
       this.state.instances.set(selectionResult.pointer, {
         octiron,
         selectionResult,
+        rendererArgs,
       });
     }
 
@@ -158,18 +168,73 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
     this.createInstances();
   }
   
-  oninit({ attrs }) {
-    this.state.store = attrs.args
-    this.state.attrs = attrs;
+  oninit(vnode: m.Vnode<PerformRendererAttrs>) {
+    this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+    this.state.attrs = vnode.attrs;
     
     this.subscribe();
   }
 
-  onbeforeupdate({ attrs }) {
-    this.state.attrs = attrs;
+  onbeforeupdate(vnode: m.Vnode<PerformRendererAttrs>) {
+    const store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+    this.state.attrs = vnode.attrs;
+
+    if (store !== this.state.store) {
+      this.state.store.unsubscribe(this.state.key);
+      this.state.store = store;
+      this.subscribe();
+    } else {
+      this.state.store = store;
+    }
   }
 
   onbeforeremove() {
     this.state.store.unsubscribe(this.state.key);
+  }
+
+  view(vnode: m.Vnode<PerformRendererAttrs>) {
+    if (!this.state.selectionDetails?.complete) {
+      return vnode.attrs.args.loading;
+    }
+
+    const children: m.Children[] = [vnode.attrs.args.pre];
+    const list = Array.from(this.state.instances.values())
+
+    for (let i = 0, l = list.length; i < l; i++) {
+      (list[i].octiron as Mutable<OctironSelection>).position = i + 1;
+
+      if (i !== 0) children.push(vnode.attrs.args.sep);
+
+      if (list[i].selectionResult.type === 'value') {
+        children.push(m(ActionRenderer, {
+          args: vnode.attrs.args,
+          parentArgs: vnode.attrs.parentArgs,
+          rendererArgs: list[i].rendererArgs,
+          selection: list[i].octiron,
+          view: vnode.attrs.view,
+        }));
+      } else if (!list[i].selectionResult.ok) {
+        if (typeof vnode.attrs.args.fallback === 'function') {
+          children.push(vnode.attrs.args.fallback(
+            list[i].octiron,
+            list[i].selectionResult.reason,
+          ));
+        } else {
+          children.push(vnode.attrs.args.fallback);
+        }
+      } else {
+        children.push(m(ActionRenderer, {
+          args: vnode.attrs.args,
+          parentArgs: vnode.attrs.parentArgs,
+          rendererArgs: list[i].rendererArgs,
+          selection: list[i].octiron,
+          view: vnode.attrs.view,
+        }));
+      }
+    }
+
+    children.push(vnode.attrs.args.post);
+
+    return children;
   }
 }
