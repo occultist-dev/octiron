@@ -14,6 +14,7 @@ import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
 import {unravelArgs} from "../utils/unravelArgs.ts";
 import {type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
 import {isBrowserRender} from '../consts.ts';
+import {ActionStateRenderer3} from '../renderers/ActionStateRenderer3.ts';
 
 export type ActionRefs = {
   url?: string;
@@ -268,7 +269,7 @@ export function actionFactory<
     ) => {
       const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-      return m(ActionStateRenderer2, {
+      return m(ActionStateRenderer3, {
         not,
         type,
         selector,
@@ -304,11 +305,13 @@ export function actionFactory<
   }
 
   if (
-    isBrowserRender &&
-    args.submitOnInit &&
-    submitResult == null
+    isBrowserRender && args.submitOnInit
   ) {
-    submit();
+    if (submitResult == null) {
+      submit();
+    } else {
+      events.onSubmitResult(submitResult);
+    }
   } else if (
     !isBrowserRender &&
     args.submitOnInit) {

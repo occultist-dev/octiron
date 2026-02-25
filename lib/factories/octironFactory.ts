@@ -1,5 +1,5 @@
 import m from 'mithril';
-import {PerformRenderer} from "../renderers/PerformRenderer2.ts";
+import {PerformRenderer3} from "../renderers/PerformRenderer3.ts";
 import {PresentRenderer} from '../renderers/PresentRenderer.ts';
 import {SelectionRenderer} from "../renderers/SelectionRenderer.ts";
 import type {Store} from "../store.ts";
@@ -307,7 +307,7 @@ export function octironFactory<O extends Octiron>(
       ) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-        return m(PerformRenderer, {
+        return m(PerformRenderer3, {
           selector,
           args,
           view,

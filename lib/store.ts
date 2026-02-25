@@ -928,7 +928,6 @@ export class Store {
     }
 
     public debug() {
-
       console.log(this.#primary.entries());
     }
 

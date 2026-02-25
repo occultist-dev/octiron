@@ -25,7 +25,7 @@ export type ActionRendererAttrs = {
  * component, since many of these components can be mounted and
  * there would be no clear source of truth.
  */
-export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class implements m.Component<ActionRendererAttrs> {
+export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = class implements m.Component<ActionRendererAttrs> {
 
   state = new class {
     key: symbol = Symbol('ActionRenderer');
@@ -137,6 +137,8 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
   }
 
   oninit(vnode: m.Vnode<ActionRendererAttrs>) {
+    this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+    this.state.attrs = vnode.attrs;
     this.state.octiron = actionFactory(
       vnode.attrs.args,
       vnode.attrs.parentArgs,
@@ -147,8 +149,6 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
         removeListener: this.removeChildListener,
       },
     );
-    this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-    this.state.attrs = vnode.attrs;
   }
 
   onbeforeupdate(vnode: m.Vnode<ActionRendererAttrs>): boolean | void {
@@ -172,6 +172,7 @@ export const ActionRenderer: m.ComponentTypes<ActionRendererAttrs> = new class i
   }
 
   view(vnode: m.Vnode<ActionRendererAttrs>) {
+    console.log('ACTION RENDERER', this.state.octiron);
     return vnode.attrs.view(this.state.octiron);
   }
 

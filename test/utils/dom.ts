@@ -1,9 +1,10 @@
+import {JSONLDContextStore} from '@occultist/mini-jsonld';
 import {Registry} from '@occultist/occultist';
 import {JSDOM} from 'jsdom';
 import m from 'mithril';
 import mountRedraw from 'mithril/api/mount-redraw.js';
 import render from 'mithril/render.js';
-import {jsonLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
+import {makeJSONLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
 import {octiron} from '../../lib/octiron.ts';
 import {type StoreArgs} from '../../lib/store.ts';
 
@@ -38,22 +39,23 @@ export function domTest() {
   globalThis.window = window;
   globalThis.document = dom.window.document;
   const registry = new Registry({
-    rootIRI: 'https://example.com',
+    rootIRI: 'http://example.com',
   });
   const scope = registry.scope('/actions');
   let promises: Array<Promise<Response>> = [];
   const fetcher: StoreArgs['fetcher'] = async (iri, args) => {
     const res = await registry.handleRequest(new Request(iri, args));
-    //const clone = res.clone();
-    //console.log('RES', iri, await clone.text());
 
     return res;
   };
   const responseHook: StoreArgs['responseHook'] = (res) => promises.push(res);
+  const store = new JSONLDContextStore({
+    fetcher: (iri, init) => registry.handleRequest(new Request(iri, init)),
+  });
   const o = octiron({
-    rootIRI: 'https://example.com',
-    vocab: 'https://schema.example.com/',
-    handlers: [jsonLDHandler],
+    rootIRI: 'http://example.com',
+    vocab: 'http://schema.example.com/',
+    handlers: [makeJSONLDHandler({ store })],
     fetcher,
     responseHook,
   });

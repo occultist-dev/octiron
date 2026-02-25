@@ -28,40 +28,6 @@ function selectionFactory(args, parentArgs, rendererArgs) {
     return self;
 }
 
-const isBrowserRender = typeof window !== 'undefined';
-
-/**
- * @description
- * Calls Mithril's redraw function if the window object exists.
- */
-function mithrilRedraw() {
-    if (isBrowserRender) {
-        m.redraw();
-    }
-}
-
-/**
- * @description
- * Returns true if the input value is an object.
- *
- * @param value Any value which should come from a JSON source.
- */
-function isJSONObject(value) {
-    return typeof value === 'object' && !Array.isArray(value) && value !== null;
-}
-
-/**
- * @description
- * Returns true if the given value is a JSON object with a JSON-ld @id value.
- *
- * @param value Any value which should come from a JSON source.
- */
-function isIRIObject(value) {
-    return isJSONObject(value)
-        && typeof value['@id'] === 'string'
-        && value['@id'] !== '';
-}
-
 /**
  * @description
  * Returns a component based of Octiron's selection rules:
@@ -104,6 +70,16 @@ function getComponent({ style, propType, type, firstPickComponent, typeHandlers,
     if (fallbackComponent != null) {
         return fallbackComponent;
     }
+}
+
+/**
+ * @description
+ * Returns true if the input value is an object.
+ *
+ * @param value Any value which should come from a JSON source.
+ */
+function isJSONObject(value) {
+    return typeof value === 'object' && !Array.isArray(value) && value !== null;
 }
 
 /**
@@ -244,6 +220,18 @@ function isIterable(value) {
         }
     }
     return false;
+}
+
+const isBrowserRender = typeof window !== 'undefined';
+
+/**
+ * @description
+ * Calls Mithril's redraw function if the window object exists.
+ */
+function mithrilRedraw() {
+    if (isBrowserRender) {
+        m.redraw();
+    }
 }
 
 /**
@@ -432,6 +420,18 @@ function escapeJSONPointerParts(...parts) {
         .map((part) => part.replace(/~/g, '~0').replace(/\//g, '~1'))
         .join('/');
     return `${escaped}`;
+}
+
+/**
+ * @description
+ * Returns true if the given value is a JSON object with a JSON-ld @id value.
+ *
+ * @param value Any value which should come from a JSON source.
+ */
+function isIRIObject(value) {
+    return isJSONObject(value)
+        && typeof value['@id'] === 'string'
+        && value['@id'] !== '';
 }
 
 /**
@@ -998,6 +998,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             status: cache.status,
             value: cache.value,
             reason: cache.reason,
+            contentType: cache.contentType,
         });
         return;
     }
@@ -1018,7 +1019,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
     }
     const value = cache.value;
     if (isMetadataObject(value)) {
-        // in theory serveral entities could be metadata objects
+        // in theory several entities could be metadata objects
         // referencing each other and end up looping around...
         if (handledIRIs == null) {
             handledIRIs = new Set([value['@id']]);
@@ -1027,7 +1028,6 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
-            console.log('CIRCULAR', value);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -1054,6 +1054,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             iri: cache.iri,
             ok: true,
             value: cache.value,
+            contentType: cache.contentType,
         });
         return;
     }
@@ -1167,7 +1168,6 @@ const ActionSelectionRenderer = (vnode) => {
             currentAttrs = attrs;
             prev = cachePrev$1(attrs);
             updateSelection();
-            console.log('INIT', details);
         },
         onbeforeupdate: ({ attrs }) => {
             const reselect = shouldReselect$1(attrs, prev);
@@ -1180,8 +1180,6 @@ const ActionSelectionRenderer = (vnode) => {
                     instance.octiron._updateArgs(attrs.args);
                 }
             }
-            updateSelection();
-            console.log('UPDATE', details);
         },
         view: ({ attrs: { view, args } }) => {
             if (details == null) {
@@ -1214,61 +1212,6 @@ const ActionSelectionRenderer = (vnode) => {
             return children;
         },
     };
-};
-
-const ActionStateRenderer2 = new class {
-    state = new class {
-        render;
-        not;
-        type;
-        successful;
-        octiron;
-        args;
-        parentArgs;
-    };
-    listener = (submitResult, selectionDetails) => {
-        if ((this.state.not && submitResult.ok && this.state.type === 'failure') ||
-            (!this.state.not && !submitResult.ok && this.state.type === 'failure') ||
-            (this.state.not && submitResult.ok && this.state.type === 'success') ||
-            (!this.state.not && !submitResult.ok && this.state.type === 'success')) {
-            this.state.render = false;
-            return;
-        }
-        this.state.render = true;
-        // TODO: handle updates
-        this.state.octiron = selectionFactory(this.state.args, this.state.parentArgs, {
-            index: 0,
-            value: selectionDetails.result[0].value,
-        });
-    };
-    oninit(vnode) {
-        this.state.not = vnode.attrs.not ?? false;
-        this.state.type = vnode.attrs.type;
-        this.state.args = vnode.attrs.args;
-        this.state.parentArgs = vnode.attrs.parentArgs;
-        this.state.render = vnode.attrs.not &&
-            vnode.attrs.selector == null &&
-            vnode.attrs.view == null;
-        vnode.attrs.events.addListener(this.listener);
-    }
-    onbeforeupdate(vnode) {
-        this.state.not = vnode.attrs.not ?? false;
-        this.state.type = vnode.attrs.type;
-    }
-    onbeforeremove(vnode) {
-        vnode.attrs.events.removeListener(this.listener);
-    }
-    view(vnode) {
-        if (!this.state.render)
-            return;
-        if (vnode.attrs.selector != null) {
-            return this.state.octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
-        }
-        else if (vnode.attrs.view != null) {
-            return vnode.attrs.view(this.state.octiron);
-        }
-        return vnode.children;
-    }
 };
 
 const ActionStateRenderer = () => {
@@ -1429,6 +1372,59 @@ function getSubmitDetails({ payload, action, }) {
         body,
     };
 }
+
+const ActionStateRenderer3 = () => {
+    let render;
+    let not;
+    let type;
+    let octiron;
+    let args;
+    let parentArgs;
+    const listener = (submitResult, selectionDetails) => {
+        if ((not && submitResult.ok && type === 'failure') ||
+            (!not && !submitResult.ok && type === 'failure') ||
+            (not && submitResult.ok && type === 'success') ||
+            (!not && !submitResult.ok && type === 'success')) {
+            render = false;
+            return;
+        }
+        render = true;
+        octiron = selectionFactory(args, parentArgs, {
+            index: 0,
+            value: selectionDetails.result[0].value,
+        });
+    };
+    return {
+        oninit(vnode) {
+            not = vnode.attrs.not ?? false;
+            type = vnode.attrs.type;
+            args = vnode.attrs.args ?? {};
+            parentArgs = vnode.attrs.parentArgs;
+            render = not &&
+                vnode.attrs.selector == null &&
+                vnode.attrs.view == null;
+            vnode.attrs.events.addListener(listener);
+        },
+        onbeforeupdate(vnode) {
+            not = vnode.attrs.not ?? false;
+            type = vnode.attrs.type;
+        },
+        onbeforeremove(vnode) {
+            vnode.attrs.events.removeListener(listener);
+        },
+        view(vnode) {
+            if (!render)
+                return;
+            if (vnode.attrs.selector != null) {
+                return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
+            }
+            else if (vnode.attrs.view != null) {
+                return vnode.attrs.view(octiron);
+            }
+            return vnode.children;
+        }
+    };
+};
 
 function actionFactory(args, parentArgs, rendererArgs, events) {
     const factoryArgs = Object.assign(Object.create(null), args);
@@ -1599,7 +1595,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     const makeActionStateMethod = (type, not) => {
         return (arg1, arg2, arg3) => {
             const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-            return m(ActionStateRenderer2, {
+            return m(ActionStateRenderer3, {
                 not,
                 type,
                 selector,
@@ -1630,10 +1626,13 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     if (self.url != null) {
         submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
     }
-    if (isBrowserRender &&
-        args.submitOnInit &&
-        submitResult == null) {
-        submit();
+    if (isBrowserRender && args.submitOnInit) {
+        if (submitResult == null) {
+            submit();
+        }
+        else {
+            events.onSubmitResult(submitResult);
+        }
     }
     else if (!isBrowserRender &&
         args.submitOnInit) {
@@ -1642,316 +1641,295 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     return self;
 }
 
-/**
- * The action renderer creates an Octiron action instance
- * and holds the current state of the current response
- * object. The response object is held at this level
- * because an Octiron instance is not plumbed into Mithril's
- * lifecycle methods and cannot teardown subscriptions if
- * the action is unmounted. It also does not make sense to
- * manipulate the response object in the `ActionStateRenderer`
- * component, since many of these components can be mounted and
- * there would be no clear source of truth.
- */
-const ActionRenderer = new class {
-    state = new class {
-        key = Symbol('ActionRenderer');
-        events;
-        octiron;
-        store;
-        attrs;
-        submitResult;
-        selectionDetails;
-    };
-    /**
-     * The `o.success()` and `o.failure()` methods both need to have up to data
-     * information on the current value held by the action.
-     */
-    listeners = [];
-    addChildLister = (listener) => {
-        this.listeners.push(listener);
-        if (this.state.submitResult != null) {
-            listener(this.state.submitResult, this.state.selectionDetails);
+function applySubmission(key, listener, store, args, submitResult, listeners) {
+    let selectionResult;
+    let selectionDetails;
+    if (isIRIObject(submitResult.value)) {
+        selectionDetails = store.subscribe({
+            key,
+            listener,
+            selector: undefined,
+            value: submitResult.value,
+        });
+        return;
+    }
+    else {
+        if (submitResult.type === 'entity-success') {
+            selectionResult = {
+                key: '/',
+                pointer: '/',
+                type: 'value',
+                readonly: true,
+                status: submitResult.status,
+                reason: submitResult.reason,
+                value: submitResult.value,
+            };
+        }
+        else if (submitResult.type === 'alternative-success') {
+            selectionResult = {
+                key: '/',
+                pointer: '/',
+                type: 'alternative',
+                iri: submitResult.iri,
+                fragment: args.fragment,
+                accept: args.accept,
+                ok: submitResult.ok,
+                status: submitResult.status,
+                contentType: submitResult.contentType,
+                reason: submitResult.reason,
+                integration: store.integration(submitResult.contentType),
+            };
+        }
+        store.unsubscribe(this.state.key);
+        selectionDetails = {
+            complete: true,
+            hasErrors: !submitResult.ok,
+            hasMissing: false,
+            isProblem: submitResult.isProblem,
+            fragment: args.fragment,
+            accept: args.accept,
+            dependencies: [],
+            required: [],
+            result: [selectionResult],
+            selector: submitResult.iri,
+        };
+    }
+    for (let i = 0, l = this.listeners.length; i < l; i++) {
+        listeners[i](submitResult, selectionDetails);
+    }
+    return selectionDetails;
+}
+const ActionRenderer2 = () => {
+    const key = Symbol('ActionRenderer');
+    let octiron;
+    let store;
+    let args;
+    let parentArgs;
+    let submitResult;
+    let selectionDetails;
+    const listeners = [];
+    const addListener = (listener) => {
+        listeners.push(listener);
+        if (submitResult != null) {
+            listener(submitResult, selectionDetails);
         }
     };
-    removeChildListener = (listener) => {
-        const index = this.listeners.indexOf(listener);
-        this.listeners.splice(index, 1);
+    const removeListener = (listener) => {
+        listeners.splice(listeners.indexOf(listener), 1);
     };
-    storeListener = (selectionDetails) => {
-        this.state.selectionDetails = selectionDetails;
-        for (let i = 0, l = this.listeners.length; i < l; i++) {
-            this.listeners[i](this.state.submitResult, this.state.selectionDetails);
+    const listener = (next) => {
+        selectionDetails = next;
+        for (let i = 0, l = listeners.length; i < l; i++) {
+            listeners[i](submitResult, selectionDetails);
         }
     };
-    onSubmitResult = (submitResult) => {
-        let selectionResult;
-        this.state.submitResult = submitResult;
-        if (isIRIObject(this.state.submitResult.value)) {
-            // If the response is an IRI object subscribe to it so any
-            // updates to that entity in the store automatically apply to
-            // the value held by this action.
-            this.state.selectionDetails = this.state.store.subscribe({
-                key: this.state.key,
-                listener: this.storeListener,
-                selector: submitResult.iri,
+    const onSubmitResult = (next) => {
+        submitResult = next;
+        selectionDetails = applySubmission(key, listener, store, args, submitResult, listeners);
+    };
+    return {
+        oninit(vnode) {
+            store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            octiron = actionFactory(args, parentArgs, vnode.attrs.rendererArgs, {
+                onSubmitResult,
+                addListener,
+                removeListener,
             });
-        }
-        else {
-            if (submitResult.type === 'alternative-success') {
-                selectionResult = {
-                    key: '/',
-                    pointer: '/',
-                    type: 'alternative',
-                    iri: submitResult.iri,
-                    fragment: this.state.attrs.args.fragment,
-                    accept: this.state.attrs.args.accept,
-                    ok: submitResult.ok,
-                    status: submitResult.status,
-                    contentType: submitResult.contentType,
-                    reason: submitResult.reason,
-                    integration: this.state.store.integration(submitResult.contentType),
-                };
+        },
+        onbeforeupdate(vnode) {
+            const prev = store;
+            const changed = prev !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store);
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            store = args.store ?? parentArgs.store;
+            if (changed) {
+                store.unsubscribe(key);
+                if (submitResult != null) {
+                    onSubmitResult(submitResult);
+                }
             }
-            else if (submitResult.type === 'entity-success') {
-                selectionResult = {
+        },
+        onbeforeremove() {
+            store.unsubscribe(key);
+        },
+        view(vnode) {
+            return vnode.attrs.view(octiron);
+        },
+    };
+};
+
+function createInstances(instances, args, parentArgs, selectionDetails) {
+    const prevKeys = Array.from(instances.keys());
+    const nextKeys = [];
+    for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
+        const selectionResult = selectionDetails.result[i];
+        nextKeys.push(selectionResult.pointer);
+        if (instances.has(selectionResult.pointer)) {
+            const next = selectionResult;
+            const prev = instances.get(selectionResult.pointer).selectionResult;
+            if (prev.type === 'value' &&
+                next.type === 'value' &&
+                next.value === prev.value) {
+                continue;
+            }
+            else if (prev.type === 'entity' &&
+                next.type === 'entity' &&
+                next.ok === prev.ok &&
+                next.status === prev.status &&
+                next.value === prev.value) {
+                continue;
+            }
+        }
+        const selectionRendererArgs = {
+            index: i,
+            value: selectionResult.value,
+            propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+        };
+        const octiron = selectionFactory(args, parentArgs, selectionRendererArgs);
+        const rendererArgs = {
+            index: i,
+            value: selectionResult.value,
+            propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+            actionValue: octiron,
+        };
+        instances.set(selectionResult.pointer, {
+            octiron,
+            selectionResult,
+            rendererArgs,
+        });
+    }
+    if (prevKeys.length > 0) {
+        for (let i = 0, l = prevKeys.length; i < l; i++) {
+            if (!nextKeys.includes(prevKeys[i])) {
+                instances.delete(prevKeys[i]);
+            }
+        }
+    }
+}
+async function fetchRequired(store, selectionDetails) {
+    if (selectionDetails.required.length === 0)
+        return;
+    const promises = [];
+    for (let i = 0, l = selectionDetails.required.length; i < l; i++) {
+        promises.push(store.fetch(selectionDetails.required[i]));
+    }
+    await Promise.allSettled(promises);
+}
+function subscribe(key, listener, instances, store, selector, args, parentArgs) {
+    if (selector != null &&
+        !miniJsonld.isJSONObject(parentArgs.parent.value)) {
+        // Actions can only be performed on JSON objects.
+        return;
+    }
+    let selectionDetails;
+    if (selector != null) {
+        selectionDetails = store.subscribe({
+            key,
+            listener,
+            selector,
+            value: parentArgs.parent.value,
+        });
+    }
+    else {
+        // If there is no selector this perform is being done against the
+        // current value.
+        selectionDetails = {
+            selector: '/',
+            complete: true,
+            hasErrors: false,
+            hasMissing: false,
+            isProblem: false,
+            dependencies: [],
+            required: [],
+            result: [{
                     key: '/',
                     pointer: '/',
                     type: 'value',
                     readonly: true,
-                    status: submitResult.status,
-                    reason: submitResult.reason,
-                    value: submitResult.value,
-                };
-            }
-            this.state.store.unsubscribe(this.state.key);
-            this.state.selectionDetails = {
-                complete: true,
-                hasErrors: !submitResult.ok,
-                hasMissing: false,
-                isProblem: submitResult.isProblem,
-                fragment: this.state.attrs.args.fragment,
-                accept: this.state.attrs.args.accept,
-                dependencies: [],
-                required: [],
-                result: [selectionResult],
-                selector: submitResult.iri,
-            };
-        }
-        for (let i = 0, l = this.listeners.length; i < l; i++) {
-            this.listeners[i](this.state.submitResult, this.state.selectionDetails);
-        }
-    };
-    oninit(vnode) {
-        this.state.octiron = actionFactory(vnode.attrs.args, vnode.attrs.parentArgs, vnode.attrs.rendererArgs, {
-            onSubmitResult: this.onSubmitResult,
-            addListener: this.addChildLister,
-            removeListener: this.removeChildListener,
-        });
-        this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-        this.state.attrs = vnode.attrs;
+                    value: parentArgs.parent.value,
+                }],
+        };
+        createInstances(instances, args, parentArgs, selectionDetails);
     }
-    onbeforeupdate(vnode) {
-        const store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-        this.state.attrs = vnode.attrs;
-        if (store !== this.state.store) {
-            this.state.store.unsubscribe(this.state.key);
-            this.state.store = store;
-            if (this.state.submitResult != null) {
-                this.onSubmitResult(this.state.submitResult);
-            }
+    return selectionDetails;
+}
+const PerformRenderer3 = () => {
+    let key = Symbol('PerformRenderer');
+    let loading;
+    let store;
+    let selector;
+    let args;
+    let parentArgs;
+    let instances;
+    const listener = (selectionDetails) => {
+        loading = !selectionDetails.complete;
+        if (selectionDetails.required.length > 0) {
+            fetchRequired(store, selectionDetails);
         }
         else {
-            this.state.store = store;
+            createInstances(instances, args, parentArgs, selectionDetails);
         }
-    }
-    onbeforeremove() {
-        this.state.store.unsubscribe(this.state.key);
-    }
-    view(vnode) {
-        return vnode.attrs.view(this.state.octiron);
-    }
-};
-
-/**
- * The perform renderer is responsible for selecting the target of
- * a call to `o.perform()`. If successful it passes the result of
- * the selection to the `ActionRenderer` or renders loading / failure
- * states.
- */
-const PerformRenderer = new class {
-    state = new class {
-        key = Symbol('PerformRenderer');
-        store;
-        selector;
-        attrs;
-        instances;
-        selectionDetails;
     };
-    async fetchRequired() {
-        if (this.state.selectionDetails.required.length === 0)
-            return;
-        const promises = [];
-        for (let i = 0, l = this.state.selectionDetails.required.length; i < l; i++) {
-            promises.push(this.state.store.fetch(this.state.selectionDetails.required[i]));
-        }
-        await Promise.allSettled(promises);
-    }
-    createInstances() {
-        let hasChanges = false;
-        let firstPass = this.state.instances == null;
-        const nextKeys = [];
-        this.state.instances = new Map();
-        for (let index = 0; index < this.state.selectionDetails.result.length; index++) {
-            const selectionResult = this.state.selectionDetails.result[index];
-            nextKeys.push(selectionResult.pointer);
-            if (this.state.instances.has(selectionResult.pointer)) {
-                const next = selectionResult;
-                const prev = this.state.instances.get(selectionResult.pointer).selectionResult;
-                if (prev.type === 'value' &&
-                    next.type === 'value' &&
-                    next.value === prev.value) {
-                    continue;
-                }
-                else if (prev.type === 'entity' &&
-                    next.type === 'entity' &&
-                    next.ok === prev.ok &&
-                    next.status === prev.status &&
-                    next.value === prev.value) {
-                    continue;
-                }
+    return {
+        oninit(vnode) {
+            store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+            selector = vnode.attrs.selector;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            instances = new Map();
+            loading = !subscribe(key, listener, instances, store, selector, args, parentArgs).complete;
+        },
+        onbeforeupdate(vnode) {
+            const prev = store;
+            const changed = store !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store) ||
+                selector !== vnode.attrs.selector;
+            store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+            selector = vnode.attrs.selector;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            if (changed) {
+                prev.unsubscribe(key);
+                loading = !subscribe(key, listener, instances, store, selector, args, parentArgs).complete;
             }
-            hasChanges = true;
-            const selectionRendererArgs = {
-                index,
-                value: selectionResult.value,
-                propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-            };
-            const octiron = selectionFactory(this.state.attrs.args, this.state.attrs.parentArgs, selectionRendererArgs);
-            const rendererArgs = {
-                index,
-                value: selectionResult.value,
-                propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-                actionValue: octiron,
-            };
-            this.state.instances.set(selectionResult.pointer, {
-                octiron,
-                selectionResult,
-                rendererArgs,
-            });
-        }
-        for (const key of this.state.instances.keys()) {
-            if (!nextKeys.includes(key)) {
-                hasChanges = true;
-                this.state.instances.delete(key);
+        },
+        onbeforeremove() {
+            store.unsubscribe(key);
+        },
+        view(vnode) {
+            if (loading) {
+                return vnode.attrs.args.loading;
             }
-        }
-        if (!firstPass && hasChanges) {
-            mithrilRedraw();
-        }
-    }
-    storeListener = (selectionDetails) => {
-        this.state.selectionDetails = selectionDetails;
-        this.createInstances();
-        this.fetchRequired();
-    };
-    subscribe() {
-        if (this.state.attrs.selector != null &&
-            !miniJsonld.isJSONObject(this.state.attrs.parentArgs.parent.value)) {
-            // Actions can only be performed on JSON objects.
-            return;
-        }
-        if (this.state.attrs.selector != null) {
-            this.state.selectionDetails = this.state.store.subscribe({
-                key: this.state.key,
-                listener: this.storeListener,
-                selector: this.state.attrs.selector,
-                value: this.state.attrs.parentArgs.parent.value,
-            });
-            this.fetchRequired();
-        }
-        else {
-            // If there is no selector this perform is being done against the
-            // current value.
-            this.state.selectionDetails = {
-                selector: '/',
-                complete: true,
-                hasErrors: false,
-                hasMissing: false,
-                isProblem: false,
-                dependencies: [],
-                required: [],
-                result: [{
-                        key: '/',
-                        pointer: '/',
-                        type: 'value',
-                        readonly: true,
-                        value: this.state.attrs.parentArgs.parent.value,
-                    }],
-            };
-        }
-        this.createInstances();
-    }
-    oninit(vnode) {
-        this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-        this.state.attrs = vnode.attrs;
-        this.subscribe();
-    }
-    onbeforeupdate(vnode) {
-        const store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-        this.state.attrs = vnode.attrs;
-        if (store !== this.state.store) {
-            this.state.store.unsubscribe(this.state.key);
-            this.state.store = store;
-            this.subscribe();
-        }
-        else {
-            this.state.store = store;
-        }
-    }
-    onbeforeremove() {
-        this.state.store.unsubscribe(this.state.key);
-    }
-    view(vnode) {
-        if (!this.state.selectionDetails?.complete) {
-            return vnode.attrs.args.loading;
-        }
-        const children = [vnode.attrs.args.pre];
-        const list = Array.from(this.state.instances.values());
-        for (let i = 0, l = list.length; i < l; i++) {
-            list[i].octiron.position = i + 1;
-            if (i !== 0)
-                children.push(vnode.attrs.args.sep);
-            if (list[i].selectionResult.type === 'value') {
-                children.push(m(ActionRenderer, {
-                    args: vnode.attrs.args,
-                    parentArgs: vnode.attrs.parentArgs,
-                    rendererArgs: list[i].rendererArgs,
-                    selection: list[i].octiron,
-                    view: vnode.attrs.view,
-                }));
-            }
-            else if (!list[i].selectionResult.ok) {
-                if (typeof vnode.attrs.args.fallback === 'function') {
-                    children.push(vnode.attrs.args.fallback(list[i].octiron, list[i].selectionResult.reason));
+            const children = [vnode.attrs.args.pre];
+            const list = Array.from(instances.values());
+            for (let i = 0, l = list.length; i < l; i++) {
+                list[i].octiron.position = i + 1;
+                if (i !== 0)
+                    children.push(vnode.attrs.args.sep);
+                if (list[i].selectionResult.type !== 'value' &&
+                    !list[i].selectionResult.ok) {
+                    if (typeof vnode.attrs.args.fallback === 'function') {
+                        children.push(vnode.attrs.args.fallback(list[i].octiron, list[i].selectionResult.reason));
+                    }
+                    else {
+                        children.push(vnode.attrs.args.fallback);
+                    }
                 }
                 else {
-                    children.push(vnode.attrs.args.fallback);
+                    children.push(m(ActionRenderer2, {
+                        args: vnode.attrs.args,
+                        parentArgs: vnode.attrs.parentArgs,
+                        rendererArgs: list[i].rendererArgs,
+                        selection: list[i].octiron,
+                        view: vnode.attrs.view,
+                    }));
                 }
             }
-            else {
-                children.push(m(ActionRenderer, {
-                    args: vnode.attrs.args,
-                    parentArgs: vnode.attrs.parentArgs,
-                    rendererArgs: list[i].rendererArgs,
-                    selection: list[i].octiron,
-                    view: vnode.attrs.view,
-                }));
-            }
-        }
-        children.push(vnode.attrs.args.post);
-        return children;
-    }
+            children.push(vnode.attrs.args.post);
+            return children;
+        },
+    };
 };
 
 const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs, }, }) => {
@@ -2373,7 +2351,7 @@ function octironFactory(octironType, refs) {
         default: {
             self.perform = (arg1, arg2, arg3) => {
                 const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-                return m(PerformRenderer, {
+                return m(PerformRenderer3, {
                     selector,
                     args,
                     view,
@@ -3589,20 +3567,25 @@ function makeTypeHandler(typeHandler) {
 }
 
 let store;
-const jsonLDHandler = {
-    integrationType: 'jsonld',
-    contentType: 'application/ld+json',
-    handler: async ({ res }) => {
-        const { expand, JSONLDContextStore } = await import('@occultist/mini-jsonld');
-        if (store == undefined) {
-            store = new JSONLDContextStore({ cacheMethod: 'cache' });
-        }
-        const json = await res.json();
-        const jsonld = await expand(json, { store, url: res.url });
-        return {
-            jsonld,
-        };
-    },
+const makeJSONLDHandler = (args) => {
+    if (args?.store != null) {
+        store = args.store;
+    }
+    return {
+        integrationType: 'jsonld',
+        contentType: 'application/ld+json',
+        handler: async ({ res }) => {
+            const { expand, JSONLDContextStore } = await import('@occultist/mini-jsonld');
+            if (store == undefined) {
+                store = new JSONLDContextStore({ cacheMethod: 'cache' });
+            }
+            const json = await res.json();
+            const jsonld = await expand(json, { store, url: res.url });
+            return {
+                jsonld,
+            };
+        },
+    };
 };
 
 const longformHandler = {
@@ -4024,8 +4007,8 @@ exports.OctironJSON = OctironJSON;
 exports.OctironSubmitButton = OctironSubmitButton;
 exports.Store = Store;
 exports.classes = classes;
-exports.jsonLDHandler = jsonLDHandler;
 exports.longformHandler = longformHandler;
+exports.makeJSONLDHandler = makeJSONLDHandler;
 exports.makeTypeHandler = makeTypeHandler;
 exports.makeTypeHandlers = makeTypeHandlers;
 exports.octiron = octiron;

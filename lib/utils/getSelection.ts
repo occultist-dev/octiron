@@ -629,6 +629,7 @@ function selectEntity({
       status: cache.status,
       value: cache.value,
       reason: cache.reason,
+      contentType: cache.contentType,
     });
 
     return;
@@ -654,14 +655,13 @@ function selectEntity({
   const value = cache.value;
 
   if (isMetadataObject(value)) {
-    // in theory serveral entities could be metadata objects
+    // in theory several entities could be metadata objects
     // referencing each other and end up looping around...
     if (handledIRIs == null) {
       handledIRIs = new Set([value['@id']]);
     } else if (!handledIRIs.has(value['@id'])) {
       handledIRIs.add(value['@id']);
     } else {
-      console.log('CIRCULAR', value);
       throw new CircularSelectionError(`Circular selection loop detected`);
     }
 
@@ -691,6 +691,7 @@ function selectEntity({
       iri: cache.iri,
       ok: true,
       value: cache.value as JSONObject,
+      contentType: cache.contentType,
     });
 
     return;

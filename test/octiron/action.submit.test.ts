@@ -2,54 +2,107 @@ import {describe, it} from "node:test";
 import {domTest} from "../utils/dom.ts";
 import {makeTypeDef, makeTypeDefs, contextBuilder} from "@occultist/occultist";
 import assert from "node:assert";
+import {OctironDebug, type AnyComponent} from "../../lib/octiron.ts";
 
+
+type TodoStatus =
+  | 'planned'
+  | 'in-progress'
+  | 'complete'
+;
 
 
 describe('o.submit()', () => {
   it('Re-orders DOM children on updates to store data ordering', async () => {
     const typeDefs = makeTypeDefs([
-      makeTypeDef('ListTodosAction', 'https://schema.example.com/'),
+      makeTypeDef('ListTodosAction', 'http://schema.example.com/'),
+      makeTypeDef('SetTodoStatusAction', 'http://schema.example.com/'),
+      makeTypeDef('todoUUID', 'http://schema.example.com/'),
+      makeTypeDef('todoStatus', 'http://schema.example.com/'),
     ]);
     const context = contextBuilder({
-      vocab: 'https://schema.example.com',
+      vocab: 'http://schema.example.com/',
       typeDefs,
     })
     const { m, o, dom, document, registry, scope, mount, redraw } = domTest();
 
-    let jsonld = {
-      '@context': { '@vocab': 'https://schema.example.com/' },
-      members: [
-        { position: 1, name: 'First' },
-        { position: 2, name: 'Second' },
-      ],
-    };
+    const contextIRI = new URL('./context', o.store.rootIRI).toString();
 
     registry.http.get('/')
       .public()
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
-          '@context': {
-            '@vocab': 'https://schema.example.com/'
-          },
+          '@context': contextIRI,
           '@id': ctx.url,
           actions: { '@id': scope.url() },
+          todoListing: { '@id': todoListingAction.url() },
         });
       });
 
-    scope.http.get('/todos', { name: 'list-todos' })
+    registry.http.get('/context')
+      .public()
+      .handle('application/ld+json', JSON.stringify({
+        '@id': contextIRI,
+        '@context': context,
+      }));
+        
+
+    const todoListingAction = scope.http.get('/todos', { name: 'list-todos' })
       .public()
       .define({
-        typeDef: makeTypeDef('ListValuesAction', 'https://schema.example.com/'),
+        typeDef: typeDefs.ListTodosAction,
         spec: {},
       })
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
+          '@context': contextIRI,
           '@id': ctx.url,
           ...jsonld,
         });
       });
 
-    const res = await registry.handleRequest(new Request('https://example.com/actions'));
+    const setTodoStatusAction = scope.http.post('/todos/:todoUUID/status', { name: 'set-todo-status' })
+      .public()
+      .define({
+        typeDef: typeDefs.SetTodoStatusAction,
+        spec: {
+          todoUUID: {
+            typeDef: typeDefs.todoUUID,
+            dataType: 'string',
+            valueName: 'todoUUID',
+          },
+          todoStatus: {
+            typeDef: typeDefs.todoStatus,
+            dataType: 'string',
+            options: ['planned', 'in-progress', 'complete'],
+          },
+        },
+      })
+      .handle('application/ld+json', ctx => {
+        ctx.status = 200;
+        ctx.body = JSON.stringify({});
+      });
+
+    let jsonld = {
+      members: [
+        {
+          position: 1,
+          name: 'First',
+          todoStatus: 'planned',
+          actions: {
+            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+          },
+        },
+        {
+          position: 2,
+          name: 'Second',
+          todoStatus: 'planned',
+          actions: {
+            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+          },
+        },
+      ],
+    };
 
     const PresentName = {
       view({ attrs: { value } }) {
@@ -57,25 +110,82 @@ describe('o.submit()', () => {
       },
     };
 
+    const EditTodoStatus: AnyComponent<TodoStatus> = {
+      view({ attrs }) {
+        if (attrs.renderType === 'present') {
+          switch (attrs.value) {
+            case 'in-progress': return 'In progress';
+            case 'complete': return 'Complete';
+          }
+          return 'Planned';
+        }
+    
+        return m('select', {
+          ...attrs.attrs,
+          value: attrs.value,
+          disabled: attrs.spec.readonly,
+          multiple: attrs.spec.multiple,
+          oninput: (evt: Event) => {
+            attrs.onChange((evt.target as HTMLSelectElement).value);
+          },
+          onselect: (evt: Event) => {
+            console.log('EVT', evt);
+          },
+        },
+          m('option[value=planned]', 'Planned'),
+          m('option[value=in-progress]', 'In progress'),
+          m('option[value=complete]', 'Complete'),
+        );
+      }
+    };
+
+    const Debug: AnyComponent = {
+      view({ attrs }) {
+        return JSON.stringify(attrs.value, null, 2);
+      }
+    }
+
     mount(document.body, {
       view() {
         return [
-          o.perform('actions ListValuesAction', {
+          //o.select('todoListing', { component: Debug }),
+          o.perform('actions ListTodosAction', {
             submitOnInit: true,
-          }, o =>
+            loading: 'LOADING',
+            fallback: 'FALLBACK',
+          }, o => [
+            m('h1', 'Todo listing'),
             m('ul',
               o.success('members', o =>
                 m('li', { 'data-position': o.get('position') },
-                  o.select('name', { component: PresentName }),
+                  o.select('name', o => 
+                    m('h2', o.present({ component: PresentName })),
+                  ),
+                  o.perform('actions SetTodoStatusAction', {
+                    loading: 'LOADING',
+                    fallback: 'FALLBACK',
+                    initialValue: {
+                      todoUUID: o.get('uuid'),
+                    },
+                  }, o =>
+                    o.select('todoStatus', { component: EditTodoStatus }),
+                  ),
                 ),
               ),
             ),
-          ),
+          ]),
         ];
       },
     });
     
     await redraw();
+
+    const select = document.querySelector('select');
+
+    console.log(select);
+    console.log(dom.serialize())
+
+    return;
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
@@ -85,14 +195,27 @@ describe('o.submit()', () => {
     assert.equal(listElements[1].dataset.position, 2);
 
     jsonld = {
-      '@context': { '@vocab': 'https://schema.example.com/' },
       members: [
-        { position: 1, name: 'Second' },
-        { position: 2, name: 'First' },
+        {
+          position: 1,
+          name: 'Second',
+          todoStatus: 'in-progress',
+          actions: {
+            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+          },
+        },
+        {
+          position: 2,
+          name: 'First',
+          todoStatus: 'planned',
+          actions: {
+            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+          },
+        },
       ],
     };
 
-    await o.store.submit('https://example.com/todos');
+    await o.store.submit('http://example.com/todos');
     await redraw();
 
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]

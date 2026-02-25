@@ -13,9 +13,9 @@ export type ActionStateRendererAttrs = {
   view?: SelectView;
 };
 
-export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = new class {
+export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = class {
 
-  state = new class {
+  data = new class {
     render!: boolean;
     not!: boolean;
     type!: 'success' | 'failure';
@@ -29,21 +29,21 @@ export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = 
     submitResult,
     selectionDetails,
   ) => {
-    if ((this.state.not && submitResult.ok && this.state.type === 'failure') ||
-       (!this.state.not && !submitResult.ok && this.state.type === 'failure') ||
-       (this.state.not && submitResult.ok && this.state.type === 'success') ||
-       (!this.state.not && !submitResult.ok && this.state.type === 'success')
-       ) {
-      this.state.render = false;
-      return;
-    }
+    //if ((this.state.not && submitResult.ok && this.state.type === 'failure') ||
+    //   (!this.state.not && !submitResult.ok && this.state.type === 'failure') ||
+    //   (this.state.not && submitResult.ok && this.state.type === 'success') ||
+    //   (!this.state.not && !submitResult.ok && this.state.type === 'success')
+    //   ) {
+    //  this.state.render = false;
+    //  return;
+    //}
 
-    this.state.render = true;
+    this.data.render = true;
 
     // TODO: handle updates
-    this.state.octiron = selectionFactory(
-      this.state.args,
-      this.state.parentArgs,
+    this.data.octiron = selectionFactory(
+      this.data.args,
+      this.data.parentArgs,
       {
         index: 0,
         value: selectionDetails.result[0].value,
@@ -52,12 +52,12 @@ export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = 
   }
 
   oninit(vnode: Vnode<ActionStateRendererAttrs>) {
-    this.state.not = vnode.attrs.not ?? false;
-    this.state.type = vnode.attrs.type;
-    this.state.args = vnode.attrs.args;
-    this.state.parentArgs = vnode.attrs.parentArgs;
+    this.data.not = vnode.attrs.not ?? false;
+    this.data.type = vnode.attrs.type;
+    this.data.args = vnode.attrs.args;
+    this.data.parentArgs = vnode.attrs.parentArgs;
 
-    this.state.render = vnode.attrs.not &&
+    this.data.render = vnode.attrs.not &&
       vnode.attrs.selector == null &&
       vnode.attrs.view == null;
 
@@ -65,8 +65,8 @@ export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = 
   }
 
   onbeforeupdate(vnode: Vnode<ActionStateRendererAttrs>) {
-    this.state.not = vnode.attrs.not ?? false;
-    this.state.type = vnode.attrs.type;
+    this.data.not = vnode.attrs.not ?? false;
+    this.data.type = vnode.attrs.type;
   }
 
   onbeforeremove(vnode: Vnode<ActionStateRendererAttrs>) {
@@ -74,16 +74,16 @@ export const ActionStateRenderer2: m.ComponentTypes<ActionStateRendererAttrs> = 
   }
 
   view(vnode: Vnode<ActionStateRendererAttrs>) {
-    if (!this.state.render) return;
+    if (!this.data.render) return;
 
     if (vnode.attrs.selector != null) {
-      return this.state.octiron.select(
+      return this.data.octiron.select(
         vnode.attrs.selector,
         vnode.attrs.args,
         vnode.attrs.view,
       );
     } else if (vnode.attrs.view != null) {
-      return vnode.attrs.view(this.state.octiron);
+      return vnode.attrs.view(this.data.octiron);
     }
 
     return vnode.children;

@@ -26,9 +26,9 @@ type Instance = {
  * the selection to the `ActionRenderer` or renders loading / failure
  * states.
  */
-export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class {
+export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = class {
 
-  state = new class {
+  data = new class {
     key: symbol = Symbol('PerformRenderer');
     store!: Store;
     selector?: string;
@@ -38,12 +38,12 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
   }
 
   async fetchRequired(): Promise<void> {
-    if (this.state.selectionDetails.required.length === 0) return;
+    if (this.data.selectionDetails.required.length === 0) return;
 
     const promises: Array<Promise<unknown>> = [];
 
-    for (let i = 0, l = this.state.selectionDetails.required.length; i < l; i++) {
-      promises.push(this.state.store.fetch(this.state.selectionDetails.required[i]));
+    for (let i = 0, l = this.data.selectionDetails.required.length; i < l; i++) {
+      promises.push(this.data.store.fetch(this.data.selectionDetails.required[i]));
     }
 
     await Promise.allSettled(promises);
@@ -51,19 +51,19 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
 
   createInstances() {
     let hasChanges = false;
-    let firstPass = this.state.instances == null;
+    let firstPass = this.data.instances == null;
     const nextKeys: Array<string> = [];
     
-    this.state.instances = new Map();
+    this.data.instances = new Map();
 
-    for (let index = 0; index < this.state.selectionDetails.result.length; index++) {
-      const selectionResult = this.state.selectionDetails.result[index];
+    for (let index = 0; index < this.data.selectionDetails.result.length; index++) {
+      const selectionResult = this.data.selectionDetails.result[index];
 
       nextKeys.push(selectionResult.pointer);
 
-      if (this.state.instances.has(selectionResult.pointer)) {
+      if (this.data.instances.has(selectionResult.pointer)) {
         const next = selectionResult;
-        const prev = this.state.instances.get(selectionResult.pointer).selectionResult;
+        const prev = this.data.instances.get(selectionResult.pointer).selectionResult;
 
         if (
           prev.type === 'value' &&
@@ -89,8 +89,8 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
         propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
       } satisfies CommonRendererArgs;
       const octiron = selectionFactory(
-        this.state.attrs.args,
-        this.state.attrs.parentArgs as SelectionParentArgs,
+        this.data.attrs.args,
+        this.data.attrs.parentArgs as SelectionParentArgs,
         selectionRendererArgs,
       );
       const rendererArgs: PerformRendererArgs = {
@@ -100,18 +100,18 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
         actionValue: octiron as OctironSelection,
       };
 
-      this.state.instances.set(selectionResult.pointer, {
+      this.data.instances.set(selectionResult.pointer, {
         octiron,
         selectionResult,
         rendererArgs,
       });
     }
 
-    for (const key of this.state.instances.keys()) {
+    for (const key of this.data.instances.keys()) {
       if (!nextKeys.includes(key)) {
         hasChanges = true;
 
-        this.state.instances.delete(key);
+        this.data.instances.delete(key);
       }
     }
 
@@ -121,33 +121,33 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
   }
 
   storeListener = (selectionDetails: SelectionDetails<ReadonlySelectionResult>) => {
-    this.state.selectionDetails = selectionDetails;
+    this.data.selectionDetails = selectionDetails;
 
     this.createInstances();
     this.fetchRequired();
   }
 
   subscribe() {
-    if (this.state.attrs.selector != null &&
-        !isJSONObject(this.state.attrs.parentArgs.parent.value)
+    if (this.data.attrs.selector != null &&
+        !isJSONObject(this.data.attrs.parentArgs.parent.value)
     ) {
       // Actions can only be performed on JSON objects.
       return;
     }
 
-    if (this.state.attrs.selector != null) {
-      this.state.selectionDetails = this.state.store.subscribe({
-        key: this.state.key,
+    if (this.data.attrs.selector != null) {
+      this.data.selectionDetails = this.data.store.subscribe({
+        key: this.data.key,
         listener: this.storeListener,
-        selector: this.state.attrs.selector,
-        value: this.state.attrs.parentArgs.parent.value as JSONObject,
+        selector: this.data.attrs.selector,
+        value: this.data.attrs.parentArgs.parent.value as JSONObject,
       });
 
       this.fetchRequired();
     } else {
       // If there is no selector this perform is being done against the
       // current value.
-      this.state.selectionDetails = {
+      this.data.selectionDetails = {
         selector: '/',
         complete: true,
         hasErrors: false,
@@ -160,7 +160,7 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
           pointer: '/',
           type: 'value',
           readonly: true,
-          value: this.state.attrs.parentArgs.parent.value as JSONObject,
+          value: this.data.attrs.parentArgs.parent.value as JSONObject,
         } satisfies ValueSelectionResult],
       }
     }
@@ -169,51 +169,44 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
   }
   
   oninit(vnode: m.Vnode<PerformRendererAttrs>) {
-    this.state.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-    this.state.attrs = vnode.attrs;
+    this.data.store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+    this.data.attrs = vnode.attrs;
     
     this.subscribe();
   }
 
   onbeforeupdate(vnode: m.Vnode<PerformRendererAttrs>) {
     const store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
-    this.state.attrs = vnode.attrs;
+    this.data.attrs = vnode.attrs;
 
-    if (store !== this.state.store) {
-      this.state.store.unsubscribe(this.state.key);
-      this.state.store = store;
+    if (store !== this.data.store) {
+      this.data.store.unsubscribe(this.data.key);
+      this.data.store = store;
       this.subscribe();
     } else {
-      this.state.store = store;
+      this.data.store = store;
     }
   }
 
   onbeforeremove() {
-    this.state.store.unsubscribe(this.state.key);
+    this.data.store.unsubscribe(this.data.key);
   }
 
   view(vnode: m.Vnode<PerformRendererAttrs>) {
-    if (!this.state.selectionDetails?.complete) {
+    if (!this.data.selectionDetails?.complete) {
       return vnode.attrs.args.loading;
     }
 
     const children: m.Children[] = [vnode.attrs.args.pre];
-    const list = Array.from(this.state.instances.values())
+    const list = Array.from(this.data.instances.values())
 
     for (let i = 0, l = list.length; i < l; i++) {
       (list[i].octiron as Mutable<OctironSelection>).position = i + 1;
 
       if (i !== 0) children.push(vnode.attrs.args.sep);
 
-      if (list[i].selectionResult.type === 'value') {
-        children.push(m(ActionRenderer, {
-          args: vnode.attrs.args,
-          parentArgs: vnode.attrs.parentArgs,
-          rendererArgs: list[i].rendererArgs,
-          selection: list[i].octiron,
-          view: vnode.attrs.view,
-        }));
-      } else if (!list[i].selectionResult.ok) {
+      if (list[i].selectionResult.type !== 'value' &&
+          !list[i].selectionResult.ok) {
         if (typeof vnode.attrs.args.fallback === 'function') {
           children.push(vnode.attrs.args.fallback(
             list[i].octiron,
@@ -234,6 +227,11 @@ export const PerformRenderer: m.ComponentTypes<PerformRendererAttrs> = new class
     }
 
     children.push(vnode.attrs.args.post);
+
+    if (vnode.attrs.selector != null) {
+    console.log('PERFORM 2');
+      console.log(children)
+    }
 
     return children;
   }
