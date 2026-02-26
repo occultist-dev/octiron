@@ -2,7 +2,7 @@ import {describe, it} from "node:test";
 import {domTest} from "../utils/dom.ts";
 import {makeTypeDef, makeTypeDefs, contextBuilder} from "@occultist/occultist";
 import assert from "node:assert";
-import {OctironDebug, type AnyComponent} from "../../lib/octiron.ts";
+import {OctironDebug, type PresentComponent, type AnyComponent} from "../../lib/octiron.ts";
 
 
 type TodoStatus =
@@ -90,7 +90,7 @@ describe('o.submit()', () => {
           name: 'First',
           todoStatus: 'planned',
           actions: {
-            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+            [setTodoStatusAction.type as string]: setTodoStatusAction.jsonldPartial(),
           },
         },
         {
@@ -98,13 +98,13 @@ describe('o.submit()', () => {
           name: 'Second',
           todoStatus: 'planned',
           actions: {
-            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+            [setTodoStatusAction.type as string]: setTodoStatusAction.jsonldPartial(),
           },
         },
       ],
     };
 
-    const PresentName = {
+    const PresentName: PresentComponent<string> = {
       view({ attrs: { value } }) {
         return value;
       },
@@ -151,8 +151,6 @@ describe('o.submit()', () => {
           //o.select('todoListing', { component: Debug }),
           o.perform('actions ListTodosAction', {
             submitOnInit: true,
-            loading: 'LOADING',
-            fallback: 'FALLBACK',
           }, o => [
             m('h1', 'Todo listing'),
             m('ul',
@@ -162,8 +160,6 @@ describe('o.submit()', () => {
                     m('h2', o.present({ component: PresentName })),
                   ),
                   o.perform('actions SetTodoStatusAction', {
-                    loading: 'LOADING',
-                    fallback: 'FALLBACK',
                     initialValue: {
                       todoUUID: o.get('uuid'),
                     },
@@ -201,7 +197,7 @@ describe('o.submit()', () => {
           name: 'Second',
           todoStatus: 'in-progress',
           actions: {
-            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+            [setTodoStatusAction.type as string]: setTodoStatusAction.jsonldPartial(),
           },
         },
         {
@@ -209,7 +205,7 @@ describe('o.submit()', () => {
           name: 'First',
           todoStatus: 'planned',
           actions: {
-            [setTodoStatusAction.type]: setTodoStatusAction.jsonldPartial(),
+            [setTodoStatusAction.type as string]: setTodoStatusAction.jsonldPartial(),
           },
         },
       ],

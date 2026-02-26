@@ -25,15 +25,13 @@ function applySubmission(
   let selectionResult: SelectionResult;
   let selectionDetails: SelectionDetails<ReadonlySelectionResult>;
 
-  if (isIRIObject(submitResult.value)) {
+  if (submitResult.type !== 'alternative-success' &&
+    isIRIObject(submitResult.value)) {
     selectionDetails = store.subscribe({
       key,
       listener,
-      selector: undefined,
-      value: submitResult.value,
+      selector: submitResult.value['@id'],
     });
-
-    return;
   } else {
     if (submitResult.type === 'entity-success') {
       selectionResult = {
@@ -61,7 +59,7 @@ function applySubmission(
       } satisfies AlternativeSelectionResult;
     }
     
-    store.unsubscribe(this.state.key);
+    store.unsubscribe(key);
     
     selectionDetails = {
       complete: true,
@@ -77,7 +75,7 @@ function applySubmission(
     };
   }
 
-  for (let i = 0, l = this.listeners.length; i < l; i++) {
+  for (let i = 0, l = listeners.length; i < l; i++) {
     listeners[i](
       submitResult,
       selectionDetails,

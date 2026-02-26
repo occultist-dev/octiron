@@ -1,6 +1,6 @@
 import m from 'mithril';
-import type {ActionEvents, ActionSelectionDetailsListener, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
 import {selectionFactory} from '../factories/selectionFactory.ts';
+import type {ActionEvents, ActionSelectionDetailsListener, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
 
 
 export type ActionState =
@@ -30,10 +30,10 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     submitResult,
     selectionDetails,
   ) => {
-    if ((not && submitResult.ok && type === 'failure') ||
-       (!not && !submitResult.ok && type === 'failure') ||
-       (not && submitResult.ok && type === 'success') ||
-       (!not && !submitResult.ok && type === 'success')
+    if ((!not && type === 'failure' && submitResult.ok) ||
+        (not && type === 'failure' && !submitResult.ok) ||
+        (not && type === 'success' && submitResult.ok) ||
+        (!not && type === 'success' && !submitResult.ok)
     ) {
       render = false;
 
@@ -73,17 +73,17 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     view(vnode) {
       if (!render) return;
 
-      if (vnode.attrs.selector != null) {
+      if (vnode.attrs.selector != null && octiron != null) {
         return octiron.select(
           vnode.attrs.selector,
           vnode.attrs.args,
           vnode.attrs.view,
         );
-      } else if (vnode.attrs.view != null) {
+      } else if (vnode.attrs.view != null && octiron != null) {
         return vnode.attrs.view(octiron);
       }
 
       return vnode.children;
-    }
+    },
   };
 }

@@ -26,7 +26,8 @@
     "./lib"
   ],
   "scripts": {
-    "build": "node build.ts"
+    "build": "node build.ts",
+    "test": "pnpm node --test --test-only test/**/*.test.ts"
   },
   "devDependencies": {
     "@longform/longform": "^0.0.5",

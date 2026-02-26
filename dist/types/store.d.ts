@@ -695,6 +695,10 @@ export type SubmitArgs = {
      */
     method?: Method;
     /**
+     * The content type of the request body.
+     */
+    contentType?: string;
+    /**
      * The accept header to use when submitting the request.
      */
     accept?: string;

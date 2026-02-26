@@ -127,6 +127,10 @@ function subscribe(
       selector,
       value: parentArgs.parent.value as JSONObject,
     });
+
+    if (selectionDetails.required.length > 0) {
+      fetchRequired(store, selectionDetails)
+    }
   } else {
     // If there is no selector this perform is being done against the
     // current value.

@@ -1364,6 +1364,9 @@ function getSubmitDetails({ payload, action, }) {
         contentType = undefined;
         encodingType = undefined;
     }
+    console.log('ACTION', JSON.stringify(action, null, 2));
+    console.log('URL', url);
+    console.log('CONTENT TYPE', contentType);
     return {
         url,
         method,
@@ -1381,10 +1384,10 @@ const ActionStateRenderer3 = () => {
     let args;
     let parentArgs;
     const listener = (submitResult, selectionDetails) => {
-        if ((not && submitResult.ok && type === 'failure') ||
-            (!not && !submitResult.ok && type === 'failure') ||
-            (not && submitResult.ok && type === 'success') ||
-            (!not && !submitResult.ok && type === 'success')) {
+        if ((!not && type === 'failure' && submitResult.ok) ||
+            (not && type === 'failure' && !submitResult.ok) ||
+            (not && type === 'success' && submitResult.ok) ||
+            (!not && type === 'success' && !submitResult.ok)) {
             render = false;
             return;
         }
@@ -1398,7 +1401,7 @@ const ActionStateRenderer3 = () => {
         oninit(vnode) {
             not = vnode.attrs.not ?? false;
             type = vnode.attrs.type;
-            args = vnode.attrs.args ?? {};
+            args = vnode.attrs.args;
             parentArgs = vnode.attrs.parentArgs;
             render = not &&
                 vnode.attrs.selector == null &&
@@ -1415,14 +1418,14 @@ const ActionStateRenderer3 = () => {
         view(vnode) {
             if (!render)
                 return;
-            if (vnode.attrs.selector != null) {
+            if (vnode.attrs.selector != null && octiron != null) {
                 return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
             }
-            else if (vnode.attrs.view != null) {
+            else if (vnode.attrs.view != null && octiron != null) {
                 return vnode.attrs.view(octiron);
             }
             return vnode.children;
-        }
+        },
     };
 };
 
@@ -1438,7 +1441,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     }
     async function submit() {
         let isError = false;
-        const { url, method, body } = getSubmitDetails({
+        const { url, method, contentType, body } = getSubmitDetails({
             payload,
             action: refs.rendererArgs.value,
         });
@@ -1452,6 +1455,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             submitResult = await refs.parentArgs.store.submit(url, {
                 mainEntity: args.mainEntity,
                 method,
+                contentType: contentType ?? 'application/ld+json',
                 body,
                 accept: args.accept,
             });
@@ -1534,7 +1538,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             parentArgs: childArgs,
             selector,
             value: self.value,
-            actionValue: refs.parentArgs.parent.value,
+            actionValue: refs.rendererArgs.actionValue.value,
             args,
             view,
         });
@@ -1644,14 +1648,13 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
 function applySubmission(key, listener, store, args, submitResult, listeners) {
     let selectionResult;
     let selectionDetails;
-    if (isIRIObject(submitResult.value)) {
+    if (submitResult.type !== 'alternative-success' &&
+        isIRIObject(submitResult.value)) {
         selectionDetails = store.subscribe({
             key,
             listener,
-            selector: undefined,
-            value: submitResult.value,
+            selector: submitResult.value['@id'],
         });
-        return;
     }
     else {
         if (submitResult.type === 'entity-success') {
@@ -1680,7 +1683,7 @@ function applySubmission(key, listener, store, args, submitResult, listeners) {
                 integration: store.integration(submitResult.contentType),
             };
         }
-        store.unsubscribe(this.state.key);
+        store.unsubscribe(key);
         selectionDetails = {
             complete: true,
             hasErrors: !submitResult.ok,
@@ -1694,7 +1697,7 @@ function applySubmission(key, listener, store, args, submitResult, listeners) {
             selector: submitResult.iri,
         };
     }
-    for (let i = 0, l = this.listeners.length; i < l; i++) {
+    for (let i = 0, l = listeners.length; i < l; i++) {
         listeners[i](submitResult, selectionDetails);
     }
     return selectionDetails;
@@ -1831,6 +1834,9 @@ function subscribe(key, listener, instances, store, selector, args, parentArgs) 
             selector,
             value: parentArgs.parent.value,
         });
+        if (selectionDetails.required.length > 0) {
+            fetchRequired(store, selectionDetails);
+        }
     }
     else {
         // If there is no selector this perform is being done against the

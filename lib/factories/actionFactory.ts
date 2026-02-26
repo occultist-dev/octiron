@@ -46,7 +46,7 @@ export function actionFactory<
 
   async function submit() {
     let isError = false;
-    const { url, method, body } = getSubmitDetails({
+    const { url, method, contentType, body } = getSubmitDetails({
       payload,
       action: refs.rendererArgs.value as SCMAction,
     });
@@ -65,6 +65,7 @@ export function actionFactory<
       submitResult = await refs.parentArgs.store.submit(url, {
         mainEntity: args.mainEntity,
         method,
+        contentType: contentType ?? 'application/ld+json',
         body,
         accept: args.accept,
       });
@@ -174,7 +175,7 @@ export function actionFactory<
       parentArgs: childArgs as ActionSelectionParentArgs,
       selector,
       value: self.value,
-      actionValue: refs.parentArgs.parent.value as JSONObject,
+      actionValue: refs.rendererArgs.actionValue.value as JSONObject,
       args,
       view,
     });
