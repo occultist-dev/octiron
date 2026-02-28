@@ -485,6 +485,7 @@ export class Store {
     }): void {
       const iris = [iri];
 
+      console.log('OUTPUT', JSON.stringify(output, null, 2));
 
       if (res.ok) {
         this.#primary.set(iri, {
@@ -513,11 +514,13 @@ export class Store {
       }
 
       for (const entity of flattenIRIObjects(output.jsonld)) {
-        if (iris.includes(entity['@id'])) {
+        const normalizedURL = new URL(entity['@id']).toString();
+
+        if (iris.includes(normalizedURL)) {
           continue;
         }
 
-        this.#primary.set(entity['@id'], {
+        this.#primary.set(normalizedURL, {
           type: 'entity-success',
           iri: entity['@id'],
           loading: false,
@@ -529,7 +532,9 @@ export class Store {
       }
 
       for (const iri of iris) {
-        this.#publish(iri, contentType);
+        const normalizedURL = new URL(iri).toString();
+
+        this.#publish(normalizedURL, contentType);
       }
     }
 
@@ -936,10 +941,6 @@ export class Store {
       html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}</script>`
 
       return html;
-    }
-
-    public debug() {
-      console.log(this.#primary.entries());
     }
 
 }

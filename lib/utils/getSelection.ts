@@ -76,7 +76,6 @@ export function getSelection<T extends SelectionResult>({
     const [iri, iriFragment] = subject.split('#');
 
     selectEntity({
-      key: '',
       pointer: '',
       iri,
       fragment: iriFragment ?? fragment,
@@ -110,8 +109,12 @@ export function getSelection<T extends SelectionResult>({
   return details;
 }
 
-function makePointer(pointer: string, addition: string | number) {
+function makePointer(pointer: string, addition: string | number): string {
   return `${pointer}/${escapeJSONPointerParts(addition.toString())}`;
+}
+
+function updateKey(key: string, addition: string | number): string {
+  return `${key}[${addition}]`;
 }
 
 /**
@@ -170,7 +173,7 @@ function resolveValue({
   store,
   details,
 }: {
-  key: string;
+  key?: string;
   pointer: string;
   value: JSONValue;
   spec?: JSONObject;
@@ -210,7 +213,7 @@ function resolveValue({
     }
 
     details.result.push({
-      key: pointer,
+      key,
       pointer,
       type: 'action-value',
       propType,
@@ -225,7 +228,7 @@ function resolveValue({
 
   if (!isTraversable(value)) {
     details.result.push({
-      key: pointer,
+      key,
       pointer: pointer,
       type: 'value',
       propType,
@@ -238,14 +241,17 @@ function resolveValue({
     const list = getIterableValue(value);
 
     for (let index = 0; index < list.length; index++) {
+      let finalKey = key;
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        key = makePointer(key, index);
+        finalKey = updateKey(key, index);
+      } else {
+        finalKey = item['@id'];
       }
 
       resolveValue({
-        key,
+        key: finalKey,
         pointer: makePointer(pointer, index),
         value: item,
         spec,
@@ -280,7 +286,6 @@ function resolveValue({
     return;
   } else if (isMetadataObject(value)) {
     selectEntity({
-      key,
       pointer,
       iri: value['@id'],
       filter,
@@ -329,7 +334,7 @@ function selectTypedValue({
   store,
   details,
 }: {
-  key: string;
+  key?: string;
   pointer: string;
   propType: string;
   value: JSONValue;
@@ -351,7 +356,7 @@ function selectTypedValue({
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        key = makePointer(key, index);
+        key = updateKey(key, index);
       }
 
       selectTypedValue({
@@ -375,7 +380,6 @@ function selectTypedValue({
 
   if (isMetadataObject(value) && isIRIObject(value)) {
     selectEntity({
-      key,
       pointer,
       iri: value['@id'],
       selector: [{ subject: propType, filter }],
@@ -423,7 +427,7 @@ function traverseSelector({
   details,
   defaultValue,
 }: {
-  key: string;
+  key?: string;
   pointer: string;
   selector: SelectorObject[];
   value: JSONValue;
@@ -445,7 +449,7 @@ function traverseSelector({
       const item = list[index];
 
       if (!isIRIObject(item)) {
-        key = makePointer(key, index);
+        key = updateKey(key, index);
       }
 
       // keep nesting on the full selector
@@ -483,7 +487,6 @@ function traverseSelector({
 
   if (isMetadataObject(value) && isIRIObject(value)) {
     selectEntity({
-      key,
       pointer,
       selector,
       iri: value['@id'],
@@ -519,7 +522,7 @@ function traverseSelector({
     pointer = makePointer(pointer, propType);
 
     resolveValue({
-      key: pointer,
+      key: updateKey(key, propType),
       pointer,
       value: value[propType],
       propType,
@@ -557,7 +560,7 @@ function traverseSelector({
   }
 
   traverseSelector({
-    key: makePointer(key, propType),
+    key: updateKey(key, propType),
     pointer: makePointer(pointer, propType),
     selector: rest,
     value: value[propType],
@@ -572,7 +575,6 @@ function traverseSelector({
  * if the branch has not completed.
  */
 function selectEntity({
-  key,
   pointer,
   iri,
   fragment,
@@ -583,7 +585,6 @@ function selectEntity({
   details,
   handledIRIs,
 }: {
-  key: string;
   pointer: string;
   iri: string;
   fragment?: string;
@@ -599,7 +600,7 @@ function selectEntity({
   // this creates duplicates if an iri is used twice in a response at the
   // same level of the selection. I see this as being unlikely, so a problem
   // to solve later...
-  key = makePointer('', normalizedURL);
+  const key = normalizedURL;
   pointer = makePointer(pointer, normalizedURL);
 
   const cache: EntityState | null = store.entity(normalizedURL, accept)
@@ -672,7 +673,6 @@ function selectEntity({
 
     // select the entity this entity is referencing
     return selectEntity({
-      key,
       pointer,
       iri: value['@id'],
       filter,

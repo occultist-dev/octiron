@@ -11,8 +11,16 @@ describe('o.select()', () => {
     let jsonld = {
       '@context': { '@vocab': vocab },
       members: [
-        { position: 1, name: 'First' },
-        { position: 2, name: 'Second' },
+        {
+          '@id': 'http://example.com/todos/1',
+          position: 1,
+          name: 'First',
+        },
+        {
+          '@id': 'http://example.com/todos/2',
+          position: 2,
+          name: 'Second',
+        },
       ],
     };
 
@@ -47,8 +55,10 @@ describe('o.select()', () => {
           o.root('todoListing', o =>
             m('ul',
               o.select('members', o =>
-                m('li', { 'data-position': o.get('position') },
-                  o.select('name', { component: PresentName }),
+                m('li', {
+                    'data-position': o.get('position'),
+                    'data-id': o.id,
+                   }, o.select('name', { component: PresentName }),
                 ),
               ),
             ),
@@ -58,6 +68,7 @@ describe('o.select()', () => {
     });
     
     await redraw();
+    console.log(await pretty());
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
@@ -69,14 +80,23 @@ describe('o.select()', () => {
     jsonld = {
       '@context': { '@vocab': vocab },
       members: [
-        { position: 1, name: 'Second' },
-        { position: 2, name: 'First' },
+        {
+          '@id': 'http://example.com/todos/2',
+          position: 1,
+          name: 'Second',
+        },
+        {
+          '@id': 'http://example.com/todos/1',
+          position: 2,
+          name: 'First'
+        },
       ],
     };
 
     await o.store.fetch('http://example.com/todos');
     await redraw();
 
+    console.log(await pretty());
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
     assert.equal(listElements[0].textContent, 'Second');

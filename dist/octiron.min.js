@@ -607,7 +607,6 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
         const [{ subject, filter }, ...selector] = parseSelectorString(selectorStr, store);
         const [iri, iriFragment] = subject.split('#');
         selectEntity({
-            key: '',
             pointer: '',
             iri,
             fragment: iriFragment ?? fragment,
@@ -636,6 +635,9 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
 }
 function makePointer(pointer, addition) {
     return `${pointer}/${escapeJSONPointerParts(addition.toString())}`;
+}
+function updateKey(key, addition) {
+    return `${key}[${addition}]`;
 }
 /**
  * Filters apply to objects with `@type` properties. These can be strings or
@@ -694,7 +696,7 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
             value = value['@value'];
         }
         details.result.push({
-            key: pointer,
+            key,
             pointer,
             type: 'action-value',
             propType,
@@ -707,7 +709,7 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
     }
     if (!isTraversable(value)) {
         details.result.push({
-            key: pointer,
+            key,
             pointer: pointer,
             type: 'value',
             propType,
@@ -719,12 +721,16 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
     else if (isIterable(value)) {
         const list = getIterableValue(value);
         for (let index = 0; index < list.length; index++) {
+            let finalKey = key;
             const item = list[index];
             if (!isIRIObject(item)) {
-                key = makePointer(key, index);
+                finalKey = updateKey(key, index);
+            }
+            else {
+                finalKey = item['@id'];
             }
             resolveValue({
-                key,
+                key: finalKey,
                 pointer: makePointer(pointer, index),
                 value: item,
                 spec,
@@ -756,7 +762,6 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
     }
     else if (isMetadataObject(value)) {
         selectEntity({
-            key,
             pointer,
             iri: value['@id'],
             filter,
@@ -799,7 +804,7 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
         for (let index = 0; index < list.length; index++) {
             const item = list[index];
             if (!isIRIObject(item)) {
-                key = makePointer(key, index);
+                key = updateKey(key, index);
             }
             selectTypedValue({
                 key,
@@ -819,7 +824,6 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
     }
     if (isMetadataObject(value) && isIRIObject(value)) {
         selectEntity({
-            key,
             pointer,
             iri: value['@id'],
             selector: [{ subject: propType, filter }],
@@ -866,7 +870,7 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
         for (let index = 0; index < list.length; index++) {
             const item = list[index];
             if (!isIRIObject(item)) {
-                key = makePointer(key, index);
+                key = updateKey(key, index);
             }
             // keep nesting on the full selector
             // as only objects can be subscripted
@@ -901,7 +905,6 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
     }
     if (isMetadataObject(value) && isIRIObject(value)) {
         selectEntity({
-            key,
             pointer,
             selector,
             iri: value['@id'],
@@ -928,7 +931,7 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
     if (rest.length === 0 && isJSONObject(actionValue?.[propType])) {
         pointer = makePointer(pointer, propType);
         resolveValue({
-            key: pointer,
+            key: updateKey(key, propType),
             pointer,
             value: value[propType],
             propType,
@@ -961,7 +964,7 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
         traversedActionValue = actionValue[propType];
     }
     traverseSelector({
-        key: makePointer(key, propType),
+        key: updateKey(key, propType),
         pointer: makePointer(pointer, propType),
         selector: rest,
         value: value[propType],
@@ -974,13 +977,13 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
  * Selects an entity from the store and continues the selection
  * if the branch has not completed.
  */
-function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, store, details, handledIRIs, }) {
+function selectEntity({ pointer, iri, fragment, accept, filter, selector, store, details, handledIRIs, }) {
     const normalizedURL = new URL(iri).toString();
     // reset the key for entities.
     // this creates duplicates if an iri is used twice in a response at the
     // same level of the selection. I see this as being unlikely, so a problem
     // to solve later...
-    key = makePointer('', normalizedURL);
+    const key = normalizedURL;
     pointer = makePointer(pointer, normalizedURL);
     const cache = store.entity(normalizedURL, accept);
     details.dependencies.push(normalizedURL);
@@ -1042,7 +1045,6 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
         }
         // select the entity this entity is referencing
         return selectEntity({
-            key,
             pointer,
             iri: value['@id'],
             filter,
@@ -1968,44 +1970,49 @@ const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs,
     };
 };
 
+/**
+ * Creates Octiron instances used when rendering this selection.
+ * If an instance is an entity it will get re-ordered into the
+ * next selection. Otherwise it will be re-purposed.
+ */
 function createInstances(instances, args, parentArgs, selectionDetails) {
-    const prevKeys = Array.from(instances.keys());
-    const nextKeys = [];
+    let selectionResult;
+    const prev = new Map(instances);
+    if (selectionDetails.result.length === 2)
+        //console.log('PREV', prev)
+        instances.clear();
     for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
-        const selectionResult = selectionDetails.result[i];
-        nextKeys.push(selectionResult.pointer);
-        if (instances.has(selectionResult.pointer)) {
-            const next = selectionResult;
-            const prev = instances.get(selectionResult.pointer).selectionResult;
-            if (prev.type === 'value' &&
-                next.type === 'value' &&
-                next.value === prev.value) {
-                continue;
-            }
-            else if (prev.type === 'entity' &&
-                next.type === 'entity' &&
-                next.ok === prev.ok &&
-                next.status === prev.status &&
-                next.value === prev.value) {
-                continue;
-            }
+        selectionResult = selectionDetails.result[i];
+        //console.log('KEY', selectionResult.key);
+        if (prev.has(selectionResult.key)) {
+            const instance = prev.get(selectionResult.key);
+            instance.refs.rendererArgs.index = i;
+            instance.refs.rendererArgs.value = selectionResult.value;
+            instance.refs.rendererArgs.propType = selectionResult.type === 'entity'
+                ? undefined
+                : selectionResult.propType;
+            instance.octiron.index = i;
+            instance.octiron.value = instance.refs.rendererArgs.value;
+            instance.octiron.propType = instance.refs.rendererArgs.propType;
+            instances.set(selectionResult.key, instance);
         }
-        const selectionRendererArgs = {
-            index: i,
-            value: selectionResult.value,
-            propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-        };
-        const octiron = selectionFactory(args, parentArgs, selectionRendererArgs);
-        instances.set(selectionResult.pointer, {
-            octiron,
-            selectionResult,
-        });
-    }
-    if (prevKeys.length > 0) {
-        for (let i = 0, l = prevKeys.length; i < l; i++) {
-            if (!nextKeys.includes(prevKeys[i])) {
-                instances.delete(prevKeys[i]);
-            }
+        else {
+            const rendererArgs = {
+                index: i,
+                value: selectionResult.value,
+                propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+            };
+            const octiron = selectionFactory(args, parentArgs, rendererArgs);
+            const refs = {
+                args,
+                parentArgs,
+                rendererArgs,
+            };
+            instances.set(selectionResult.key, {
+                refs,
+                octiron,
+                selectionResult,
+            });
         }
     }
 }
@@ -2089,7 +2096,8 @@ const SelectionRenderer2 = () => {
             if (loading) {
                 return vnode.attrs.args.loading;
             }
-            const children = [vnode.attrs.args.pre];
+            const children = [m.fragment({ key: '@pre' }, [vnode.attrs.args.pre])];
+            let child;
             let l1 = Array.from(instances.values());
             let l2;
             if (vnode.attrs.args.predicate != null) {
@@ -2110,23 +2118,25 @@ const SelectionRenderer2 = () => {
                 l2.splice(vnode.attrs.args.start);
             }
             for (let i = 0, l = l2.length; i < l; i++) {
+                child = [];
                 l2[i].octiron.position = i + 1;
                 if (i !== 0)
-                    children.push(vnode.attrs.args.sep);
+                    child.push(m.fragment({ key: '@sep' }, [vnode.attrs.args.sep]));
                 if (l2[i].selectionResult.type === 'value') {
-                    children.push(vnode.attrs.view(l2[i].octiron));
+                    child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
                 }
                 else if (!l2[i].selectionResult.ok && typeof vnode.attrs.args.fallback === 'function') {
                     throw new Error(`Fallback functions are not yet supported`);
                 }
                 else if (!l2[i].selectionResult.ok) {
-                    children.push(vnode.attrs.args.fallback);
+                    child.push(m.fragment({ key: '@value' }, [vnode.attrs.args.fallback]));
                 }
                 else {
-                    children.push(vnode.attrs.view(l2[i].octiron));
+                    child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
                 }
+                children.push(m.fragment({ key: l2[i].selectionResult.key }, child));
             }
-            children.push(vnode.attrs.args.post);
+            children.push(m.fragment({ key: '@post' }, [vnode.attrs.args.post]));
             return children;
         },
     };
@@ -3108,10 +3118,11 @@ class Store {
             });
         }
         for (const entity of flattenIRIObjects(output.jsonld)) {
-            if (iris.includes(entity['@id'])) {
+            const normalizedURL = new URL(entity['@id']).toString();
+            if (iris.includes(normalizedURL)) {
                 continue;
             }
-            this.#primary.set(entity['@id'], {
+            this.#primary.set(normalizedURL, {
                 type: 'entity-success',
                 iri: entity['@id'],
                 loading: false,
@@ -3122,7 +3133,8 @@ class Store {
             });
         }
         for (const iri of iris) {
-            this.#publish(iri, contentType);
+            const normalizedURL = new URL(iri).toString();
+            this.#publish(normalizedURL, contentType);
         }
     }
     async handleResponse(res, iri) {
@@ -3431,9 +3443,6 @@ class Store {
         }
         html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}</script>`;
         return html;
-    }
-    debug() {
-        console.log(this.#primary.entries());
     }
 }
 

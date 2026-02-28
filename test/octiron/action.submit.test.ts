@@ -145,7 +145,6 @@ describe('o.submit()', () => {
     mount(document.body, {
       view() {
         return [
-          //o.select('todoListing', { component: Debug }),
           o.perform('actions ListTodosAction', {
             submitOnInit: true,
           }, o => [

@@ -150,6 +150,5 @@ export declare class Store {
      * with `oct-`, avoid using these ids to prevent id collision.
      */
     toInitialState(): string;
-    debug(): void;
 }
 export {};

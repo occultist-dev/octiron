@@ -1,7 +1,8 @@
 import {isJSONObject} from "@occultist/mini-jsonld";
 import m from 'mithril';
 import {selectionFactory} from "../factories/selectionFactory.ts";
-import type {CommonRendererArgs, JSONObject, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectView, Store} from "../octiron.ts";
+import type {CommonRendererArgs, JSONObject, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectionResult, SelectView, Store} from "../octiron.ts";
+import {setDefaultResultOrder} from "node:dns";
 
 
 export type SelectionRendererAttrs = {
@@ -12,12 +13,96 @@ export type SelectionRendererAttrs = {
   parentArgs: SelectionParentArgs;
 }
 
-type Instance = {
-  octiron: OctironSelection;
-  selectionResult: ReadonlySelectionResult;
+type SelectionRefs = {
+  args: OctironSelectArgs;
+  parentArgs: SelectionParentArgs;
+  rendererArgs: CommonRendererArgs;
 };
 
+type Instance = {
+  refs: SelectionRefs,
+  selectionResult: ReadonlySelectionResult;
+  octiron: OctironSelection;
+};
+
+
+/**
+ * Creates Octiron instances used when rendering this selection.
+ * If an instance is an entity it will get re-ordered into the
+ * next selection. Otherwise it will be re-purposed.
+ */
 function createInstances(
+  instances: Map<string, Instance>,
+  args: OctironSelectArgs,
+  parentArgs: SelectionParentArgs,
+  selectionDetails: SelectionDetails<ReadonlySelectionResult>,
+): void {
+  let selectionResult: ReadonlySelectionResult;
+  const prev = new Map(instances);
+
+  if (selectionDetails.result.length === 2)
+  //console.log('PREV', prev)
+
+  instances.clear();
+
+  for (const key of instances.keys()) {
+    instances.delete(key);
+  }
+
+  console.log(JSON.stringify(selectionDetails, null, 2));
+
+  console.log('INSTANCES', new Map(instances.entries()));
+  console.log('KEYS', selectionDetails.result.map((r) => r.key));
+
+
+  for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
+    selectionResult = selectionDetails.result[i];
+
+    //console.log('KEY', selectionResult.key);
+
+    if (prev.has(selectionResult.key)) {
+      const instance = prev.get(selectionResult.key);
+
+      instance.refs.rendererArgs.index = i;
+      instance.refs.rendererArgs.value = selectionResult.value;
+      instance.refs.rendererArgs.propType = selectionResult.type === 'entity'
+        ? undefined
+        : selectionResult.propType;
+      
+      (instance.octiron as any).index = i;
+      (instance.octiron as any).value = instance.refs.rendererArgs.value;
+      (instance.octiron as any).propType = instance.refs.rendererArgs.propType;
+      
+      instances.set(selectionResult.key, instance);
+    } else {
+      const rendererArgs = {
+        index: i,
+        value: selectionResult.value,
+        propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+      } satisfies CommonRendererArgs;
+
+      const octiron = selectionFactory(
+        args,
+        parentArgs as SelectionParentArgs,
+        rendererArgs,
+      );
+
+      const refs = {
+        args,
+        parentArgs,
+        rendererArgs,
+      };
+  
+      instances.set(selectionResult.key, {
+        refs,
+        octiron,
+        selectionResult,
+      });
+    }
+  }
+}
+
+function createInstancesOld(
   instances: Map<string, Instance>,
   args: OctironSelectArgs,
   parentArgs: SelectionParentArgs,
@@ -202,7 +287,8 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
         return vnode.attrs.args.loading;
       }
 
-      const children: m.Children[] = [vnode.attrs.args.pre];
+      const children: m.Children[] = [m.fragment({ key: '@pre' }, [vnode.attrs.args.pre])];
+      let child: m.Children[];
       let l1: Instance[] = Array.from(instances.values())
       let l2: Instance[];
 
@@ -226,23 +312,27 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
       }
 
       for (let i = 0, l = l2.length; i < l; i++) {
+        child = [];
+
         (l2[i].octiron as Mutable<OctironSelection>).position = i + 1;
 
-        if (i !== 0) children.push(vnode.attrs.args.sep);
+        if (i !== 0) child.push(m.fragment({ key: '@sep' }, [vnode.attrs.args.sep]));
 
         if (l2[i].selectionResult.type === 'value') {
-          children.push(vnode.attrs.view(l2[i].octiron));
+          child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]))
         } else if (!l2[i].selectionResult.ok && typeof vnode.attrs.args.fallback === 'function') {
           throw new Error(`Fallback functions are not yet supported`);
         } else if (!l2[i].selectionResult.ok) {
-          children.push(vnode.attrs.args.fallback as m.Children);
+          child.push(m.fragment({ key: '@value' }, [vnode.attrs.args.fallback as m.Children]));
         } else {
-          children.push(vnode.attrs.view(l2[i].octiron));
+          child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
         }
+
+        children.push(m.fragment({ key: l2[i].selectionResult.key }, child));
       }
 
-      children.push(vnode.attrs.args.post);
-
+      children.push(m.fragment({ key: '@post' }, [vnode.attrs.args.post]));
+      
       return children;
     },
   };
