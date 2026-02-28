@@ -104,8 +104,7 @@ function subscribe(
   args: OctironSelectArgs,
   parentArgs: SelectionParentArgs,
 ): SelectionDetails<ReadonlySelectionResult> {
-  if (!entity && !isJSONObject(parentArgs.parent.value)
-  ) {
+  if (!entity && !isJSONObject(parentArgs.parent.value)) {
     store.unsubscribe(key);
     instances.clear();
 

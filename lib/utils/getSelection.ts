@@ -594,21 +594,22 @@ function selectEntity({
   details: SelectionDetails;
   handledIRIs?: Set<string>;
 }): void {
+  const normalizedURL = new URL(iri).toString();
   // reset the key for entities.
   // this creates duplicates if an iri is used twice in a response at the
   // same level of the selection. I see this as being unlikely, so a problem
-  // to solve later.
-  key = makePointer('', iri);
-  pointer = makePointer(pointer, iri);
+  // to solve later...
+  key = makePointer('', normalizedURL);
+  pointer = makePointer(pointer, normalizedURL);
 
-  const cache: EntityState | null = store.entity(iri, accept)
+  const cache: EntityState | null = store.entity(normalizedURL, accept)
 
-  details.dependencies.push(iri);
+  details.dependencies.push(normalizedURL);
 
   // if loading is required mark found as false
   if (cache == null || cache.loading) {
-    if (!details.required.includes(iri)) {
-      details.required.push(iri);
+    if (!details.required.includes(normalizedURL)) {
+      details.required.push(normalizedURL);
       details.accept = accept;
       details.fragment = fragment;
     }
@@ -666,7 +667,6 @@ function selectEntity({
     } else if (!handledIRIs.has(value['@id'])) {
       handledIRIs.add(value['@id']);
     } else {
-      console.log(value);
       throw new CircularSelectionError(`Circular selection loop detected`);
     }
 

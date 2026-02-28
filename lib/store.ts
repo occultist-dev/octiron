@@ -232,30 +232,30 @@ export class Store {
      * Retrieves an entity state object relating to an IRI.
      */
     public entity(iri: string, accept?: string): EntityState | null {
-      if (accept == null) {
-        return this.#primary.get(iri) ?? null;
-      }
-
+      const normalizedURL = new URL(iri).toString();
       const key = this.#getLoadingKey(iri, 'get', accept);
       const loading = this.#loading.has(key);
-
 
       if (loading) {
         return {
           type: 'entity-loading',
-          iri,
+          iri: normalizedURL,
           loading: true,
           isProblem: false,
         };
       }
 
-      const contentType = this.#acceptMap.get(iri)?.get?.(accept);
+      if (accept == null) {
+        return this.#primary.get(normalizedURL) ?? null;
+      }
+
+      const contentType = this.#acceptMap.get(normalizedURL)?.get?.(accept);
 
       if (contentType == null) {
         return null;
       }
 
-      const integration = this.#integrations.get(contentType)?.get(iri);
+      const integration = this.#integrations.get(contentType)?.get(normalizedURL);
 
       if (integration == null) {
         return null;
@@ -263,7 +263,7 @@ export class Store {
 
       return {
         type: 'alternative-success',
-        iri,
+        iri: normalizedURL,
         loading: false,
         ok: true,
         contentType,
@@ -385,12 +385,13 @@ export class Store {
         this.#listeners.delete(key);
 
         for (const dependency of details.dependencies) {
-          this.#dependencies.delete(dependency);
+          const normalizedURL = new URL(dependency).toString();
+          this.#dependencies.delete(normalizedURL);
 
           if (isBrowserRender) {
             setTimeout(() => {
-              if (this.#dependencies.get(dependency)?.size === 0) {
-                this.#primary.delete(dependency);
+              if (this.#dependencies.get(normalizedURL)?.size === 0) {
+                this.#primary.delete(normalizedURL);
               }
             }, 5000);
           }
@@ -433,10 +434,15 @@ export class Store {
           continue;
         }
 
-        const mappedType = this.#acceptMap.get(iri)
+        // construct a new url to normalize the iri. Eg add a trailing
+        // slash to an iri with no pathname part.
+        const mappedType = this.#acceptMap.get(new URL(iri).toString())
           ?.get(listenerDetails.accept ?? defaultAccept);
 
-        if (mappedType !== contentType) continue;
+        // TODO: A more sophisticated check might be required 
+        // to correctly check the content type matches the
+        // listener's accept header
+        if (contentType !== mappedType) continue;
 
         const details = getSelection<EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult>({
           selector: listenerDetails.selector,
@@ -449,12 +455,13 @@ export class Store {
         const cleanup = this.#makeCleanupFn(key, details);
 
         for (const dependency of details.dependencies) {
-          let depSet = this.#dependencies.get(dependency);
+          const normalizedURL = new URL(dependency).toString();
+          let depSet = this.#dependencies.get(normalizedURL);
 
           if (depSet == null) {
             depSet = new Set([key]);
 
-            this.#dependencies.set(dependency, depSet);
+            this.#dependencies.set(normalizedURL, depSet);
           } else {
             depSet.add(key);
           }
@@ -477,6 +484,7 @@ export class Store {
       output: JSONLDHandlerResult,
     }): void {
       const iris = [iri];
+
 
       if (res.ok) {
         this.#primary.set(iri, {
@@ -527,7 +535,7 @@ export class Store {
 
     async handleResponse(
       res: Response,
-      iri: string = res.url.toString(),
+      iri: string,
     ) {
       const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
 
@@ -627,7 +635,7 @@ export class Store {
       } else if (this.#origins.has(url.origin)) {
         headers = new Headers(this.#origins.get(url.origin));
       } else {
-        throw new Error('Unconfigured origin');
+        throw new Error(`Unconfigured origin "${url.origin}"`);
       }
     
       headers.set('accept', accept);
@@ -676,7 +684,7 @@ export class Store {
 
         this.#loading.delete(loadingKey);
         
-        await this.handleResponse(res, iri);
+        await this.handleResponse(res, dispatchURL);
 
         mithrilRedraw();
 
@@ -717,10 +725,11 @@ export class Store {
       const cleanup = this.#makeCleanupFn(key, details);
 
       for (const dependency of details.dependencies) {
-        const depSet = this.#dependencies.get(dependency);
+        const normalizedURL = new URL(dependency).toString();
+        const depSet = this.#dependencies.get(normalizedURL);
 
         if (depSet == null) {
-          this.#dependencies.set(dependency, new Set([key]));
+          this.#dependencies.set(normalizedURL, new Set([key]));
         } else {
           depSet.add(key);
         }

@@ -93,7 +93,7 @@ export declare class Store {
      */
     key(): string;
     isLoading(iri: string): boolean;
-    handleResponse(res: Response, iri?: string): Promise<void>;
+    handleResponse(res: Response, iri: string): Promise<void>;
     subscribe({ key, selector, fragment, accept, value, listener, mainEntity, }: {
         key: symbol;
         selector: string;

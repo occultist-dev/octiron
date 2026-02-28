@@ -6,10 +6,10 @@ import { Debug } from '../../lib/octiron.ts';
 
 describe('o.select()', () => {
   it('Re-orders DOM children on updates to store data ordering', { only: true }, async () => {
-    const { m, o, document, registry, mount, pretty, redraw } = domTest();
+    const { m, o, document, registry, mount, pretty, redraw, vocab } = domTest();
 
     let jsonld = {
-      '@context': { '@vocab': 'https://schema.example.com/' },
+      '@context': { '@vocab': vocab },
       members: [
         { position: 1, name: 'First' },
         { position: 2, name: 'Second' },
@@ -20,13 +20,13 @@ describe('o.select()', () => {
       .public()
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
-          '@context': { '@vocab': 'https://schema.example.com/' },
+          '@context': { '@vocab': vocab },
           '@id': ctx.url,
-          'todoListing': { '@id': 'https://example.com/todos' },
+          'todoListing': { '@id': todoListing.url() },
         });
       });
 
-    registry.http.get('/todos')
+    const todoListing = registry.http.get('/todos')
       .public()
       .handle('application/ld+json', ctx => {
         ctx.body = JSON.stringify({
@@ -43,8 +43,6 @@ describe('o.select()', () => {
 
     mount(document.body, {
       view() {
-        return o.root({ component: Debug });
-        
         return [
           o.root('todoListing', o =>
             m('ul',
@@ -60,7 +58,6 @@ describe('o.select()', () => {
     });
     
     await redraw();
-    console.log(await pretty())
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
@@ -70,14 +67,14 @@ describe('o.select()', () => {
     assert.equal(listElements[1].dataset.position, 2);
 
     jsonld = {
-      '@context': { '@vocab': 'https://schema.example.com/' },
+      '@context': { '@vocab': vocab },
       members: [
         { position: 1, name: 'Second' },
         { position: 2, name: 'First' },
       ],
     };
 
-    await o.store.fetch('https://example.com/todos');
+    await o.store.fetch('http://example.com/todos');
     await redraw();
 
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]

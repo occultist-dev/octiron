@@ -977,18 +977,19 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
  * if the branch has not completed.
  */
 function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, store, details, handledIRIs, }) {
+    const normalizedURL = new URL(iri).toString();
     // reset the key for entities.
     // this creates duplicates if an iri is used twice in a response at the
     // same level of the selection. I see this as being unlikely, so a problem
-    // to solve later.
-    key = makePointer('', iri);
-    pointer = makePointer(pointer, iri);
-    const cache = store.entity(iri, accept);
-    details.dependencies.push(iri);
+    // to solve later...
+    key = makePointer('', normalizedURL);
+    pointer = makePointer(pointer, normalizedURL);
+    const cache = store.entity(normalizedURL, accept);
+    details.dependencies.push(normalizedURL);
     // if loading is required mark found as false
     if (cache == null || cache.loading) {
-        if (!details.required.includes(iri)) {
-            details.required.push(iri);
+        if (!details.required.includes(normalizedURL)) {
+            details.required.push(normalizedURL);
             details.accept = accept;
             details.fragment = fragment;
         }
@@ -1039,7 +1040,6 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
-            console.log(value);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -2890,30 +2890,31 @@ class Store {
      * Retrieves an entity state object relating to an IRI.
      */
     entity(iri, accept) {
-        if (accept == null) {
-            return this.#primary.get(iri) ?? null;
-        }
+        const normalizedURL = new URL(iri).toString();
         const key = this.#getLoadingKey(iri, 'get', accept);
         const loading = this.#loading.has(key);
         if (loading) {
             return {
                 type: 'entity-loading',
-                iri,
+                iri: normalizedURL,
                 loading: true,
                 isProblem: false,
             };
         }
-        const contentType = this.#acceptMap.get(iri)?.get?.(accept);
+        if (accept == null) {
+            return this.#primary.get(normalizedURL) ?? null;
+        }
+        const contentType = this.#acceptMap.get(normalizedURL)?.get?.(accept);
         if (contentType == null) {
             return null;
         }
-        const integration = this.#integrations.get(contentType)?.get(iri);
+        const integration = this.#integrations.get(contentType)?.get(normalizedURL);
         if (integration == null) {
             return null;
         }
         return {
             type: 'alternative-success',
-            iri,
+            iri: normalizedURL,
             loading: false,
             ok: true,
             contentType,
@@ -3010,11 +3011,12 @@ class Store {
         return () => {
             this.#listeners.delete(key);
             for (const dependency of details.dependencies) {
-                this.#dependencies.delete(dependency);
+                const normalizedURL = new URL(dependency).toString();
+                this.#dependencies.delete(normalizedURL);
                 if (isBrowserRender) {
                     setTimeout(() => {
-                        if (this.#dependencies.get(dependency)?.size === 0) {
-                            this.#primary.delete(dependency);
+                        if (this.#dependencies.get(normalizedURL)?.size === 0) {
+                            this.#primary.delete(normalizedURL);
                         }
                     }, 5000);
                 }
@@ -3048,9 +3050,14 @@ class Store {
             if (listenerDetails == null) {
                 continue;
             }
-            const mappedType = this.#acceptMap.get(iri)
+            // construct a new url to normalize the iri. Eg add a trailing
+            // slash to an iri with no pathname part.
+            const mappedType = this.#acceptMap.get(new URL(iri).toString())
                 ?.get(listenerDetails.accept ?? defaultAccept);
-            if (mappedType !== contentType)
+            // TODO: A more sophisticated check might be required 
+            // to correctly check the content type matches the
+            // listener's accept header
+            if (contentType !== mappedType)
                 continue;
             const details = getSelection({
                 selector: listenerDetails.selector,
@@ -3061,10 +3068,11 @@ class Store {
             });
             const cleanup = this.#makeCleanupFn(key, details);
             for (const dependency of details.dependencies) {
-                let depSet = this.#dependencies.get(dependency);
+                const normalizedURL = new URL(dependency).toString();
+                let depSet = this.#dependencies.get(normalizedURL);
                 if (depSet == null) {
                     depSet = new Set([key]);
-                    this.#dependencies.set(dependency, depSet);
+                    this.#dependencies.set(normalizedURL, depSet);
                 }
                 else {
                     depSet.add(key);
@@ -3119,7 +3127,7 @@ class Store {
             this.#publish(iri, contentType);
         }
     }
-    async handleResponse(res, iri = res.url.toString()) {
+    async handleResponse(res, iri) {
         const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
         if (contentType == null) {
             throw new Error('Content type not specified in response');
@@ -3200,7 +3208,7 @@ class Store {
             headers = new Headers(this.#origins.get(url.origin));
         }
         else {
-            throw new Error('Unconfigured origin');
+            throw new Error(`Unconfigured origin "${url.origin}"`);
         }
         headers.set('accept', accept);
         if (args.body != null && args.contentType != null) {
@@ -3240,7 +3248,7 @@ class Store {
                 this.#acceptMap.set(dispatchURL, new Map([[accept, res.headers.get('content-type')]]));
             }
             this.#loading.delete(loadingKey);
-            await this.handleResponse(res, iri);
+            await this.handleResponse(res, dispatchURL);
             mithrilRedraw();
             resolve(res);
         });
@@ -3259,9 +3267,10 @@ class Store {
         });
         const cleanup = this.#makeCleanupFn(key, details);
         for (const dependency of details.dependencies) {
-            const depSet = this.#dependencies.get(dependency);
+            const normalizedURL = new URL(dependency).toString();
+            const depSet = this.#dependencies.get(normalizedURL);
             if (depSet == null) {
-                this.#dependencies.set(dependency, new Set([key]));
+                this.#dependencies.set(normalizedURL, new Set([key]));
             }
             else {
                 depSet.add(key);
