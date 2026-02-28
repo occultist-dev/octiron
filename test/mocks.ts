@@ -1,11 +1,10 @@
-import { DOMParser } from '@b-fuze/deno-dom';
 import { faker } from '@faker-js/faker';
 import type { Children } from "mithril";
-import { jsonLDHandler } from "../lib/handlers/jsonLDHandler.ts";
 import { Store, type StoreArgs } from "../lib/store.ts";
 import type { IRIObject, JSONObject } from "../lib/types/common.ts";
 import type { Aliases, AlternativesState, EntityState, Fetcher, FetcherArgs, Handler, ResponseHook } from "../lib/types/store.ts";
 import { flattenIRIObjects } from "../lib/utils/flattenIRIObjects.ts";
+import {makeJSONLDHandler} from '../lib/octiron.ts';
 
 export type TodoStatus =
   | "todo"
@@ -16,53 +15,53 @@ export const todosRootIRI = 'https://example.com/api';
 export const todosVocab = 'https://todos.example.com/';
 export const scmVocab = 'https://schema.org/';
 
-export enum TodoTypes {
-  potentialAction = "https://schema.org/potentialAction",
-  target = "https://schema.org/target",
-  urlTemplate = "https://schema.org/urlTemplate",
-  httpMethod = "https://schema.org/httpMethod",
-  contentType = "https://schema.org/contentType",
-  encodingType = "https://schema.org/encodingType",
-  PropertyValueSpecification = "https://schema.org/PropertyValueSpecification",
-  readonlyValue = "https://schema.org/readonlyValue",
-  valueName = "https://schema.org/valueName",
-  valueRequired = "https://schema.org/valueRequired",
-  defaultValue = "https://schema.org/defaultValue",
-  minValue = "https://schema.org/minValue",
-  maxValue = "https://schema.org/maxValue",
-  stepValue = "https://schema.org/stepValue",
-  valuePattern = "https://schema.org/valuePattern",
-  multipleValue = "https://schema.org/multipleValue",
-  valueMinLength = "https://schema.org/valueMinLength",
-  valueMaxLength = "https://schema.org/valueMaxLength",
+export const TodoTypes = {
+  potentialAction: "https://schema.org/potentialAction",
+  target: "https://schema.org/target",
+  urlTemplate: "https://schema.org/urlTemplate",
+  httpMethod: "https://schema.org/httpMethod",
+  contentType: "https://schema.org/contentType",
+  encodingType: "https://schema.org/encodingType",
+  PropertyValueSpecification: "https://schema.org/PropertyValueSpecification",
+  readonlyValue: "https://schema.org/readonlyValue",
+  valueName: "https://schema.org/valueName",
+  valueRequired: "https://schema.org/valueRequired",
+  defaultValue: "https://schema.org/defaultValue",
+  minValue: "https://schema.org/minValue",
+  maxValue: "https://schema.org/maxValue",
+  stepValue: "https://schema.org/stepValue",
+  valuePattern: "https://schema.org/valuePattern",
+  multipleValue: "https://schema.org/multipleValue",
+  valueMinLength: "https://schema.org/valueMinLength",
+  valueMaxLength: "https://schema.org/valueMaxLength",
   
-  Listing = "https://todos.example.com/Listing",
-  members = "https://todos.example.com/members",
+  Listing: "https://todos.example.com/Listing",
+  members: "https://todos.example.com/members",
 
-  APIRoot = "https://todos.example.com/Todo",
-  Todo = "https://todos.example.com/Todo",
-  TodoListing = "https://todos.example.com/TodoListing",
-  todoListing = "https://todos.example.com/todoListing",
-  todo = "https://todos.example.com/todo",
-  steps = "https://todos.example.com/steps",
-  text = "https://todos.example.com/text",
-  todos = "https://todos.example.com/todos",
-  title = "https://schema.org/name", // correct use of schema.org/name I believe
-  description = "https://schema.org/description",
-  status = "https://todos.example.com/status",
-  assignee = "https://todos.example.com/assignee",
-  subtodos = "https://todos.example.com/subtodos",
+  APIRoot: "https://todos.example.com/Todo",
+  Todo: "https://todos.example.com/Todo",
+  TodoListing: "https://todos.example.com/TodoListing",
+  todoListing: "https://todos.example.com/todoListing",
+  todo: "https://todos.example.com/todo",
+  steps: "https://todos.example.com/steps",
+  text: "https://todos.example.com/text",
+  todos: "https://todos.example.com/todos",
+  title: "https://schema.org/name", // correct use of schema.org/name I believe
+  description: "https://schema.org/description",
+  status: "https://todos.example.com/status",
+  assignee: "https://todos.example.com/assignee",
+  subtodos: "https://todos.example.com/subtodos",
 
-  CreateTodoAction = 'https://todos.example.com/CreateTodoAction',
+  CreateTodoAction: 'https://todos.example.com/CreateTodoAction',
 
-  User = "https://todos.example.com/User",
-  UserListing = "https://todos.example.com/UserListing",
-  userListing = "https://todos.example.com/userListing",
-  user = "https://todos.example.com/user",
-  users = "https://todos.example.com/users",
-  username = "https://todos.example.com/username",
-  email = "https://todos.example.com/email",
-}
+  User: "https://todos.example.com/User",
+  UserListing: "https://todos.example.com/UserListing",
+  userListing: "https://todos.example.com/userListing",
+  user: "https://todos.example.com/user",
+  users: "https://todos.example.com/users",
+  username: "https://todos.example.com/username",
+  email: "https://todos.example.com/email",
+} as const;
 
 const used: string[] = [];
 function makeUniqueId() {
@@ -367,7 +366,7 @@ export function makeStore({
   fetcher,
   responseHook,
   handlers = [
-    jsonLDHandler,
+    makeJSONLDHandler(),
   ],
 }: {
   rootIRI?: string;

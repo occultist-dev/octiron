@@ -8,7 +8,7 @@ export type MakeJSONLDHandlerArgs = {
   store?: JSONLDContextStore,
 };
 
-export const makeJSONLDHandler = (args: MakeJSONLDHandlerArgs): JSONLDHandler => {
+export const makeJSONLDHandler = (args?: MakeJSONLDHandlerArgs): JSONLDHandler => {
   if (args?.store != null) {
     store = args.store;
   }

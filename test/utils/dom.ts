@@ -5,8 +5,9 @@ import m from 'mithril';
 import mountRedraw from 'mithril/api/mount-redraw.js';
 import render from 'mithril/render.js';
 import {makeJSONLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
-import {octiron} from '../../lib/octiron.ts';
+import {longformHandler, octiron} from '../../lib/octiron.ts';
 import {type StoreArgs} from '../../lib/store.ts';
+import {format} from 'prettier';
 
 
 class Scheduler {
@@ -30,10 +31,15 @@ class Scheduler {
 
 
 export function domTest() {
+  const rootIRI = 'http://example.com';
+  const vocab = 'http://schema.example.com/';
   const dom = new JSDOM(`
     <!doctype html>
     <html lang=en><body></body></html>
-  `);
+  `, {
+    pretendToBeVisual: true,
+    runScripts: 'outside-only',
+  });
   const window = dom.window;
   const document = dom.window.document;
   globalThis.window = window;
@@ -53,9 +59,12 @@ export function domTest() {
     fetcher: (iri, init) => registry.handleRequest(new Request(iri, init)),
   });
   const o = octiron({
-    rootIRI: 'http://example.com',
-    vocab: 'http://schema.example.com/',
-    handlers: [makeJSONLDHandler({ store })],
+    rootIRI,
+    vocab,
+    handlers: [
+      makeJSONLDHandler({ store }),
+      longformHandler,
+    ],
     fetcher,
     responseHook,
   });
@@ -77,9 +86,16 @@ export function domTest() {
     }
   }
 
+  async function pretty() {
+    return format(dom.serialize(), { parser: 'html' });
+  }
+
   return {
+    vocab,
+    rootIRI,
     m,
     o,
+    store: o.store,
     dom,
     window,
     document,
@@ -88,5 +104,6 @@ export function domTest() {
     promises,
     mount,
     redraw: redrawAsync,
+    pretty,
   };
 }

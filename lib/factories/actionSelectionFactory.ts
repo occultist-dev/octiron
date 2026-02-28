@@ -66,7 +66,7 @@ export function actionSelectionFactory<
       return;
     }
 
-    let next: Partial<JSONObject> = Object.assign({}, prev);
+    let next: Partial<JSONObject> | boolean = Object.assign({}, prev);
     const ptr = JsonPointer.create(pointer);
 
     if (value == null) {
@@ -76,7 +76,14 @@ export function actionSelectionFactory<
     }
 
     if (typeof interceptor === 'function') {
-      next = interceptor(next, prev, refs.rendererArgs.actionValue?.value as JSONObject);
+      next = interceptor({
+        next,
+        prev,
+        o: self as unknown as OctironActionSelection,
+        actionValue: self.actionValue.value as JSONObject,
+      });
+
+      if (next === false) return;
     }
 
     refs.parentArgs.updatePointer(refs.rendererArgs.pointer, next, args);

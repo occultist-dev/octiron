@@ -1,7 +1,7 @@
 import m from 'mithril';
 import {PerformRenderer3} from "../renderers/PerformRenderer3.ts";
 import {PresentRenderer} from '../renderers/PresentRenderer.ts';
-import {SelectionRenderer} from "../renderers/SelectionRenderer.ts";
+import {SelectionRenderer2} from "../renderers/SelectionRenderer2.ts";
 import type {Store} from "../store.ts";
 import type {Mutable} from "../types/common.ts";
 import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeHandlers} from "../types/octiron.ts";
@@ -193,7 +193,7 @@ export function octironFactory<O extends Octiron>(
       arg3,
     );
 
-    return m(SelectionRenderer, {
+    return m(SelectionRenderer2, {
       entity: true,
       selector,
       args,
@@ -221,7 +221,7 @@ export function octironFactory<O extends Octiron>(
       selector = `${refs.parentArgs.store.rootIRI} ${childSelector}`;
     }
 
-    return m(SelectionRenderer, {
+    return m(SelectionRenderer2, {
       entity: true,
       selector,
       args,
@@ -248,7 +248,7 @@ export function octironFactory<O extends Octiron>(
         }
 
         return m(
-          SelectionRenderer,
+          SelectionRenderer2,
           {
             selector,
             args,

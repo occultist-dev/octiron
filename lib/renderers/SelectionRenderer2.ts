@@ -1,27 +1,26 @@
-import {isJSONObject} from '@occultist/mini-jsonld';
+import {isJSONObject} from "@occultist/mini-jsonld";
 import m from 'mithril';
-import {selectionFactory} from '../factories/selectionFactory.ts';
-import type {ActionParentArgs, CommonRendererArgs, JSONObject, Mutable, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, Store, ValueSelectionResult} from '../octiron.ts';
-import {ActionRenderer2} from './ActionRenderer2.ts';
+import {selectionFactory} from "../factories/selectionFactory.ts";
+import type {CommonRendererArgs, JSONObject, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectView, Store} from "../octiron.ts";
 
 
-export type PerformRendererAttrs = {
+export type SelectionRendererAttrs = {
+  entity?: boolean;
   selector?: string;
-  args: OctironPerformArgs;
-  view: PerformView;
-  parentArgs: ActionParentArgs;
-};
+  args: OctironSelectArgs;
+  view: SelectView;
+  parentArgs: SelectionParentArgs;
+}
 
 type Instance = {
   octiron: OctironSelection;
   selectionResult: ReadonlySelectionResult;
-  rendererArgs: PerformRendererArgs;
 };
 
 function createInstances(
   instances: Map<string, Instance>,
-  args: OctironPerformArgs,
-  parentArgs: ActionParentArgs,
+  args: OctironSelectArgs,
+  parentArgs: SelectionParentArgs,
   selectionDetails: SelectionDetails<ReadonlySelectionResult>,
 ) {
   const prevKeys = Array.from(instances.keys());
@@ -63,17 +62,10 @@ function createInstances(
       parentArgs as SelectionParentArgs,
       selectionRendererArgs,
     );
-    const rendererArgs: PerformRendererArgs = {
-      index: i,
-      value: selectionResult.value,
-      propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-      actionValue: octiron as OctironSelection,
-    };
 
     instances.set(selectionResult.pointer, {
       octiron,
       selectionResult,
-      rendererArgs,
     });
   }
 
@@ -88,7 +80,7 @@ function createInstances(
 
 async function fetchRequired(
   store: Store,
-  args: OctironPerformArgs,
+  args: OctironSelectArgs,
   selectionDetails: SelectionDetails<ReadonlySelectionResult>,
 ) {
   if (selectionDetails.required.length === 0) return;
@@ -107,71 +99,52 @@ function subscribe(
   listener: SelectionListener,
   instances: Map<string, Instance>,
   store: Store,
+  entity: boolean,
   selector: string | undefined,
-  args: OctironPerformArgs,
-  parentArgs: ActionParentArgs,
+  args: OctironSelectArgs,
+  parentArgs: SelectionParentArgs,
 ): SelectionDetails<ReadonlySelectionResult> {
-  if (selector != null &&
-      !isJSONObject(parentArgs.parent.value)
+  if (!entity && !isJSONObject(parentArgs.parent.value)
   ) {
-    // Actions can only be performed on JSON objects.
     store.unsubscribe(key);
     instances.clear();
 
     return;
   }
 
-  let selectionDetails: SelectionDetails<ReadonlySelectionResult>;
+  const selectionDetails = store.subscribe({
+    key,
+    selector,
+    listener,
+    fragment: args.fragment,
+    accept: args.accept,
+    value: entity ? undefined : parentArgs.value as JSONObject,
+    mainEntity: args.mainEntity,
+  });
 
-  if (selector != null) {
-    selectionDetails = store.subscribe({
-      key,
-      listener,
-      selector,
-      value: parentArgs.parent.value as JSONObject,
-    });
-
-    if (selectionDetails.required.length > 0) {
-      fetchRequired(store, args, selectionDetails)
-    }
-  } else {
-    // If there is no selector this perform is being done against the
-    // current value.
-    selectionDetails = {
-      selector: '/',
-      complete: true,
-      hasErrors: false,
-      hasMissing: false,
-      isProblem: false,
-      dependencies: [],
-      required: [],
-      result: [{
-        key: '/',
-        pointer: '/',
-        type: 'value',
-        readonly: true,
-        value: parentArgs.parent.value as JSONObject,
-      } satisfies ValueSelectionResult],
-    }
-
-    createInstances(
-      instances,
-      args,
-      parentArgs,
-      selectionDetails,
-    );
+  if (selectionDetails.required.length > 0) {
+    fetchRequired(store, args, selectionDetails);
   }
+
+  createInstances(
+    instances,
+    args,
+    parentArgs,
+    selectionDetails,
+  );
 
   return selectionDetails;
 }
 
-export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => {
-  let key = Symbol('PerformRenderer');
+
+export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = () => {
+  let key = Symbol('SelectionRenderer');
   let loading!: boolean;
   let store!: Store;
+  let entity!: boolean;
   let selector: string | undefined;
-  let args!: OctironPerformArgs;
-  let parentArgs!: ActionParentArgs;
+  let args!: OctironSelectArgs;
+  let parentArgs!: SelectionParentArgs;
   let instances!: Map<string, Instance>;
 
   const listener = (selectionDetails: SelectionDetails<ReadonlySelectionResult>) => {
@@ -196,27 +169,30 @@ export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => 
   return {
     oninit(vnode) {
       store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+      entity = vnode.attrs.entity ?? false;
       selector = vnode.attrs.selector;
       args = vnode.attrs.args;
       parentArgs = vnode.attrs.parentArgs;
       instances = new Map();
       
-      loading = !subscribe(key, listener, instances, store, selector, args, parentArgs)?.complete;
+      loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
     },
     onbeforeupdate(vnode) {
       const prev = store;
       const changed = 
+        entity != vnode.attrs.entity ||
         store !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store) ||
         selector !== vnode.attrs.selector;
 
       store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+      entity = vnode.attrs.entity ?? false;
       selector = vnode.attrs.selector;
       args = vnode.attrs.args;
       parentArgs = vnode.attrs.parentArgs;
       
       if (changed) {
         prev.unsubscribe(key);
-        loading = !subscribe(key, listener, instances, store, selector, args, parentArgs)?.complete;
+        loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
       }
     },
     onbeforeremove() {
@@ -228,31 +204,41 @@ export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => 
       }
 
       const children: m.Children[] = [vnode.attrs.args.pre];
-      const list = Array.from(instances.values())
+      let l1: Instance[] = Array.from(instances.values())
+      let l2: Instance[];
 
-      for (let i = 0, l = list.length; i < l; i++) {
-        (list[i].octiron as Mutable<OctironSelection>).position = i + 1;
+      if (vnode.attrs.args.predicate != null) {
+        l2 = [];
+        for (let i = 0, l = l1.length; i < l; i++) {
+          if (vnode.attrs.args.predicate(l1[i].octiron)) {
+            l2.push(l1[i]);
+          }
+        }
+      } else {
+        l2 = l1;
+      }
+
+      if (vnode.attrs.args.end != null) {
+        l2.splice(0, vnode.attrs.args.end);
+      }
+
+      if (vnode.attrs.args.start != null) {
+        l2.splice(vnode.attrs.args.start);
+      }
+
+      for (let i = 0, l = l2.length; i < l; i++) {
+        (l2[i].octiron as Mutable<OctironSelection>).position = i + 1;
 
         if (i !== 0) children.push(vnode.attrs.args.sep);
 
-        if (list[i].selectionResult.type !== 'value' &&
-            !list[i].selectionResult.ok) {
-          if (typeof vnode.attrs.args.fallback === 'function') {
-            children.push(vnode.attrs.args.fallback(
-              list[i].octiron,
-              list[i].selectionResult.reason,
-            ));
-          } else {
-            children.push(vnode.attrs.args.fallback);
-          }
+        if (l2[i].selectionResult.type === 'value') {
+          children.push(vnode.attrs.view(l2[i].octiron));
+        } else if (!l2[i].selectionResult.ok && typeof vnode.attrs.args.fallback === 'function') {
+          throw new Error(`Fallback functions are not yet supported`);
+        } else if (!l2[i].selectionResult.ok) {
+          children.push(vnode.attrs.args.fallback as m.Children);
         } else {
-          children.push(m(ActionRenderer2, {
-            args: vnode.attrs.args,
-            parentArgs: vnode.attrs.parentArgs,
-            rendererArgs: list[i].rendererArgs,
-            selection: list[i].octiron,
-            view: vnode.attrs.view,
-          }));
+          children.push(vnode.attrs.view(l2[i].octiron));
         }
       }
 

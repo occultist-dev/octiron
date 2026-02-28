@@ -1,7 +1,7 @@
 import m from 'mithril';
 import { mithrilRedraw } from "../utils/mithrilRedraw.ts";
-import type { JSONObject } from "../types/common.ts";
-import type { Octiron } from "../types/octiron.ts";
+import type { JSONObject, JSONValue } from "../types/common.ts";
+import type { AnyComponent, Octiron } from "../types/octiron.ts";
 import { OctironJSON } from "./OctironJSON.ts";
 
 export type OctironDebugPresentationStyle =
@@ -130,4 +130,10 @@ export const OctironDebug: m.ClosureComponent<OctironDebugAttrs> = ({
       );
     },
   };
+};
+
+export const Debug: AnyComponent<JSONValue> = {
+  view: ({ attrs: { o } }) => {
+    return m(OctironDebug, { o });
+  },
 };

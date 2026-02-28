@@ -1,5 +1,6 @@
 import m from 'mithril';
-import type { Octiron } from "../types/octiron.ts";
+import type { JSONValue } from "../types/common.ts";
+import type { AnyComponent, Octiron } from "../types/octiron.ts";
 export type OctironDebugPresentationStyle = 'value' | 'action-value' | 'component' | 'log';
 export type OctironDebugAttrs = {
     o: Octiron;
@@ -9,3 +10,4 @@ export type OctironDebugAttrs = {
     availableControls?: OctironDebugPresentationStyle[];
 };
 export declare const OctironDebug: m.ClosureComponent<OctironDebugAttrs>;
+export declare const Debug: AnyComponent<JSONValue>;

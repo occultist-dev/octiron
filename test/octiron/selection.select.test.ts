@@ -1,11 +1,12 @@
 import assert from 'node:assert';
 import {describe, it} from "node:test";
 import {domTest} from '../utils/dom.ts';
+import { Debug } from '../../lib/octiron.ts';
 
 
 describe('o.select()', () => {
-  it('Re-orders DOM children on updates to store data ordering', async () => {
-    const { m, o, document, registry, mount, redraw } = domTest();
+  it('Re-orders DOM children on updates to store data ordering', { only: true }, async () => {
+    const { m, o, document, registry, mount, pretty, redraw } = domTest();
 
     let jsonld = {
       '@context': { '@vocab': 'https://schema.example.com/' },
@@ -42,6 +43,8 @@ describe('o.select()', () => {
 
     mount(document.body, {
       view() {
+        return o.root({ component: Debug });
+        
         return [
           o.root('todoListing', o =>
             m('ul',
@@ -57,6 +60,7 @@ describe('o.select()', () => {
     });
     
     await redraw();
+    console.log(await pretty())
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 

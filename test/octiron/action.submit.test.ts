@@ -13,7 +13,7 @@ type TodoStatus =
 
 
 describe('o.submit()', () => {
-  it('Re-orders DOM children on updates to store data ordering', async () => {
+  it('Re-orders DOM children on updates to store data ordering', {only: true}, async () => {
     const typeDefs = makeTypeDefs([
       makeTypeDef('ListTodosAction', 'http://schema.example.com/'),
       makeTypeDef('SetTodoStatusAction', 'http://schema.example.com/'),
@@ -24,7 +24,7 @@ describe('o.submit()', () => {
       vocab: 'http://schema.example.com/',
       typeDefs,
     })
-    const { m, o, dom, document, registry, scope, mount, redraw } = domTest();
+    const { m, o, document, registry, scope, mount, redraw, pretty } = domTest();
 
     const contextIRI = new URL('./context', o.store.rootIRI).toString();
 
@@ -128,9 +128,6 @@ describe('o.submit()', () => {
           oninput: (evt: Event) => {
             attrs.onChange((evt.target as HTMLSelectElement).value);
           },
-          onselect: (evt: Event) => {
-            console.log('EVT', evt);
-          },
         },
           m('option[value=planned]', 'Planned'),
           m('option[value=in-progress]', 'In progress'),
@@ -162,6 +159,7 @@ describe('o.submit()', () => {
                   o.perform('actions SetTodoStatusAction', {
                     initialValue: {
                       todoUUID: o.get('uuid'),
+                      todoStatus: o.get('todoStatus'),
                     },
                   }, o =>
                     o.select('todoStatus', { component: EditTodoStatus }),
@@ -176,19 +174,22 @@ describe('o.submit()', () => {
     
     await redraw();
 
-    const select = document.querySelector('select');
+    let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[];
 
-    console.log(select);
-    console.log(dom.serialize())
-
-    return;
-
-    let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
-
-    assert.equal(listElements[0].textContent, 'First');
+    assert.equal(listElements[0].firstChild?.textContent, 'First');
     assert.equal(listElements[0].dataset.position, 1);
-    assert.equal(listElements[1].textContent, 'Second');
+    assert.equal(listElements[1].firstChild?.textContent, 'Second');
     assert.equal(listElements[1].dataset.position, 2);
+
+    let select = Array.from(document.querySelectorAll('select')) as HTMLSelectElement[];
+
+    assert.equal(select[0].value, 'planned');
+    assert.equal(select[1].value, 'planned');
+
+    select[1].value = 'in-progress'
+    select[1].dispatchEvent(new window.Event('change', { bubbles: true }));
+
+    await redraw();
 
     jsonld = {
       members: [
@@ -214,12 +215,19 @@ describe('o.submit()', () => {
     await o.store.submit('http://example.com/todos');
     await redraw();
 
+    console.log(await pretty())
+
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
-    assert.equal(listElements[0].textContent, 'Second');
+    assert.equal(listElements[0].firstChild?.textContent, 'Second');
     assert.equal(listElements[0].dataset.position, 1);
-    assert.equal(listElements[1].textContent, 'First');
+    assert.equal(listElements[1].firstChild?.textContent, 'First');
     assert.equal(listElements[1].dataset.position, 2);
+
+    select = Array.from(document.querySelectorAll('select')) as HTMLSelectElement[];
+
+    assert.equal(select[0].value, 'in-progress');
+    assert.equal(select[1].value, 'planned');
   });
 
 });

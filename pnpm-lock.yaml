@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@faker-js/faker':
+        specifier: ^10.3.0
+        version: 10.3.0
       '@occultist/occultist':
         specifier: ^0.0.13
         version: 0.0.13(@occultist/mini-jsonld@0.0.1(json-ptr@3.1.1)(jsonld@8.3.3(web-streams-polyfill@3.3.3)))(json-ptr@3.1.1)
@@ -23,6 +26,9 @@ importers:
       '@types/node':
         specifier: ^25.0.2
         version: 25.0.2
+      '@types/prettier':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/uri-templates':
         specifier: ^0.1.34
         version: 0.1.34
@@ -44,6 +50,9 @@ importers:
       mithril-node-render:
         specifier: ^3.0.2
         version: 3.0.2(mithril@2.3.3)
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
       rollup:
         specifier: ^4.53.3
         version: 4.53.3
@@ -159,6 +168,10 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@faker-js/faker@10.3.0':
+    resolution: {integrity: sha512-It0Sne6P3szg7JIi6CgKbvTZoMjxBZhcv91ZrqrNuaZQfB5WoqYYbzCUOq89YR+VY8juY9M1vDWmDDa2TzfXCw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || ^23.5.0 || >=24.0.0, npm: '>=10'}
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -325,6 +338,10 @@ packages:
 
   '@types/node@25.0.2':
     resolution: {integrity: sha512-gWEkeiyYE4vqjON/+Obqcoeffmk0NF15WSBwSs7zwVA2bAbTaE0SJ7P0WNGoJn8uE7fiaV5a7dKYIJriEqOrmA==}
+
+  '@types/prettier@3.0.0':
+    resolution: {integrity: sha512-mFMBfMOz8QxhYVbuINtswBp9VL2b4Y0QqYHwqLz3YbgtfAcat2Dl6Y1o4e22S/OVE6Ebl9m7wWiMT2lSbAs1wA==}
+    deprecated: This is a stub types definition. prettier provides its own type definitions, so you do not need this installed.
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
@@ -588,6 +605,11 @@ packages:
     resolution: {integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==}
     engines: {node: '>=12'}
 
+  prettier@3.8.1:
+    resolution: {integrity: sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
@@ -784,6 +806,8 @@ snapshots:
 
   '@exodus/bytes@1.14.1': {}
 
+  '@faker-js/faker@10.3.0': {}
+
   '@fastify/busboy@2.1.1': {}
 
   '@longform/longform@0.0.5':
@@ -903,6 +927,10 @@ snapshots:
   '@types/node@25.0.2':
     dependencies:
       undici-types: 7.16.0
+
+  '@types/prettier@3.0.0':
+    dependencies:
+      prettier: 3.8.1
 
   '@types/tough-cookie@4.0.5': {}
 
@@ -1151,6 +1179,8 @@ snapshots:
   path-parse@1.0.7: {}
 
   picomatch@4.0.3: {}
+
+  prettier@3.8.1: {}
 
   punycode@2.3.1: {}
 

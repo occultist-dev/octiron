@@ -1,8 +1,6 @@
 import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
 import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
-import {ActionStateRenderer2} from "../renderers/ActionStateRenderer2.ts";
-import {ActionStateRenderer} from "../renderers/ActionStateRenderer.ts";
 import type {Store} from "../store.ts";
 import type {JSONArray, JSONObject, JSONValue, SCMAction} from "../types/common.ts";
 import type {ActionEvents, ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
@@ -15,6 +13,7 @@ import {unravelArgs} from "../utils/unravelArgs.ts";
 import {type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
 import {isBrowserRender} from '../consts.ts';
 import {ActionStateRenderer3} from '../renderers/ActionStateRenderer3.ts';
+import { ActionStateRenderer } from '../renderers/ActionStateRenderer.ts';
 
 export type ActionRefs = {
   url?: string;
@@ -88,7 +87,7 @@ export function actionFactory<
     }
   }
 
-  function update(value: JSONObject): boolean | void {
+  function update(value: JSONObject, args2?: UpdateArgs): boolean | void {
     const prev = payload;
     const next = {
       ...prev,
@@ -114,7 +113,7 @@ export function actionFactory<
 
     childArgs.value = self.value = value;
 
-    if (args.submitOnChange) {
+    if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
       submit();
     } else {
       mithrilRedraw();
@@ -186,8 +185,8 @@ export function actionFactory<
   ): Promise<void> {
     if (arg1 != null) {
       const res = typeof arg1 === 'function'
-        ? update(arg1(payload))
-        : update(arg1);
+        ? update(arg1(payload), { submit: false })
+        : update(arg1, { submit: false });
 
       if (res === false) return;
     }
@@ -200,16 +199,10 @@ export function actionFactory<
     arg2?: UpdateArgs,
   ): Promise<void> {
     const res = typeof arg1 === 'function'
-      ? update(arg1(payload))
-      : update(arg1);
+      ? update(arg1(payload), arg2)
+      : update(arg1, arg2);
 
     if (res === false) return;
-
-    if (arg2?.submit || args.submitOnChange) {
-      await submit();
-    } else {
-      mithrilRedraw();
-    }
   } as OctironAction['update'];
 
   self.append = (

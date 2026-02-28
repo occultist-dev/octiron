@@ -1,6 +1,7 @@
 import type { JSONObject } from "./types/common.ts";
 import type { Aliases, AlternativesState, Context, EntityState, FailureEntityState, Fetcher, Handler, IntegrationState, ReadonlySelectionResult, ResponseHook, SelectionDetails, SelectionListener, SubmitArgs, SuccessEntityState } from "./types/store.ts";
 type FetchArgs = {
+    accept?: string;
     mainEntity?: boolean;
 };
 export type StoreArgs = {
@@ -103,7 +104,7 @@ export declare class Store {
         mainEntity?: boolean;
     }): SelectionDetails<ReadonlySelectionResult>;
     unsubscribe(key: symbol): void;
-    fetch(iri: string | URL, accept?: string, { mainEntity, }?: FetchArgs): Promise<SuccessEntityState | FailureEntityState>;
+    fetch(iri: string | URL, args?: FetchArgs): Promise<SuccessEntityState | FailureEntityState>;
     /**
      * Submits an action. Like fetch this will overwrite
      * entities in the store with any entities returned

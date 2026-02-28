@@ -36,6 +36,7 @@ type ListenerDetails = {
 type Listeners = Map<symbol, ListenerDetails>;
 
 type FetchArgs = {
+  accept?: string;
   mainEntity?: boolean;
 };
 
@@ -235,16 +236,18 @@ export class Store {
         return this.#primary.get(iri) ?? null;
       }
 
-      //const key = this.#getLoadingKey(iri, 'get', accept);
-      //const loading = this.#loading.has(key);
+      const key = this.#getLoadingKey(iri, 'get', accept);
+      const loading = this.#loading.has(key);
 
-      //if (loading) {
-      //  return {
-      //    type: 'entity-loading',
-      //    iri,
-      //    loading: true,
-      //  };
-      //}
+
+      if (loading) {
+        return {
+          type: 'entity-loading',
+          iri,
+          loading: true,
+          isProblem: false,
+        };
+      }
 
       const contentType = this.#acceptMap.get(iri)?.get?.(accept);
 
@@ -257,12 +260,13 @@ export class Store {
       if (integration == null) {
         return null;
       }
-    
+
       return {
         type: 'alternative-success',
         iri,
         loading: false,
         ok: true,
+        contentType,
         isProblem: false,
         integration,
       };
@@ -298,7 +302,7 @@ export class Store {
 
     public get aliases(): Aliases {
       return Object.fromEntries(
-        this.#aliases.entries()
+        Array.from(this.#aliases.entries())
           .map(([key, value]) => [key.replace(/^/, ''), value])
       );
     }
@@ -415,7 +419,7 @@ export class Store {
      * selection for this entity have the latest selection result pushed to
      * their listener functions.
      */
-    #publish(iri: string, _contentType?: string): void {
+    #publish(iri: string, contentType: string): void {
       const keys = this.#dependencies.get(iri);
 
       if (keys == null) {
@@ -428,6 +432,11 @@ export class Store {
         if (listenerDetails == null) {
           continue;
         }
+
+        const mappedType = this.#acceptMap.get(iri)
+          ?.get(listenerDetails.accept ?? defaultAccept);
+
+        if (mappedType !== contentType) continue;
 
         const details = getSelection<EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult>({
           selector: listenerDetails.selector,
@@ -459,10 +468,12 @@ export class Store {
     #handleJSONLD({
       iri,
       res,
+      contentType,
       output,
     }: {
       iri: string;
       res: Response;
+      contentType: string;
       output: JSONLDHandlerResult,
     }): void {
       const iris = [iri];
@@ -473,8 +484,8 @@ export class Store {
           iri,
           loading: false,
           ok: true,
+          contentType,
           value: output.jsonld,
-          headers: res.headers,
           isProblem: false,
         })
       } else {
@@ -486,9 +497,9 @@ export class Store {
           loading: false,
           ok: false,
           value: output.jsonld,
+          contentType,
           status: res.status,
           isProblem: false,
-          headers: res.headers,
           reason,
         });
       }
@@ -504,12 +515,13 @@ export class Store {
           loading: false,
           ok: true,
           value: entity,
+          contentType,
           isProblem: false,
         });
       }
 
       for (const iri of iris) {
-        this.#publish(iri);
+        this.#publish(iri, contentType);
       }
     }
 
@@ -549,6 +561,7 @@ export class Store {
         this.#handleJSONLD({
           iri,
           res,
+          contentType,
           output,
         });
       } else if (handler.integrationType === 'problem-details') {
@@ -566,7 +579,6 @@ export class Store {
           status: res.status,
           isProblem: true,
           reason: new HTTPFailure(res.status, res),
-          headers: res.headers,
         });
       } else if (handler.integrationType === 'html-fragments') {
         const output = await handler.handler({
@@ -607,8 +619,6 @@ export class Store {
 
       const method = args.method || 'get';
       const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
-      const entity = this.entity(iri, accept);
-      const etag = entity?.headers?.get('Etag');
       const dispatchURL = url.toString();
       const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
 
@@ -624,12 +634,6 @@ export class Store {
 
       if (args.body != null && args.contentType != null) {
         headers.set('content-type', args.contentType);
-      }
-
-      if (method === 'GET' && etag != null) {
-        headers.set('If-None-Match', etag);
-      } else if (method === 'HEAD' && etag != null) {
-        headers.set('If-None-Match', etag);
       }
 
       this.#loading.add(loadingKey);
@@ -663,16 +667,16 @@ export class Store {
           this.#httpStatus = res.status;
         }
 
-        if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
+        if (this.#acceptMap.has(dispatchURL)) {
           this.#acceptMap
-            .get(dispatchURL)?.set(args.accept, res.headers.get('content-type') as string);
-        } else if (args.accept != null) {
-          this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type') as string]]));
+            .get(dispatchURL)?.set(accept, res.headers.get('content-type') as string);
+        } else {
+          this.#acceptMap.set(dispatchURL, new Map([[accept, res.headers.get('content-type') as string]]));
         }
 
-        await this.handleResponse(res, iri);
-
         this.#loading.delete(loadingKey);
+        
+        await this.handleResponse(res, iri);
 
         mithrilRedraw();
 
@@ -752,10 +756,8 @@ export class Store {
       this.#listeners.get(key)?.cleanup();
     }
 
-    public async fetch(iri: string | URL, accept?: string, {
-      mainEntity,
-    }: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri.toString(), { accept, mainEntity });
+    public async fetch(iri: string | URL, args: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
+      await this.#callFetcher(iri.toString(), args);
 
       return this.#primary.get(iri.toString()) as SuccessEntityState | FailureEntityState;
     }

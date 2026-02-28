@@ -1,8 +1,9 @@
 import assert from "node:assert";
+import {describe, it} from "node:test";
+import {Store} from "../../lib/store.ts";
+import {CircularSelectionError, getSelection} from "../../lib/utils/getSelection.ts";
+import {isJSONObject} from "../../lib/utils/isJSONObject.ts";
 import * as mocks from "../mocks.ts";
-import { getSelection, CircularSelectionError } from "../../lib/utils/getSelection.ts";
-import { isJSONObject } from "../../lib/utils/isJSONObject.ts";
-import { Store } from "../../lib/store.ts";
 
 const user1 = mocks.createUser({
   username: "jane",
@@ -40,7 +41,7 @@ const epic2 = mocks.createEpic({
   ],
 });
 
-Deno.test("getSelection()", async (t) => {
+describe("getSelection()", async () => {
   const ctx = {
     vocab: mocks.todosVocab,
     aliases: {
@@ -58,7 +59,7 @@ Deno.test("getSelection()", async (t) => {
     handlers: [],
   });
 
-  await t.step("Selects values in a deep object", () => {
+  await it("Selects values in a deep object", () => {
     const selection = getSelection({
       store,
       selector: "foo baa baz",
@@ -87,7 +88,7 @@ Deno.test("getSelection()", async (t) => {
     assert.equal(selection.dependencies.length, 0);
   });
 
-  await t.step("Selects an entity", () => {
+  await it("Selects an entity", () => {
     const iri = epic2["https://todos.example.com/subtodos"][0]["@id"];
     const selection = getSelection({
       store,
@@ -102,7 +103,7 @@ Deno.test("getSelection()", async (t) => {
     );
   });
 
-  await t.step("Selects children of an entity in compact JSON-LD form", () => {
+  await it("Selects children of an entity in compact JSON-LD form", () => {
     const iri = epic2["@id"];
     const selection = getSelection({
       store,
@@ -130,8 +131,8 @@ Deno.test("getSelection()", async (t) => {
     );
   });
 
-  await t.step("Selects children of an entity in expanded JSON-LD form", async () => {
-    const primary = await mocks.toEntityState({}, user1, user2, user3, epic2);
+  await it("Selects children of an entity in expanded JSON-LD form", async () => {
+    const primary = mocks.toEntityState({}, user1, user2, user3, epic2);
     const store = new Store({
       rootIRI: mocks.todosRootIRI,
       primary,
@@ -164,7 +165,7 @@ Deno.test("getSelection()", async (t) => {
     );
   });
 
-  await t.step("Selects a deep property of an entity", () => {
+  await it("Selects a deep property of an entity", () => {
     const iri = epic2["@id"];
     const selection = getSelection({
       store,
@@ -193,7 +194,7 @@ Deno.test("getSelection()", async (t) => {
     );
   });
 
-  await t.step('Catches cirular loops in selections', () => {
+  await it('Catches circular loops in selections', () => {
     const iri1 = `${mocks.todosRootIRI}/path/1`;
     const iri2 = `${mocks.todosRootIRI}/path/2`;
     const iri3 = `${mocks.todosRootIRI}/path/3`;
@@ -227,3 +228,4 @@ Deno.test("getSelection()", async (t) => {
     }
   });
 });
+

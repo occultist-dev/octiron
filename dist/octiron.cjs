@@ -311,7 +311,14 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
             ptr.set(next, value, true);
         }
         if (typeof interceptor === 'function') {
-            next = interceptor(next, prev, refs.rendererArgs.actionValue?.value);
+            next = interceptor({
+                next,
+                prev,
+                o: self,
+                actionValue: self.actionValue.value,
+            });
+            if (next === false)
+                return;
         }
         refs.parentArgs.updatePointer(refs.rendererArgs.pointer, next, args);
     };
@@ -970,7 +977,11 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
  * if the branch has not completed.
  */
 function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, store, details, handledIRIs, }) {
-    key = makePointer(key, iri);
+    // reset the key for entities.
+    // this creates duplicates if an iri is used twice in a response at the
+    // same level of the selection. I see this as being unlikely, so a problem
+    // to solve later.
+    key = makePointer('', iri);
     pointer = makePointer(pointer, iri);
     const cache = store.entity(iri, accept);
     details.dependencies.push(iri);
@@ -1028,6 +1039,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
             handledIRIs.add(value['@id']);
         }
         else {
+            console.log(value);
             throw new CircularSelectionError(`Circular selection loop detected`);
         }
         // select the entity this entity is referencing
@@ -1069,7 +1081,7 @@ function selectEntity({ key, pointer, iri, fragment, accept, filter, selector, s
     return;
 }
 
-function cachePrev$1(attrs) {
+function cachePrev(attrs) {
     return {
         selector: attrs.selector,
         value: attrs.value,
@@ -1082,7 +1094,7 @@ function cachePrev$1(attrs) {
         },
     };
 }
-function shouldReselect$1(next, prev) {
+function shouldReselect(next, prev) {
     return next.parentArgs.store !== prev.parentArgs.store ||
         next.selector !== prev.selector ||
         next.args.fragment !== prev.args.fragment ||
@@ -1166,11 +1178,11 @@ const ActionSelectionRenderer = (vnode) => {
     return {
         oninit: ({ attrs }) => {
             currentAttrs = attrs;
-            prev = cachePrev$1(attrs);
+            prev = cachePrev(attrs);
             updateSelection();
         },
         onbeforeupdate: ({ attrs }) => {
-            const reselect = shouldReselect$1(attrs, prev);
+            const reselect = shouldReselect(attrs, prev);
             currentAttrs = attrs;
             if (reselect) {
                 updateSelection();
@@ -1210,6 +1222,140 @@ const ActionSelectionRenderer = (vnode) => {
             }
             children.push(post);
             return children;
+        },
+    };
+};
+
+/**
+ * Gets the details on how to perform a submission
+ * based off an action, payload and other context.
+ *
+ * @param args.payload The current payload value.
+ * @param args.action The schema.org styled action object.
+ */
+function getSubmitDetails({ payload, action, }) {
+    let urlTemplate;
+    let body;
+    let method = 'get';
+    let contentType;
+    let encodingType;
+    let target = action['https://schema.org/target'];
+    if (Array.isArray(target)) {
+        for (const item of target) {
+            if (item === 'string') {
+                target = item;
+                break;
+            }
+            else if (isJSONObject(target) && (target['https://schema.org/contentType'] == null || (target['https://schema.org/contentType'] === 'multipart/form-data' ||
+                target['https://schema.org/contentType'] === 'application/ld+json'))) {
+                target = item;
+                break;
+            }
+        }
+    }
+    if (typeof target === 'string') {
+        urlTemplate = target;
+    }
+    else if (isJSONObject(target)) {
+        if (typeof target['https://schema.org/urlTemplate'] === 'string') {
+            urlTemplate = target['https://schema.org/urlTemplate'];
+        }
+        if (typeof target['https://schema.org/httpMethod'] === 'string') {
+            method = target['https://schema.org/httpMethod'].toLowerCase();
+        }
+        if (typeof target['https://schema.org/contentType'] === 'string') {
+            contentType = target['https://schema.org/contentType'];
+        }
+        if (typeof target['https://schema.org/encodingType'] === 'string') {
+            encodingType = target['https://schema.org/encodingType'];
+        }
+    }
+    if (typeof urlTemplate !== 'string') {
+        throw new Error('Action has invalid https://schema.org/target');
+    }
+    const fillArgs = {};
+    const submitBody = Object.assign({}, payload);
+    for (const [type, value] of Object.entries(action)) {
+        if (!isTypeObject(value) ||
+            value['@type'] !== 'https://schema.org/PropertyValueSpecification') {
+            continue;
+        }
+        const valueName = value['https://schema.org/valueName'];
+        if (valueName != null) {
+            const propType = type.replace(/-input$/, '');
+            fillArgs[valueName] = payload[propType];
+            delete submitBody[propType];
+        }
+    }
+    const template = uriTemplates(urlTemplate);
+    // deno-lint-ignore no-explicit-any
+    const url = template.fill(fillArgs);
+    // only add body if supporting HTTP method
+    if (method !== 'get' && method !== 'delete') {
+        body = JSON.stringify(submitBody);
+    }
+    else {
+        contentType = undefined;
+        encodingType = undefined;
+    }
+    return {
+        url,
+        method,
+        contentType,
+        encodingType,
+        body,
+    };
+}
+
+const ActionStateRenderer3 = () => {
+    let render;
+    let not;
+    let type;
+    let octiron;
+    let args;
+    let parentArgs;
+    const listener = (submitResult, selectionDetails) => {
+        if ((!not && type === 'failure' && submitResult.ok) ||
+            (not && type === 'failure' && !submitResult.ok) ||
+            (not && type === 'success' && submitResult.ok) ||
+            (!not && type === 'success' && !submitResult.ok)) {
+            render = false;
+            return;
+        }
+        render = true;
+        octiron = selectionFactory(args, parentArgs, {
+            index: 0,
+            value: selectionDetails.result[0].value,
+        });
+    };
+    return {
+        oninit(vnode) {
+            not = vnode.attrs.not ?? false;
+            type = vnode.attrs.type;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            render = not &&
+                vnode.attrs.selector == null &&
+                vnode.attrs.view == null;
+            vnode.attrs.events.addListener(listener);
+        },
+        onbeforeupdate(vnode) {
+            not = vnode.attrs.not ?? false;
+            type = vnode.attrs.type;
+        },
+        onbeforeremove(vnode) {
+            vnode.attrs.events.removeListener(listener);
+        },
+        view(vnode) {
+            if (!render)
+                return;
+            if (vnode.attrs.selector != null && octiron != null) {
+                return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
+            }
+            else if (vnode.attrs.view != null && octiron != null) {
+                return vnode.attrs.view(octiron);
+            }
+            return vnode.children;
         },
     };
 };
@@ -1292,143 +1438,6 @@ const ActionStateRenderer = () => {
     };
 };
 
-/**
- * Gets the details on how to perform a submission
- * based off an action, payload and other context.
- *
- * @param args.payload The current payload value.
- * @param args.action The schema.org styled action object.
- */
-function getSubmitDetails({ payload, action, }) {
-    let urlTemplate;
-    let body;
-    let method = 'get';
-    let contentType;
-    let encodingType;
-    let target = action['https://schema.org/target'];
-    if (Array.isArray(target)) {
-        for (const item of target) {
-            if (item === 'string') {
-                target = item;
-                break;
-            }
-            else if (isJSONObject(target) && (target['https://schema.org/contentType'] == null || (target['https://schema.org/contentType'] === 'multipart/form-data' ||
-                target['https://schema.org/contentType'] === 'application/ld+json'))) {
-                target = item;
-                break;
-            }
-        }
-    }
-    if (typeof target === 'string') {
-        urlTemplate = target;
-    }
-    else if (isJSONObject(target)) {
-        if (typeof target['https://schema.org/urlTemplate'] === 'string') {
-            urlTemplate = target['https://schema.org/urlTemplate'];
-        }
-        if (typeof target['https://schema.org/httpMethod'] === 'string') {
-            method = target['https://schema.org/httpMethod'].toLowerCase();
-        }
-        if (typeof target['https://schema.org/contentType'] === 'string') {
-            contentType = target['https://schema.org/contentType'];
-        }
-        if (typeof target['https://schema.org/encodingType'] === 'string') {
-            encodingType = target['https://schema.org/encodingType'];
-        }
-    }
-    if (typeof urlTemplate !== 'string') {
-        throw new Error('Action has invalid https://schema.org/target');
-    }
-    const fillArgs = {};
-    const submitBody = Object.assign({}, payload);
-    for (const [type, value] of Object.entries(action)) {
-        if (!isTypeObject(value) ||
-            value['@type'] !== 'https://schema.org/PropertyValueSpecification') {
-            continue;
-        }
-        const valueName = value['https://schema.org/valueName'];
-        if (valueName != null) {
-            const propType = type.replace(/-input$/, '');
-            fillArgs[valueName] = payload[propType];
-            delete submitBody[propType];
-        }
-    }
-    const template = uriTemplates(urlTemplate);
-    // deno-lint-ignore no-explicit-any
-    const url = template.fill(fillArgs);
-    // only add body if supporting HTTP method
-    if (method !== 'get' && method !== 'delete') {
-        body = JSON.stringify(submitBody);
-    }
-    else {
-        contentType = undefined;
-        encodingType = undefined;
-    }
-    console.log('ACTION', JSON.stringify(action, null, 2));
-    console.log('URL', url);
-    console.log('CONTENT TYPE', contentType);
-    return {
-        url,
-        method,
-        contentType,
-        encodingType,
-        body,
-    };
-}
-
-const ActionStateRenderer3 = () => {
-    let render;
-    let not;
-    let type;
-    let octiron;
-    let args;
-    let parentArgs;
-    const listener = (submitResult, selectionDetails) => {
-        if ((!not && type === 'failure' && submitResult.ok) ||
-            (not && type === 'failure' && !submitResult.ok) ||
-            (not && type === 'success' && submitResult.ok) ||
-            (!not && type === 'success' && !submitResult.ok)) {
-            render = false;
-            return;
-        }
-        render = true;
-        octiron = selectionFactory(args, parentArgs, {
-            index: 0,
-            value: selectionDetails.result[0].value,
-        });
-    };
-    return {
-        oninit(vnode) {
-            not = vnode.attrs.not ?? false;
-            type = vnode.attrs.type;
-            args = vnode.attrs.args;
-            parentArgs = vnode.attrs.parentArgs;
-            render = not &&
-                vnode.attrs.selector == null &&
-                vnode.attrs.view == null;
-            vnode.attrs.events.addListener(listener);
-        },
-        onbeforeupdate(vnode) {
-            not = vnode.attrs.not ?? false;
-            type = vnode.attrs.type;
-        },
-        onbeforeremove(vnode) {
-            vnode.attrs.events.removeListener(listener);
-        },
-        view(vnode) {
-            if (!render)
-                return;
-            if (vnode.attrs.selector != null && octiron != null) {
-                return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
-            }
-            else if (vnode.attrs.view != null && octiron != null) {
-                return vnode.attrs.view(octiron);
-            }
-            return vnode.children;
-        },
-    };
-};
-
 function actionFactory(args, parentArgs, rendererArgs, events) {
     const factoryArgs = Object.assign(Object.create(null), args);
     let payload = Object.create(null);
@@ -1474,7 +1483,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             args.onSubmitSuccess(self);
         }
     }
-    function update(value) {
+    function update(value, args2) {
         const prev = payload;
         const next = {
             ...prev,
@@ -1496,7 +1505,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             payload = next;
         }
         childArgs.value = self.value = value;
-        if (args.submitOnChange) {
+        if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
         else {
@@ -1546,8 +1555,8 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     self.submit = async function (arg1) {
         if (arg1 != null) {
             const res = typeof arg1 === 'function'
-                ? update(arg1(payload))
-                : update(arg1);
+                ? update(arg1(payload), { submit: false })
+                : update(arg1, { submit: false });
             if (res === false)
                 return;
         }
@@ -1555,16 +1564,10 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     };
     self.update = async function (arg1, arg2) {
         const res = typeof arg1 === 'function'
-            ? update(arg1(payload))
-            : update(arg1);
+            ? update(arg1(payload), arg2)
+            : update(arg1, arg2);
         if (res === false)
             return;
-        if (arg2?.submit || args.submitOnChange) {
-            await submit();
-        }
-        else {
-            mithrilRedraw();
-        }
     };
     self.append = (termOrType, value = {}, args = {}) => {
         const type = refs.parentArgs.store.expand(termOrType);
@@ -1763,7 +1766,7 @@ const ActionRenderer2 = () => {
     };
 };
 
-function createInstances(instances, args, parentArgs, selectionDetails) {
+function createInstances$1(instances, args, parentArgs, selectionDetails) {
     const prevKeys = Array.from(instances.keys());
     const nextKeys = [];
     for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
@@ -1811,19 +1814,21 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
         }
     }
 }
-async function fetchRequired(store, selectionDetails) {
+async function fetchRequired$1(store, args, selectionDetails) {
     if (selectionDetails.required.length === 0)
         return;
     const promises = [];
     for (let i = 0, l = selectionDetails.required.length; i < l; i++) {
-        promises.push(store.fetch(selectionDetails.required[i]));
+        promises.push(store.fetch(selectionDetails.required[i], args));
     }
     await Promise.allSettled(promises);
 }
-function subscribe(key, listener, instances, store, selector, args, parentArgs) {
+function subscribe$1(key, listener, instances, store, selector, args, parentArgs) {
     if (selector != null &&
         !miniJsonld.isJSONObject(parentArgs.parent.value)) {
         // Actions can only be performed on JSON objects.
+        store.unsubscribe(key);
+        instances.clear();
         return;
     }
     let selectionDetails;
@@ -1835,7 +1840,7 @@ function subscribe(key, listener, instances, store, selector, args, parentArgs) 
             value: parentArgs.parent.value,
         });
         if (selectionDetails.required.length > 0) {
-            fetchRequired(store, selectionDetails);
+            fetchRequired$1(store, args, selectionDetails);
         }
     }
     else {
@@ -1857,7 +1862,7 @@ function subscribe(key, listener, instances, store, selector, args, parentArgs) 
                     value: parentArgs.parent.value,
                 }],
         };
-        createInstances(instances, args, parentArgs, selectionDetails);
+        createInstances$1(instances, args, parentArgs, selectionDetails);
     }
     return selectionDetails;
 }
@@ -1872,10 +1877,10 @@ const PerformRenderer3 = () => {
     const listener = (selectionDetails) => {
         loading = !selectionDetails.complete;
         if (selectionDetails.required.length > 0) {
-            fetchRequired(store, selectionDetails);
+            fetchRequired$1(store, args, selectionDetails);
         }
         else {
-            createInstances(instances, args, parentArgs, selectionDetails);
+            createInstances$1(instances, args, parentArgs, selectionDetails);
         }
     };
     return {
@@ -1885,7 +1890,7 @@ const PerformRenderer3 = () => {
             args = vnode.attrs.args;
             parentArgs = vnode.attrs.parentArgs;
             instances = new Map();
-            loading = !subscribe(key, listener, instances, store, selector, args, parentArgs).complete;
+            loading = !subscribe$1(key, listener, instances, store, selector, args, parentArgs)?.complete;
         },
         onbeforeupdate(vnode) {
             const prev = store;
@@ -1897,7 +1902,7 @@ const PerformRenderer3 = () => {
             parentArgs = vnode.attrs.parentArgs;
             if (changed) {
                 prev.unsubscribe(key);
-                loading = !subscribe(key, listener, instances, store, selector, args, parentArgs).complete;
+                loading = !subscribe$1(key, listener, instances, store, selector, args, parentArgs)?.complete;
             }
         },
         onbeforeremove() {
@@ -1965,240 +1970,165 @@ const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs,
     };
 };
 
-function cachePrev(attrs) {
-    return {
-        selector: attrs.selector,
-        args: {
-            fragment: attrs.args.fragment,
-        },
-        parentArgs: {
-            store: attrs.parentArgs.store,
-            value: attrs.parentArgs.value,
-        },
-    };
-}
-function shouldReselect(next, prev) {
-    return next.parentArgs.store !== prev.parentArgs.store ||
-        next.selector !== prev.selector ||
-        next.args.fragment !== prev.args.fragment ||
-        next.parentArgs.value !== prev.parentArgs.value;
-}
-/**
- * @description
- * Subscribes to a selection's result using the Octiron store. Each selection
- * result is feed to an Octiron instance and is only removed if a later
- * selection update does not include the same result. Selection results are
- * given a unique key in the form of a json-path.
- *
- * Once an Octiron instance is created using a selection, further changes via
- * the upstream parentArgs object or user given args applied to the downstream
- * Octiron instances using their internal update hooks.
- */
-const SelectionRenderer = (vnode) => {
-    const key = Symbol(`SelectionRenderer`);
-    let deferring = false;
-    let currentAttrs = vnode.attrs;
-    let details;
-    let prev;
-    const instances = new Map();
-    function createInstances() {
-        let hasChanges = false;
-        let initialDetails = details == null;
-        const nextKeys = [];
-        if (details == null) {
-            const prevKeys = instances.keys();
-            for (const key of prevKeys) {
-                if (!nextKeys.includes(key)) {
-                    hasChanges = true;
-                    instances.delete(key);
-                }
+function createInstances(instances, args, parentArgs, selectionDetails) {
+    const prevKeys = Array.from(instances.keys());
+    const nextKeys = [];
+    for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
+        const selectionResult = selectionDetails.result[i];
+        nextKeys.push(selectionResult.pointer);
+        if (instances.has(selectionResult.pointer)) {
+            const next = selectionResult;
+            const prev = instances.get(selectionResult.pointer).selectionResult;
+            if (prev.type === 'value' &&
+                next.type === 'value' &&
+                next.value === prev.value) {
+                continue;
             }
-            if (hasChanges) {
-                mithrilRedraw();
-            }
-            return;
-        }
-        for (let index = 0; index < details.result.length; index++) {
-            const selectionResult = details.result[index];
-            const key = Symbol.for(selectionResult.pointer);
-            nextKeys.push(key);
-            if (instances.has(key)) {
-                const next = selectionResult;
-                const prev = instances.get(key).selectionResult;
-                if (prev.type === 'value' &&
-                    next.type === 'value' &&
-                    next.value === prev.value) {
-                    continue;
-                }
-                else if (prev.type === 'entity' &&
-                    next.type === 'entity' &&
-                    next.ok === prev.ok &&
-                    next.status === prev.status &&
-                    next.value === prev.value) {
-                    continue;
-                }
-            }
-            hasChanges = true;
-            const rendererArgs = {
-                index,
-                value: selectionResult.value,
-                propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-            };
-            const octiron = selectionFactory(currentAttrs.args, currentAttrs.parentArgs, rendererArgs);
-            instances.set(key, {
-                octiron,
-                selectionResult,
-            });
-        }
-        for (const key of instances.keys()) {
-            if (!nextKeys.includes(key)) {
-                hasChanges = true;
-                instances.delete(key);
+            else if (prev.type === 'entity' &&
+                next.type === 'entity' &&
+                next.ok === prev.ok &&
+                next.status === prev.status &&
+                next.value === prev.value) {
+                continue;
             }
         }
-        if (!initialDetails && hasChanges) {
-            mithrilRedraw();
+        const selectionRendererArgs = {
+            index: i,
+            value: selectionResult.value,
+            propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
+        };
+        const octiron = selectionFactory(args, parentArgs, selectionRendererArgs);
+        instances.set(selectionResult.pointer, {
+            octiron,
+            selectionResult,
+        });
+    }
+    if (prevKeys.length > 0) {
+        for (let i = 0, l = prevKeys.length; i < l; i++) {
+            if (!nextKeys.includes(prevKeys[i])) {
+                instances.delete(prevKeys[i]);
+            }
         }
     }
-    async function fetchRequired(required) {
-        if (required.length === 0) {
-            return;
-        }
-        else if (!isBrowserRender &&
-            !currentAttrs.args.mainEntity &&
-            currentAttrs.args.defer) {
-            deferring = true;
-            return;
-        }
-        // deno-lint-ignore no-explicit-any
-        const promises = [];
-        for (const iri of required) {
-            promises.push(currentAttrs.parentArgs.store.fetch(iri, currentAttrs.args.accept, {
-                mainEntity: currentAttrs.args.mainEntity,
-            }));
-        }
-        await Promise.allSettled(promises);
+}
+async function fetchRequired(store, args, selectionDetails) {
+    if (selectionDetails.required.length === 0)
+        return;
+    const promises = [];
+    for (let i = 0, l = selectionDetails.required.length; i < l; i++) {
+        promises.push(store.fetch(selectionDetails.required[i], args));
     }
-    function listener(next) {
-        let required = [];
-        if (typeof details === 'undefined') {
-            required = next.required;
+    await Promise.allSettled(promises);
+}
+function subscribe(key, listener, instances, store, entity, selector, args, parentArgs) {
+    if (!entity && !miniJsonld.isJSONObject(parentArgs.parent.value)) {
+        store.unsubscribe(key);
+        instances.clear();
+        return;
+    }
+    const selectionDetails = store.subscribe({
+        key,
+        selector,
+        listener,
+        fragment: args.fragment,
+        accept: args.accept,
+        value: entity ? undefined : parentArgs.value,
+        mainEntity: args.mainEntity,
+    });
+    if (selectionDetails.required.length > 0) {
+        fetchRequired(store, args, selectionDetails);
+    }
+    createInstances(instances, args, parentArgs, selectionDetails);
+    return selectionDetails;
+}
+const SelectionRenderer2 = () => {
+    let key = Symbol('SelectionRenderer');
+    let loading;
+    let store;
+    let entity;
+    let selector;
+    let args;
+    let parentArgs;
+    let instances;
+    const listener = (selectionDetails) => {
+        loading = !selectionDetails.complete;
+        if (selectionDetails.required.length > 0) {
+            fetchRequired(store, args, selectionDetails);
         }
         else {
-            for (const iri of next.required) {
-                if (!details.required.includes(iri)) {
-                    required.push(iri);
-                }
-            }
+            createInstances(instances, args, parentArgs, selectionDetails);
         }
-        details = next;
-        if (required.length > 0) {
-            fetchRequired(required);
-        }
-        createInstances();
-    }
-    function subscribe() {
-        const { entity, selector, parentArgs: { value, store } } = currentAttrs;
-        if (!entity &&
-            !isJSONObject(value)) {
-            store.unsubscribe(key);
-            createInstances();
-            return;
-        }
-        details = store.subscribe({
-            key,
-            selector,
-            fragment: currentAttrs.args.fragment,
-            accept: currentAttrs.args.accept,
-            value: entity ? undefined : value,
-            listener,
-            mainEntity: currentAttrs.args.mainEntity,
-        });
-        fetchRequired(details.required);
-        createInstances();
-    }
+    };
     return {
-        oninit: ({ attrs }) => {
-            currentAttrs = attrs;
-            prev = cachePrev(attrs);
-            subscribe();
+        oninit(vnode) {
+            store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+            entity = vnode.attrs.entity ?? false;
+            selector = vnode.attrs.selector;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            instances = new Map();
+            loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
         },
-        onbeforeupdate: ({ attrs }) => {
-            const reselect = shouldReselect(attrs, prev);
-            currentAttrs = attrs;
-            if (reselect) {
-                attrs.parentArgs.store.unsubscribe(key);
-                subscribe();
+        onbeforeupdate(vnode) {
+            const prev = store;
+            const changed = entity != vnode.attrs.entity ||
+                store !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store) ||
+                selector !== vnode.attrs.selector;
+            store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
+            entity = vnode.attrs.entity ?? false;
+            selector = vnode.attrs.selector;
+            args = vnode.attrs.args;
+            parentArgs = vnode.attrs.parentArgs;
+            if (changed) {
+                prev.unsubscribe(key);
+                loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
+            }
+        },
+        onbeforeremove() {
+            store.unsubscribe(key);
+        },
+        view(vnode) {
+            if (loading) {
+                return vnode.attrs.args.loading;
+            }
+            const children = [vnode.attrs.args.pre];
+            let l1 = Array.from(instances.values());
+            let l2;
+            if (vnode.attrs.args.predicate != null) {
+                l2 = [];
+                for (let i = 0, l = l1.length; i < l; i++) {
+                    if (vnode.attrs.args.predicate(l1[i].octiron)) {
+                        l2.push(l1[i]);
+                    }
+                }
             }
             else {
-                for (const value of instances.values()) {
-                    value.octiron._updateArgs(attrs.args);
+                l2 = l1;
+            }
+            if (vnode.attrs.args.end != null) {
+                l2.splice(0, vnode.attrs.args.end);
+            }
+            if (vnode.attrs.args.start != null) {
+                l2.splice(vnode.attrs.args.start);
+            }
+            for (let i = 0, l = l2.length; i < l; i++) {
+                l2[i].octiron.position = i + 1;
+                if (i !== 0)
+                    children.push(vnode.attrs.args.sep);
+                if (l2[i].selectionResult.type === 'value') {
+                    children.push(vnode.attrs.view(l2[i].octiron));
                 }
-            }
-            prev = cachePrev(attrs);
-        },
-        onbeforeremove: ({ attrs }) => {
-            currentAttrs = attrs;
-            attrs.parentArgs.store.unsubscribe(key);
-        },
-        view: ({ attrs }) => {
-            if (deferring) {
-                return currentAttrs.args.loading;
-            }
-            if (details == null || !details.complete) {
-                return attrs.args.loading;
-            }
-            else if ((details.hasErrors ||
-                details.hasMissing) &&
-                typeof attrs.args.fallback !== 'function') {
-                return attrs.args.fallback;
-            }
-            else if (details.result[0] != null &&
-                details.result[0].type === 'alternative') {
-                if (details.result[0].integration.render != null) {
-                    return details.result[0].integration.render(attrs.parentArgs.parent, attrs.args.fragment);
+                else if (!l2[i].selectionResult.ok && typeof vnode.attrs.args.fallback === 'function') {
+                    throw new Error(`Fallback functions are not yet supported`);
                 }
-                else if (details.result[0].integration.error != null) ;
-                return null;
-            }
-            const view = attrs.view;
-            const { pre, sep, post, start, end, predicate, fallback, } = currentAttrs.args;
-            let list = [];
-            const children = [];
-            for (const instance of instances.values()) {
-                instance.octiron.position = -1;
-                list.push(instance);
-            }
-            if (start != null || end != null) {
-                list = list.slice(start ?? 0, end);
-            }
-            if (predicate != null) {
-                list = list.filter(({ octiron }) => predicate(octiron));
-            }
-            if (pre != null) {
-                children.push(m.fragment({ key: `pre` }, [pre]));
-            }
-            for (let index = 0; index < list.length; index++) {
-                const { selectionResult, octiron } = list[index];
-                const key = selectionResult.key;
-                octiron.position = index + 1;
-                if (index !== 0) {
-                    children.push(m.fragment({ key: `0:${key}` }, [sep]));
-                }
-                if (selectionResult.type === 'value') {
-                    children.push(m.fragment({ key: `1:${key}` }, [view(octiron)]));
-                }
-                else if (!selectionResult.ok && typeof fallback === 'function') ;
-                else if (!selectionResult.ok) {
-                    children.push(m.fragment({ key: `2:${key}` }, [fallback]));
+                else if (!l2[i].selectionResult.ok) {
+                    children.push(vnode.attrs.args.fallback);
                 }
                 else {
-                    children.push(m.fragment({ key: `3:${key}` }, [view(octiron)]));
+                    children.push(vnode.attrs.view(l2[i].octiron));
                 }
             }
-            if (post != null) {
-                children.push(m.fragment({ key: `post` }, [post]));
-            }
+            children.push(vnode.attrs.args.post);
             return children;
         },
     };
@@ -2278,7 +2208,7 @@ function octironFactory(octironType, refs) {
     };
     self.enter = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1 instanceof URL ? arg1.toString() : arg1, arg2, arg3);
-        return m(SelectionRenderer, {
+        return m(SelectionRenderer2, {
             entity: true,
             selector,
             args,
@@ -2299,7 +2229,7 @@ function octironFactory(octironType, refs) {
         else {
             selector = `${refs.parentArgs.store.rootIRI} ${childSelector}`;
         }
-        return m(SelectionRenderer, {
+        return m(SelectionRenderer2, {
             entity: true,
             selector,
             args,
@@ -2318,7 +2248,7 @@ function octironFactory(octironType, refs) {
                 if (!isJSONObject(refs.rendererArgs.value)) {
                     return null;
                 }
-                return m(SelectionRenderer, {
+                return m(SelectionRenderer2, {
                     selector,
                     args,
                     view,
@@ -2963,15 +2893,16 @@ class Store {
         if (accept == null) {
             return this.#primary.get(iri) ?? null;
         }
-        //const key = this.#getLoadingKey(iri, 'get', accept);
-        //const loading = this.#loading.has(key);
-        //if (loading) {
-        //  return {
-        //    type: 'entity-loading',
-        //    iri,
-        //    loading: true,
-        //  };
-        //}
+        const key = this.#getLoadingKey(iri, 'get', accept);
+        const loading = this.#loading.has(key);
+        if (loading) {
+            return {
+                type: 'entity-loading',
+                iri,
+                loading: true,
+                isProblem: false,
+            };
+        }
         const contentType = this.#acceptMap.get(iri)?.get?.(accept);
         if (contentType == null) {
             return null;
@@ -2985,6 +2916,7 @@ class Store {
             iri,
             loading: false,
             ok: true,
+            contentType,
             isProblem: false,
             integration,
         };
@@ -3012,7 +2944,7 @@ class Store {
         return this.#vocab;
     }
     get aliases() {
-        return Object.fromEntries(this.#aliases.entries()
+        return Object.fromEntries(Array.from(this.#aliases.entries())
             .map(([key, value]) => [key.replace(/^/, ''), value]));
     }
     get context() {
@@ -3106,7 +3038,7 @@ class Store {
      * selection for this entity have the latest selection result pushed to
      * their listener functions.
      */
-    #publish(iri, _contentType) {
+    #publish(iri, contentType) {
         const keys = this.#dependencies.get(iri);
         if (keys == null) {
             return;
@@ -3116,6 +3048,10 @@ class Store {
             if (listenerDetails == null) {
                 continue;
             }
+            const mappedType = this.#acceptMap.get(iri)
+                ?.get(listenerDetails.accept ?? defaultAccept);
+            if (mappedType !== contentType)
+                continue;
             const details = getSelection({
                 selector: listenerDetails.selector,
                 value: listenerDetails.value,
@@ -3138,7 +3074,7 @@ class Store {
             listenerDetails.listener(details);
         }
     }
-    #handleJSONLD({ iri, res, output, }) {
+    #handleJSONLD({ iri, res, contentType, output, }) {
         const iris = [iri];
         if (res.ok) {
             this.#primary.set(iri, {
@@ -3146,8 +3082,8 @@ class Store {
                 iri,
                 loading: false,
                 ok: true,
+                contentType,
                 value: output.jsonld,
-                headers: res.headers,
                 isProblem: false,
             });
         }
@@ -3159,9 +3095,9 @@ class Store {
                 loading: false,
                 ok: false,
                 value: output.jsonld,
+                contentType,
                 status: res.status,
                 isProblem: false,
-                headers: res.headers,
                 reason,
             });
         }
@@ -3175,11 +3111,12 @@ class Store {
                 loading: false,
                 ok: true,
                 value: entity,
+                contentType,
                 isProblem: false,
             });
         }
         for (const iri of iris) {
-            this.#publish(iri);
+            this.#publish(iri, contentType);
         }
     }
     async handleResponse(res, iri = res.url.toString()) {
@@ -3208,6 +3145,7 @@ class Store {
             this.#handleJSONLD({
                 iri,
                 res,
+                contentType,
                 output,
             });
         }
@@ -3225,7 +3163,6 @@ class Store {
                 status: res.status,
                 isProblem: true,
                 reason: new HTTPFailure(res.status, res),
-                headers: res.headers,
             });
         }
         else if (handler.integrationType === 'html-fragments') {
@@ -3254,8 +3191,6 @@ class Store {
         url.hash = '';
         const method = args.method || 'get';
         const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
-        const entity = this.entity(iri, accept);
-        const etag = entity?.headers?.get('Etag');
         const dispatchURL = url.toString();
         const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
         if (url.origin === this.#rootOrigin) {
@@ -3270,12 +3205,6 @@ class Store {
         headers.set('accept', accept);
         if (args.body != null && args.contentType != null) {
             headers.set('content-type', args.contentType);
-        }
-        if (method === 'GET' && etag != null) {
-            headers.set('If-None-Match', etag);
-        }
-        else if (method === 'HEAD' && etag != null) {
-            headers.set('If-None-Match', etag);
         }
         this.#loading.add(loadingKey);
         mithrilRedraw();
@@ -3303,15 +3232,15 @@ class Store {
                 // if SSR store the first 400+ status for the final HTTP response
                 this.#httpStatus = res.status;
             }
-            if (args.accept != null && this.#acceptMap.has(dispatchURL)) {
+            if (this.#acceptMap.has(dispatchURL)) {
                 this.#acceptMap
-                    .get(dispatchURL)?.set(args.accept, res.headers.get('content-type'));
+                    .get(dispatchURL)?.set(accept, res.headers.get('content-type'));
             }
-            else if (args.accept != null) {
-                this.#acceptMap.set(dispatchURL, new Map([[args.accept, res.headers.get('content-type')]]));
+            else {
+                this.#acceptMap.set(dispatchURL, new Map([[accept, res.headers.get('content-type')]]));
             }
-            await this.handleResponse(res, iri);
             this.#loading.delete(loadingKey);
+            await this.handleResponse(res, iri);
             mithrilRedraw();
             resolve(res);
         });
@@ -3363,8 +3292,8 @@ class Store {
     unsubscribe(key) {
         this.#listeners.get(key)?.cleanup();
     }
-    async fetch(iri, accept, { mainEntity, } = {}) {
-        await this.#callFetcher(iri.toString(), { accept, mainEntity });
+    async fetch(iri, args = {}) {
+        await this.#callFetcher(iri.toString(), args);
         return this.#primary.get(iri.toString());
     }
     /**
@@ -3803,6 +3732,11 @@ const OctironDebug = ({ attrs, }) => {
         },
     };
 };
+const Debug = {
+    view: ({ attrs: { o } }) => {
+        return m(OctironDebug, { o });
+    },
+};
 
 const OctironExplorer = ({ attrs, }) => {
     let value = attrs.selector || '';
@@ -4006,6 +3940,7 @@ octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
     });
 };
 
+exports.Debug = Debug;
 exports.OctironDebug = OctironDebug;
 exports.OctironExplorer = OctironExplorer;
 exports.OctironForm = OctironForm;
