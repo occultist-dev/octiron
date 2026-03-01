@@ -416,7 +416,22 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         }
         return refs.parentArgs.updatePointer(refs.rendererArgs.pointer, Object.assign({}, refs.rendererArgs.value, { [type]: nextValue }), args);
     };
-    return [self, hooks];
+    const wrappedHooks = {
+        argsChanged: () => {
+            hooks.argsChanged();
+        },
+        parentArgsChanged: () => {
+            hooks.parentArgsChanged();
+            self.submitting = parentArgs.submitting;
+            self.action = parentArgs.action;
+        },
+        rendererArgsChanged: () => {
+            self.index = refs.rendererArgs.index;
+            self.readonly = rendererArgs.spec == null ? true : (rendererArgs.spec.readonly ?? false);
+            self.inputName = rendererArgs.spec?.name != null ? rendererArgs.spec?.name : rendererArgs.propType;
+        },
+    };
+    return [self, wrappedHooks];
 }
 
 /**
@@ -1482,7 +1497,6 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             console.error(err);
             isError = true;
         }
-        self.submitting = false;
         mithrilRedraw();
         if (isError && typeof args.onSubmitFailure === 'function' && isBrowserRender) {
             args.onSubmitFailure(self);
@@ -1547,6 +1561,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     self.value = payload;
     self.action = parentArgs.parent;
     self.actionValue = rendererArgs.actionValue;
+    self.url = undefined;
     self.submitting = false;
     childArgs.action = self;
     childArgs.submitting = self.submitting;
@@ -1655,7 +1670,18 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         submit();
     }
     Object.seal(self);
-    return [self, hooks];
+    const wrappedHooks = {
+        argsChanged: () => {
+            hooks.argsChanged();
+        },
+        parentArgsChanged: () => {
+            hooks.parentArgsChanged();
+        },
+        rendererArgsChanged: () => {
+            self.index = refs.rendererArgs.index;
+        },
+    };
+    return [self, wrappedHooks];
 }
 
 function applySubmission(key, listener, store, args, submitResult, listeners) {
@@ -2320,8 +2346,10 @@ function octironFactory(octironType, refs) {
     }
     const hooks = {
         argsChanged() {
+            self.store = refs.factoryArgs.store ?? refs.parentArgs.store;
         },
         parentArgsChanged() {
+            self.store = refs.factoryArgs.store ?? refs.parentArgs.store;
         },
         rendererArgsChanged() {
             self.value = refs.rendererArgs.value ?? null;

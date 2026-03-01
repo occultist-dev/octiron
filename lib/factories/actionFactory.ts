@@ -159,6 +159,7 @@ export function actionFactory<
   self.value = payload;
   self.action = parentArgs.parent;
   self.actionValue = rendererArgs.actionValue;
+  self.url = undefined;
   self.submitting = false;
 
   childArgs.action = self as unknown as OctironAction;
@@ -315,5 +316,17 @@ export function actionFactory<
 
   Object.seal(self);
 
-  return [self, hooks];
+  const wrappedHooks: InstanceHooks = {
+    argsChanged: () => {
+      hooks.argsChanged();
+    },
+    parentArgsChanged: () => {
+      hooks.parentArgsChanged();
+    },
+    rendererArgsChanged: () => {
+      self.index = refs.rendererArgs.index;
+    },
+  };
+
+  return [self, wrappedHooks] as [OctironAction, InstanceHooks];
 }

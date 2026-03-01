@@ -24,7 +24,7 @@ describe('o.submit()', () => {
       vocab: 'http://schema.example.com/',
       typeDefs,
     })
-    const { m, o, document, registry, scope, mount, redraw, pretty } = domTest();
+    const { m, o, dom, document, registry, scope, mount, redraw, pretty } = domTest();
 
     const contextIRI = new URL('./context', o.store.rootIRI).toString();
 
@@ -80,7 +80,11 @@ describe('o.submit()', () => {
       })
       .handle('application/ld+json', ctx => {
         ctx.status = 200;
-        ctx.body = JSON.stringify({});
+        ctx.body = JSON.stringify({
+          '@context': contextIRI,
+          '@id': ctx.url,
+          message: 'Success',
+        });
       });
 
     let jsonld = {
@@ -123,11 +127,12 @@ describe('o.submit()', () => {
         return m('select', {
           ...attrs.attrs,
           value: attrs.value,
+          'data-value': attrs.value,
           disabled: attrs.spec.readonly,
           multiple: attrs.spec.multiple,
-          oninput: (evt: Event) => {
+          onchange: (evt: Event) => {
             attrs.onChange((evt.target as HTMLSelectElement).value);
-          },
+          }
         },
           m('option[value=planned]', 'Planned'),
           m('option[value=in-progress]', 'In progress'),
@@ -147,15 +152,19 @@ describe('o.submit()', () => {
         return [
           o.perform('actions ListTodosAction', {
             submitOnInit: true,
-          }, o => [
+          }, x => [
             m('h1', 'Todo listing'),
             m('ul',
-              o.success('members', o =>
+              x.success('members', o =>
                 m('li', { 'data-position': o.get('position') },
                   o.select('name', o => 
                     m('h2', o.present({ component: PresentName })),
                   ),
                   o.perform('actions SetTodoStatusAction', {
+                    submitOnChange: true,
+                    onSubmitSuccess: () => {
+                      x.submit();        
+                    },
                     initialValue: {
                       todoUUID: o.get('uuid'),
                       todoStatus: o.get('todoStatus'),
@@ -173,6 +182,8 @@ describe('o.submit()', () => {
     
     await redraw();
 
+    console.log(await pretty());
+
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[];
 
     assert.equal(listElements[0].firstChild?.textContent, 'First');
@@ -184,11 +195,6 @@ describe('o.submit()', () => {
 
     assert.equal(select[0].value, 'planned');
     assert.equal(select[1].value, 'planned');
-
-    select[1].value = 'in-progress'
-    select[1].dispatchEvent(new window.Event('change', { bubbles: true }));
-
-    await redraw();
 
     jsonld = {
       members: [
@@ -211,8 +217,13 @@ describe('o.submit()', () => {
       ],
     };
 
-    await o.store.submit('http://example.com/todos');
+
+    select[1].value = 'in-progress'
+    select[1].dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+
     await redraw();
+
+    console.log(await pretty());
 
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     

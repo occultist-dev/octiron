@@ -221,6 +221,22 @@ export function actionSelectionFactory<
     );
   };
 
-  return [self, hooks] as [OctironActionSelection, InstanceHooks];
+  const wrappedHooks: InstanceHooks = {
+    argsChanged: () => {
+      hooks.argsChanged();
+    },
+    parentArgsChanged: () => {
+      hooks.parentArgsChanged();
+      self.submitting = parentArgs.submitting;
+      self.action = parentArgs.action;
+    },
+    rendererArgsChanged: () => {
+      self.index = refs.rendererArgs.index;
+      self.readonly = rendererArgs.spec == null ? true : (rendererArgs.spec.readonly ?? false);
+      self.inputName = rendererArgs.spec?.name != null ? rendererArgs.spec?.name : rendererArgs.propType as string;
+    },
+  };
+
+  return [self, wrappedHooks] as [OctironActionSelection, InstanceHooks];
 }
 

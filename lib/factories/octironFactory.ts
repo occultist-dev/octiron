@@ -321,10 +321,10 @@ export function octironFactory<O extends Octiron>(
 
   const hooks: InstanceHooks = {
     argsChanged() {
-
+      self.store = refs.factoryArgs.store ?? refs.parentArgs.store;
     },
     parentArgsChanged() {
-
+      self.store = refs.factoryArgs.store ?? refs.parentArgs.store;
     },
     rendererArgsChanged() {
       self.value = refs.rendererArgs.value ?? null;
