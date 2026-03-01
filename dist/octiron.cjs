@@ -1317,6 +1317,9 @@ const ActionStateRenderer3 = () => {
     let args;
     let parentArgs;
     const listener = (submitResult, selectionDetails) => {
+        if (submitResult.loading) {
+            return;
+        }
         if ((!not && type === 'failure' && submitResult.ok) ||
             (not && type === 'failure' && !submitResult.ok) ||
             (not && type === 'success' && submitResult.ok) ||
@@ -1911,7 +1914,7 @@ const PerformRenderer3 = () => {
             store.unsubscribe(key);
         },
         view(vnode) {
-            if (loading) {
+            if (loading && instances.size === 0) {
                 return vnode.attrs.args.loading;
             }
             const children = [vnode.attrs.args.pre];
@@ -1980,12 +1983,9 @@ const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs,
 function createInstances(instances, args, parentArgs, selectionDetails) {
     let selectionResult;
     const prev = new Map(instances);
-    if (selectionDetails.result.length === 2)
-        //console.log('PREV', prev)
-        instances.clear();
+    instances.clear();
     for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
         selectionResult = selectionDetails.result[i];
-        //console.log('KEY', selectionResult.key);
         if (prev.has(selectionResult.key)) {
             const instance = prev.get(selectionResult.key);
             instance.refs.rendererArgs.index = i;
@@ -2056,13 +2056,14 @@ const SelectionRenderer2 = () => {
     let selector;
     let args;
     let parentArgs;
+    let value;
     let instances;
     const listener = (selectionDetails) => {
         loading = !selectionDetails.complete;
         if (selectionDetails.required.length > 0) {
             fetchRequired(store, args, selectionDetails);
         }
-        else {
+        else if (!loading) {
             createInstances(instances, args, parentArgs, selectionDetails);
         }
     };
@@ -2073,19 +2074,22 @@ const SelectionRenderer2 = () => {
             selector = vnode.attrs.selector;
             args = vnode.attrs.args;
             parentArgs = vnode.attrs.parentArgs;
+            value = parentArgs.value;
             instances = new Map();
             loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
         },
         onbeforeupdate(vnode) {
             const prev = store;
-            const changed = entity != vnode.attrs.entity ||
+            const changed = entity != (vnode.attrs.entity ?? false) ||
                 store !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store) ||
-                selector !== vnode.attrs.selector;
+                selector !== vnode.attrs.selector ||
+                value !== vnode.attrs.parentArgs.value;
             store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
             entity = vnode.attrs.entity ?? false;
             selector = vnode.attrs.selector;
             args = vnode.attrs.args;
             parentArgs = vnode.attrs.parentArgs;
+            value = parentArgs.value;
             if (changed) {
                 prev.unsubscribe(key);
                 loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
@@ -2095,7 +2099,7 @@ const SelectionRenderer2 = () => {
             store.unsubscribe(key);
         },
         view(vnode) {
-            if (loading) {
+            if (loading && instances.size === 0) {
                 return vnode.attrs.args.loading;
             }
             const children = [m.fragment({ key: '@pre' }, [vnode.attrs.args.pre])];
@@ -3213,6 +3217,9 @@ class Store {
         const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
         const dispatchURL = url.toString();
         const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
+        if (this.#loading.has(loadingKey)) {
+            return;
+        }
         if (url.origin === this.#rootOrigin) {
             headers = new Headers(this.#headers);
         }

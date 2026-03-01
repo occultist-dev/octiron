@@ -485,8 +485,6 @@ export class Store {
     }): void {
       const iris = [iri];
 
-      console.log('OUTPUT', JSON.stringify(output, null, 2));
-
       if (res.ok) {
         this.#primary.set(iri, {
           type: 'entity-success',
@@ -634,6 +632,10 @@ export class Store {
       const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
       const dispatchURL = url.toString();
       const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
+
+      if (this.#loading.has(loadingKey)) {
+        return;
+      }
 
       if (url.origin === this.#rootOrigin) {
         headers = new Headers(this.#headers);

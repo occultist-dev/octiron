@@ -1,8 +1,7 @@
 import {isJSONObject} from "@occultist/mini-jsonld";
 import m from 'mithril';
 import {selectionFactory} from "../factories/selectionFactory.ts";
-import type {CommonRendererArgs, JSONObject, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectionResult, SelectView, Store} from "../octiron.ts";
-import {setDefaultResultOrder} from "node:dns";
+import type {CommonRendererArgs, JSONObject, JSONValue, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectView, Store} from "../octiron.ts";
 
 
 export type SelectionRendererAttrs = {
@@ -40,25 +39,10 @@ function createInstances(
   let selectionResult: ReadonlySelectionResult;
   const prev = new Map(instances);
 
-  if (selectionDetails.result.length === 2)
-  //console.log('PREV', prev)
-
   instances.clear();
-
-  for (const key of instances.keys()) {
-    instances.delete(key);
-  }
-
-  console.log(JSON.stringify(selectionDetails, null, 2));
-
-  console.log('INSTANCES', new Map(instances.entries()));
-  console.log('KEYS', selectionDetails.result.map((r) => r.key));
-
 
   for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
     selectionResult = selectionDetails.result[i];
-
-    //console.log('KEY', selectionResult.key);
 
     if (prev.has(selectionResult.key)) {
       const instance = prev.get(selectionResult.key);
@@ -98,67 +82,6 @@ function createInstances(
         octiron,
         selectionResult,
       });
-    }
-  }
-}
-
-function createInstancesOld(
-  instances: Map<string, Instance>,
-  args: OctironSelectArgs,
-  parentArgs: SelectionParentArgs,
-  selectionDetails: SelectionDetails<ReadonlySelectionResult>,
-) {
-  const prevKeys = Array.from(instances.keys());
-  const nextKeys: Array<string> = [];
-
-  for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
-    const selectionResult = selectionDetails.result[i];
-
-    nextKeys.push(selectionResult.pointer);
-
-    if (instances.has(selectionResult.pointer)) {
-      const next = selectionResult;
-      const prev = instances.get(selectionResult.pointer).selectionResult;
-
-      if (
-        prev.type === 'value' &&
-        next.type === 'value' &&
-        next.value === prev.value
-      ) {
-        continue;
-      } else if (
-        prev.type === 'entity' &&
-        next.type === 'entity' &&
-        next.ok === prev.ok &&
-        next.status === prev.status &&
-        next.value === prev.value
-      ) {
-        continue;
-      }
-    }
-
-    const selectionRendererArgs = {
-      index: i,
-      value: selectionResult.value,
-      propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
-    } satisfies CommonRendererArgs;
-    const octiron = selectionFactory(
-      args,
-      parentArgs as SelectionParentArgs,
-      selectionRendererArgs,
-    );
-
-    instances.set(selectionResult.pointer, {
-      octiron,
-      selectionResult,
-    });
-  }
-
-  if (prevKeys.length > 0) {
-    for (let i = 0, l = prevKeys.length; i < l; i++) {
-      if (!nextKeys.includes(prevKeys[i])) {
-        instances.delete(prevKeys[i]);
-      }
     }
   }
 }
@@ -229,6 +152,7 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
   let selector: string | undefined;
   let args!: OctironSelectArgs;
   let parentArgs!: SelectionParentArgs;
+  let value!: JSONValue;
   let instances!: Map<string, Instance>;
 
   const listener = (selectionDetails: SelectionDetails<ReadonlySelectionResult>) => {
@@ -240,7 +164,7 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
         args,
         selectionDetails,
       );
-    } else {
+    } else if (!loading) {
       createInstances(
         instances,
         args,
@@ -257,6 +181,7 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
       selector = vnode.attrs.selector;
       args = vnode.attrs.args;
       parentArgs = vnode.attrs.parentArgs;
+      value = parentArgs.value;
       instances = new Map();
       
       loading = !subscribe(key, listener, instances, store, entity, selector, args, parentArgs)?.complete;
@@ -264,15 +189,17 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
     onbeforeupdate(vnode) {
       const prev = store;
       const changed = 
-        entity != vnode.attrs.entity ||
+        entity != (vnode.attrs.entity ?? false) ||
         store !== (vnode.attrs.args.store ?? vnode.attrs.parentArgs.store) ||
-        selector !== vnode.attrs.selector;
+        selector !== vnode.attrs.selector ||
+        value !== vnode.attrs.parentArgs.value;
 
       store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
       entity = vnode.attrs.entity ?? false;
       selector = vnode.attrs.selector;
       args = vnode.attrs.args;
       parentArgs = vnode.attrs.parentArgs;
+      value = parentArgs.value;
       
       if (changed) {
         prev.unsubscribe(key);
@@ -283,7 +210,7 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
       store.unsubscribe(key);
     },
     view(vnode) {
-      if (loading) {
+      if (loading && instances.size === 0) {
         return vnode.attrs.args.loading;
       }
 

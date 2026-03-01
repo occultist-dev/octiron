@@ -223,7 +223,7 @@ export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => 
       store.unsubscribe(key);
     },
     view(vnode) {
-      if (loading) {
+      if (loading && instances.size === 0) {
         return vnode.attrs.args.loading;
       }
 

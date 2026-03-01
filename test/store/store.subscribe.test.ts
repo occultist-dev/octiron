@@ -62,7 +62,6 @@ describe('store.subscribe()', () => {
     });
 
     await store.fetch(endpoint.url());
-    console.log(JSON.stringify(selectionDetails, null, 2));
 
     assert.equal(callCount, 1);
     assert.deepEqual(selectionDetails.required, []);

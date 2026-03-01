@@ -30,6 +30,10 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     submitResult,
     selectionDetails,
   ) => {
+    if (submitResult.loading) {
+      return;
+    }
+
     if ((!not && type === 'failure' && submitResult.ok) ||
         (not && type === 'failure' && !submitResult.ok) ||
         (not && type === 'success' && submitResult.ok) ||

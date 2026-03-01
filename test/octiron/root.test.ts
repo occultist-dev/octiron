@@ -591,7 +591,6 @@ Deno.test("o.root({ loading })", async (t) => {
       select,
     ]
   ) {
-    console.log(o)
     await t.step(
       `Filters a selection list using a "${o.octironType}" instance`,
       async () => {
