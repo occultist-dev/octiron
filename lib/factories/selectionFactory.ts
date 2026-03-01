@@ -12,13 +12,14 @@ export function selectionFactory<Attrs extends BaseAttrs>(
   args: OctironSelectArgs<Attrs>,
   parentArgs: SelectionParentArgs,
   rendererArgs: CommonRendererArgs,
-): OctironSelection & InstanceHooks {
-  const factoryArgs = Object.assign({}, args);
+): [octiron: OctironSelection, hooks: InstanceHooks] {
+  const factoryArgs = Object.assign(Object.create(null), args);
   const childArgs = {
     // value: parentArgs.value,
     value: rendererArgs.value,
   } as SelectionParentArgs & ActionParentArgs;
-  const self = octironFactory(
+
+  const res = octironFactory(
     'selection',
     {
       factoryArgs,
@@ -28,5 +29,7 @@ export function selectionFactory<Attrs extends BaseAttrs>(
     },
   );
 
-  return self as OctironSelection & InstanceHooks;
+  Object.seal(res[0]);
+
+  return res as [OctironSelection, InstanceHooks];
 }

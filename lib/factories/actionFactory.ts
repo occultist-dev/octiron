@@ -32,7 +32,7 @@ export function actionFactory<
   parentArgs: ActionParentArgs,
   rendererArgs: PerformRendererArgs,
   events: ActionEvents,
-): OctironAction & InstanceHooks {
+): [octiron: OctironAction, hooks: InstanceHooks] {
   const factoryArgs = Object.assign(Object.create(null), args);
   let payload: JSONObject = Object.create(null);
   let submitResult: EntityState | undefined;
@@ -151,7 +151,7 @@ export function actionFactory<
     childArgs,
   } as FactoryRefs;
 
-  const self = octironFactory(
+  const [self, hooks] = octironFactory(
     'action',
     refs,
   );
@@ -159,6 +159,7 @@ export function actionFactory<
   self.value = payload;
   self.action = parentArgs.parent;
   self.actionValue = rendererArgs.actionValue;
+  self.submitting = false;
 
   childArgs.action = self as unknown as OctironAction;
   childArgs.submitting = self.submitting;
@@ -312,5 +313,7 @@ export function actionFactory<
     submit();
   }
 
-  return self as OctironAction & InstanceHooks;
+  Object.seal(self);
+
+  return [self, hooks];
 }

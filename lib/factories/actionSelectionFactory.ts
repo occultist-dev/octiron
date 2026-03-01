@@ -23,13 +23,12 @@ export type OnActionSelectionUpdate = (
 
 
 export function actionSelectionFactory<
-  // deno-lint-ignore no-explicit-any
-  Attrs extends Record<string, any> = Record<string, any>
+  Attrs extends Record<string, unknown> = Record<string, unknown>
 >(
   args: OctironActionSelectionArgs<Attrs>,
   parentArgs: ActionSelectionParentArgs,
   rendererArgs: ActionSelectionRendererArgs,
-): OctironActionSelection & InstanceHooks {
+): [octiron: OctironActionSelection, hooks: InstanceHooks] {
   const factoryArgs = Object.assign({}, args);
   const childArgs: Partial<ChildArgs> = {
     action: parentArgs.action,
@@ -43,7 +42,7 @@ export function actionSelectionFactory<
     rendererArgs,
     childArgs,
   } as unknown as FactoryRefs;
-  const self = octironFactory(
+  const [self, hooks] = octironFactory(
     'action-selection',
     refs,
   );
@@ -222,6 +221,6 @@ export function actionSelectionFactory<
     );
   };
 
-  return self as unknown as OctironActionSelection & InstanceHooks;
+  return [self, hooks] as [OctironActionSelection, InstanceHooks];
 }
 

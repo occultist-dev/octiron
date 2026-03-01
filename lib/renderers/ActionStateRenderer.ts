@@ -4,6 +4,7 @@ import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, Selection
 import type { EntityState, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
 import type { Store } from "../store.ts";
 import type { Mutable } from "../types/common.ts";
+import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
 export type ActionRendererRef = {
@@ -27,12 +28,13 @@ export type ActionStateRendererAttrs = {
 export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> = () => {
   let key = Symbol('ActionStateRenderer');
   let submitResult: EntityState | undefined;
-  let o: OctironSelection | undefined;
+  let octiron: OctironSelection | undefined;
+  let hooks: InstanceHooks | undefined;
 
   function setInstance(attrs: ActionStateRendererAttrs) {
     if (attrs.submitResult == null) {
       submitResult = undefined;
-      o = undefined;
+      octiron = undefined;
     } else if (
       submitResult == null ||
       attrs.submitResult.ok !== submitResult.ok ||
@@ -45,7 +47,7 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
         index: 0,
         value: attrs.submitResult.value,
       }
-      o = selectionFactory(
+      [octiron, hooks] = selectionFactory(
         attrs.args,
         attrs.parentArgs,
         rendererArgs,
@@ -90,7 +92,7 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
     view: ({ attrs: { type, selector, args, view, ...attrs }, children }) => {
       if (type === 'initial' && submitResult == null) {
         return children;
-      } else if (submitResult == null || o == null) {
+      } else if (submitResult == null || octiron == null) {
         return null;
       }
 
@@ -101,17 +103,17 @@ export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> =
         shouldRender = !shouldRender;
       }
 
-      (o as Mutable<OctironSelection>).position = 1;
+      (octiron as Mutable<OctironSelection>).position = 1;
 
       if (shouldRender && selector != null) {
-        return o.select(selector, args as OctironSelectArgs, view as SelectView);
+        return octiron.select(selector, args as OctironSelectArgs, view as SelectView);
       } else if (shouldRender && view != null) {
-        return view(o);
+        return view(octiron);
       } else if (shouldRender && args != null) {
-        return o.present(args);
+        return octiron.present(args);
       }
 
-      (o as Mutable<OctironSelection>).position = -1
+      (octiron as Mutable<OctironSelection>).position = -1
 
       return null;
     },

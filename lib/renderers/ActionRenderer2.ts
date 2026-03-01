@@ -2,6 +2,7 @@ import m from 'mithril';
 import {actionFactory} from '../factories/actionFactory.ts';
 import type {ActionParentArgs, ActionSelectionDetailsListener, AlternativeSelectionResult, EntityState, OctironAction, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionResult, Selector, Store, ValueSelectionResult} from '../octiron.ts';
 import {isIRIObject} from '../utils/isIRIObject.ts';
+import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
 export type ActionRendererAttrs = {
@@ -88,6 +89,7 @@ function applySubmission(
 export const ActionRenderer2: m.ClosureComponent<ActionRendererAttrs> = () => {
   const key = Symbol('ActionRenderer');
   let octiron!: OctironAction;
+  let hooks!: InstanceHooks;
   let store!: Store;
   let args!: OctironPerformArgs;
   let parentArgs!: ActionParentArgs;
@@ -126,7 +128,7 @@ export const ActionRenderer2: m.ClosureComponent<ActionRendererAttrs> = () => {
       store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
       args = vnode.attrs.args;
       parentArgs = vnode.attrs.parentArgs;
-      octiron = actionFactory(
+      [octiron, hooks] = actionFactory(
         args,
         parentArgs,
         vnode.attrs.rendererArgs,

@@ -1,6 +1,7 @@
 import m from 'mithril';
 import {selectionFactory} from '../factories/selectionFactory.ts';
 import type {ActionEvents, ActionSelectionDetailsListener, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
+import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
 export type ActionState =
@@ -23,6 +24,7 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
   let not!: boolean;
   let type!: ActionState;
   let octiron: OctironSelection | undefined;
+  let hooks: InstanceHooks | undefined;
   let args!: OctironSelectArgs;
   let parentArgs!: SelectionParentArgs;
 
@@ -45,7 +47,7 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     }
 
     render = true;
-    octiron = selectionFactory(
+    [octiron, hooks] = selectionFactory(
       args,
       parentArgs,
       {

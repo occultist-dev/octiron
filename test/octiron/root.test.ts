@@ -65,11 +65,11 @@ function makeScenario() {
   const root = rootFactory({
     store,
     typeDefs: {},
-  });
+  })[0];
   const select = selectionFactory({
     store,
     typeDefs: {},
-  });
+  })[0];
 
   function reset() {
     for (const key of Object.keys(primary)) {

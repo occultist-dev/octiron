@@ -68,7 +68,6 @@ describe('o.select()', () => {
     });
     
     await redraw();
-    console.log(await pretty());
 
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
 
@@ -96,7 +95,6 @@ describe('o.select()', () => {
     await o.store.fetch('http://example.com/todos');
     await redraw();
 
-    console.log(await pretty());
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
     assert.equal(listElements[0].textContent, 'Second');

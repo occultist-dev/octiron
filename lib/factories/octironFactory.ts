@@ -41,10 +41,10 @@ export type ChildArgs =
 ;
 
 export type InstanceHooks = {
-  _updateArgs: (
-    args: OctironSelectArgs | OctironPerformArgs | OctironActionSelectionArgs,
-  ) => void;
-}
+  argsChanged: () => void;
+  parentArgsChanged: () => void;
+  rendererArgsChanged: () => void;
+};
 
 export type FactoryRefs = {
   factoryArgs: CommonArgs,
@@ -59,7 +59,7 @@ export function octironFactory(
     factoryArgs: CommonArgs,
     parentArgs: CommonParentArgs,
   },
-): Mutable<OctironRoot>;
+): [octiron: Mutable<OctironRoot>, hooks: InstanceHooks];
 
 export function octironFactory(
   octironType: 'selection',
@@ -69,7 +69,7 @@ export function octironFactory(
     rendererArgs: CommonRendererArgs,
     childArgs: ChildArgs,
   },
-): Mutable<OctironSelection & InstanceHooks>;
+): [octiron: Mutable<OctironSelection>, hooks: InstanceHooks]
 
 export function octironFactory(
   octironType: 'action',
@@ -79,7 +79,7 @@ export function octironFactory(
     rendererArgs: CommonRendererArgs,
     childArgs: ChildArgs,
   },
-): Mutable<OctironAction & InstanceHooks>;
+): [octiron: Mutable<OctironAction>, hooks: InstanceHooks];
 
 export function octironFactory(
   octironType: 'action-selection',
@@ -89,7 +89,7 @@ export function octironFactory(
     rendererArgs: CommonRendererArgs,
     childArgs: ChildArgs,
   },
-): Mutable<OctironActionSelection & InstanceHooks>;
+): [octiron: Mutable<OctironActionSelection>, hooks: InstanceHooks]
 
 /**
  * Creates the base Octiron instance.
@@ -103,7 +103,7 @@ export function octironFactory(
 export function octironFactory<O extends Octiron>(
   octironType: 'root' | 'selection' | 'action' | 'action-selection',
   refs: FactoryRefs,
-): Mutable<O> {
+): [octiron: Mutable<O>, hooks: InstanceHooks] {
   refs.rendererArgs ??= {};
   refs.childArgs ??= {};
   const typeKey = TypeKeys[octironType];
@@ -137,6 +137,7 @@ export function octironFactory<O extends Octiron>(
   // easiest to define the common child args here
   // but the object is passed in from the parent factory
   // so it has references and control over the values.
+  refs.childArgs.value = self.value;
   refs.childArgs.parent = self as unknown as Octiron;
   refs.childArgs.store = refs.factoryArgs.store ?? refs.parentArgs.store;
   refs.childArgs.typeHandlers = refs.factoryArgs.typeHandlers ?? refs.parentArgs.typeHandlers;
@@ -163,7 +164,7 @@ export function octironFactory<O extends Octiron>(
     return null;
   };
 
-  self.get = (termOrType) => {
+  self.get = ((termOrType) => {
     if (!isJSONObject(self.value)) {
       return null;
     }
@@ -180,7 +181,7 @@ export function octironFactory<O extends Octiron>(
     }
 
     return self.value[type] ?? null;
-  }
+  }) as Octiron['get'];
 
   self.enter = (
     arg1: Selector | URL,
@@ -318,16 +319,25 @@ export function octironFactory<O extends Octiron>(
     }
   }
 
-  if (typeKey !== TypeKeys['root']) {
-    const updateArgs: InstanceHooks['_updateArgs'] = (
-      factoryArgs,
-    ) => {
-      refs.factoryArgs = factoryArgs as CommonArgs;
-    }
+  const hooks: InstanceHooks = {
+    argsChanged() {
 
-    // deno-lint-ignore no-explicit-any
-    self._updateArgs = updateArgs as any;
-  }
+    },
+    parentArgsChanged() {
 
-  return self;
+    },
+    rendererArgsChanged() {
+      self.value = refs.rendererArgs.value ?? null;
+      self.index = refs.rendererArgs.index;
+
+      refs.childArgs.value = self.value;
+
+      if (typeKey !== TypeKeys['root']) {
+        self.propType = refs.rendererArgs.propType;
+        self.dataType = getDataType(refs.rendererArgs.value);
+      }
+    },
+  };
+  
+  return [self, hooks];
 }

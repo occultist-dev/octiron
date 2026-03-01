@@ -3,6 +3,7 @@ import m from 'mithril';
 import {selectionFactory} from '../factories/selectionFactory.ts';
 import type {ActionParentArgs, CommonRendererArgs, JSONObject, Mutable, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, Store, ValueSelectionResult} from '../octiron.ts';
 import {ActionRenderer2} from './ActionRenderer2.ts';
+import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
 export type PerformRendererAttrs = {
@@ -14,6 +15,7 @@ export type PerformRendererAttrs = {
 
 type Instance = {
   octiron: OctironSelection;
+  hooks: InstanceHooks;
   selectionResult: ReadonlySelectionResult;
   rendererArgs: PerformRendererArgs;
 };
@@ -58,7 +60,7 @@ function createInstances(
       value: selectionResult.value,
       propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
     } satisfies CommonRendererArgs;
-    const octiron = selectionFactory(
+    const [octiron, hooks] = selectionFactory(
       args,
       parentArgs as SelectionParentArgs,
       selectionRendererArgs,
@@ -72,6 +74,7 @@ function createInstances(
 
     instances.set(selectionResult.pointer, {
       octiron,
+      hooks,
       selectionResult,
       rendererArgs,
     });

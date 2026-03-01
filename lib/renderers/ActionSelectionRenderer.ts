@@ -69,7 +69,9 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
   const instances: Map<string, {
     rendererArgs: ActionSelectionRendererArgs;
     selection: OctironSelection;
-    octiron: OctironActionSelection & InstanceHooks;
+    selectionHooks: InstanceHooks;
+    octiron: OctironActionSelection;
+    hooks: InstanceHooks;
     selectionResult: ActionSelectionResult;
   }> = new Map();
 
@@ -118,7 +120,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
         propType: selectionResult.propType,
       }
 
-      const actionValue = selectionFactory(
+      const [actionValue, hooks] = selectionFactory(
         currentAttrs.args as OctironSelectArgs,
         parentArgs as unknown as SelectionParentArgs,
         actionValueRendererArgs,
@@ -134,7 +136,7 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
         spec: selectionResult.spec,
       };
 
-      const actionSelection = actionSelectionFactory(
+      const [actionSelection, actionSelectionHooks] = actionSelectionFactory(
         currentAttrs.args,
         parentArgs,
         rendererArgs,
@@ -143,7 +145,9 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
       instances.set(selectionResult.pointer, {
         rendererArgs,
         selection: actionValue,
+        selectionHooks: hooks,
         octiron: actionSelection,
+        hooks: actionSelectionHooks,
         selectionResult,
       });
     }
@@ -198,7 +202,6 @@ export const ActionSelectionRenderer: m.FactoryComponent<ActionSelectionRenderer
         updateSelection();
       } else {
         for (const instance of instances.values()) {
-          instance.octiron._updateArgs(attrs.args);
         }
       }
     },

@@ -214,8 +214,6 @@ describe('o.submit()', () => {
     await o.store.submit('http://example.com/todos');
     await redraw();
 
-    console.log(await pretty())
-
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     
     assert.equal(listElements[0].firstChild?.textContent, 'Second');

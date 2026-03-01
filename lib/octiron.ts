@@ -37,7 +37,7 @@ export function octiron({
   return rootFactory({
     store,
     typeHandlers: config,
-  });
+  })[0];
 }
 
 octiron.fromInitialState = ({
@@ -57,5 +57,5 @@ octiron.fromInitialState = ({
   return rootFactory({
     store,
     typeHandlers: config,
-  });
+  })[0];
 }

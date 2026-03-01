@@ -14,18 +14,19 @@ var longform = require('@longform/longform');
   * @param rendererArgs - Args passed from the Mithril renderer component.
   */
 function selectionFactory(args, parentArgs, rendererArgs) {
-    const factoryArgs = Object.assign({}, args);
+    const factoryArgs = Object.assign(Object.create(null), args);
     const childArgs = {
         // value: parentArgs.value,
         value: rendererArgs.value,
     };
-    const self = octironFactory('selection', {
+    const res = octironFactory('selection', {
         factoryArgs,
         parentArgs,
         rendererArgs,
         childArgs,
     });
-    return self;
+    Object.seal(res[0]);
+    return res;
 }
 
 /**
@@ -291,7 +292,7 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         rendererArgs,
         childArgs,
     };
-    const self = octironFactory('action-selection', refs);
+    const [self, hooks] = octironFactory('action-selection', refs);
     self.readonly = rendererArgs.spec == null ? true : (rendererArgs.spec.readonly ?? false);
     self.inputName = rendererArgs.spec?.name != null ? rendererArgs.spec?.name : rendererArgs.propType;
     self.submitting = parentArgs.submitting;
@@ -415,7 +416,7 @@ function actionSelectionFactory(args, parentArgs, rendererArgs) {
         }
         return refs.parentArgs.updatePointer(refs.rendererArgs.pointer, Object.assign({}, refs.rendererArgs.value, { [type]: nextValue }), args);
     };
-    return self;
+    return [self, hooks];
 }
 
 /**
@@ -1133,7 +1134,7 @@ const ActionSelectionRenderer = (vnode) => {
                 value: selectionResult.actionValue,
                 propType: selectionResult.propType,
             };
-            const actionValue = selectionFactory(currentAttrs.args, parentArgs, actionValueRendererArgs);
+            const [actionValue, hooks] = selectionFactory(currentAttrs.args, parentArgs, actionValueRendererArgs);
             const rendererArgs = {
                 index,
                 update,
@@ -1143,11 +1144,13 @@ const ActionSelectionRenderer = (vnode) => {
                 value: selectionResult.value,
                 spec: selectionResult.spec,
             };
-            const actionSelection = actionSelectionFactory(currentAttrs.args, parentArgs, rendererArgs);
+            const [actionSelection, actionSelectionHooks] = actionSelectionFactory(currentAttrs.args, parentArgs, rendererArgs);
             instances.set(selectionResult.pointer, {
                 rendererArgs,
                 selection: actionValue,
+                selectionHooks: hooks,
                 octiron: actionSelection,
+                hooks: actionSelectionHooks,
                 selectionResult,
             });
         }
@@ -1191,7 +1194,6 @@ const ActionSelectionRenderer = (vnode) => {
             }
             else {
                 for (const instance of instances.values()) {
-                    instance.octiron._updateArgs(attrs.args);
                 }
             }
         },
@@ -1314,6 +1316,7 @@ const ActionStateRenderer3 = () => {
     let not;
     let type;
     let octiron;
+    let hooks;
     let args;
     let parentArgs;
     const listener = (submitResult, selectionDetails) => {
@@ -1328,7 +1331,7 @@ const ActionStateRenderer3 = () => {
             return;
         }
         render = true;
-        octiron = selectionFactory(args, parentArgs, {
+        [octiron, hooks] = selectionFactory(args, parentArgs, {
             index: 0,
             value: selectionDetails.result[0].value,
         });
@@ -1368,11 +1371,12 @@ const ActionStateRenderer3 = () => {
 const ActionStateRenderer = () => {
     let key = Symbol('ActionStateRenderer');
     let submitResult;
-    let o;
+    let octiron;
+    let hooks;
     function setInstance(attrs) {
         if (attrs.submitResult == null) {
             submitResult = undefined;
-            o = undefined;
+            octiron = undefined;
         }
         else if (submitResult == null ||
             attrs.submitResult.ok !== submitResult.ok ||
@@ -1382,8 +1386,7 @@ const ActionStateRenderer = () => {
             const rendererArgs = {
                 index: 0,
                 value: attrs.submitResult.value,
-            };
-            o = selectionFactory(attrs.args, attrs.parentArgs, rendererArgs);
+            }[hooks] = selectionFactory(attrs.args, attrs.parentArgs, rendererArgs);
         }
     }
     function listener(next) {
@@ -1419,7 +1422,7 @@ const ActionStateRenderer = () => {
             if (type === 'initial' && submitResult == null) {
                 return children;
             }
-            else if (submitResult == null || o == null) {
+            else if (submitResult == null || octiron == null) {
                 return null;
             }
             let shouldRender = (type === 'success' && submitResult.ok) ||
@@ -1427,17 +1430,17 @@ const ActionStateRenderer = () => {
             if (attrs.not) {
                 shouldRender = !shouldRender;
             }
-            o.position = 1;
+            octiron.position = 1;
             if (shouldRender && selector != null) {
-                return o.select(selector, args, view);
+                return octiron.select(selector, args, view);
             }
             else if (shouldRender && view != null) {
-                return view(o);
+                return view(octiron);
             }
             else if (shouldRender && args != null) {
-                return o.present(args);
+                return octiron.present(args);
             }
-            o.position = -1;
+            octiron.position = -1;
             return null;
         },
     };
@@ -1540,10 +1543,11 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         rendererArgs,
         childArgs,
     };
-    const self = octironFactory('action', refs);
+    const [self, hooks] = octironFactory('action', refs);
     self.value = payload;
     self.action = parentArgs.parent;
     self.actionValue = rendererArgs.actionValue;
+    self.submitting = false;
     childArgs.action = self;
     childArgs.submitting = self.submitting;
     self.select = (arg1, arg2, arg3) => {
@@ -1650,7 +1654,8 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         args.submitOnInit) {
         submit();
     }
-    return self;
+    Object.seal(self);
+    return [self, hooks];
 }
 
 function applySubmission(key, listener, store, args, submitResult, listeners) {
@@ -1713,6 +1718,7 @@ function applySubmission(key, listener, store, args, submitResult, listeners) {
 const ActionRenderer2 = () => {
     const key = Symbol('ActionRenderer');
     let octiron;
+    let hooks;
     let store;
     let args;
     let parentArgs;
@@ -1743,7 +1749,7 @@ const ActionRenderer2 = () => {
             store = vnode.attrs.args.store ?? vnode.attrs.parentArgs.store;
             args = vnode.attrs.args;
             parentArgs = vnode.attrs.parentArgs;
-            octiron = actionFactory(args, parentArgs, vnode.attrs.rendererArgs, {
+            [octiron, hooks] = actionFactory(args, parentArgs, vnode.attrs.rendererArgs, {
                 onSubmitResult,
                 addListener,
                 removeListener,
@@ -1798,7 +1804,7 @@ function createInstances$1(instances, args, parentArgs, selectionDetails) {
             value: selectionResult.value,
             propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
         };
-        const octiron = selectionFactory(args, parentArgs, selectionRendererArgs);
+        const [octiron, hooks] = selectionFactory(args, parentArgs, selectionRendererArgs);
         const rendererArgs = {
             index: i,
             value: selectionResult.value,
@@ -1807,6 +1813,7 @@ function createInstances$1(instances, args, parentArgs, selectionDetails) {
         };
         instances.set(selectionResult.pointer, {
             octiron,
+            hooks,
             selectionResult,
             rendererArgs,
         });
@@ -1993,9 +2000,7 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
             instance.refs.rendererArgs.propType = selectionResult.type === 'entity'
                 ? undefined
                 : selectionResult.propType;
-            instance.octiron.index = i;
-            instance.octiron.value = instance.refs.rendererArgs.value;
-            instance.octiron.propType = instance.refs.rendererArgs.propType;
+            instance.hooks.rendererArgsChanged();
             instances.set(selectionResult.key, instance);
         }
         else {
@@ -2004,7 +2009,7 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
                 value: selectionResult.value,
                 propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
             };
-            const octiron = selectionFactory(args, parentArgs, rendererArgs);
+            const [octiron, hooks] = selectionFactory(args, parentArgs, rendererArgs);
             const refs = {
                 args,
                 parentArgs,
@@ -2012,8 +2017,9 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
             };
             instances.set(selectionResult.key, {
                 refs,
-                octiron,
                 selectionResult,
+                octiron,
+                hooks,
             });
         }
     }
@@ -2189,6 +2195,7 @@ function octironFactory(octironType, refs) {
     // easiest to define the common child args here
     // but the object is passed in from the parent factory
     // so it has references and control over the values.
+    refs.childArgs.value = self.value;
     refs.childArgs.parent = self;
     refs.childArgs.store = refs.factoryArgs.store ?? refs.parentArgs.store;
     refs.childArgs.typeHandlers = refs.factoryArgs.typeHandlers ?? refs.parentArgs.typeHandlers;
@@ -2206,7 +2213,7 @@ function octironFactory(octironType, refs) {
         }
         return null;
     };
-    self.get = (termOrType) => {
+    self.get = ((termOrType) => {
         if (!isJSONObject(self.value)) {
             return null;
         }
@@ -2219,7 +2226,7 @@ function octironFactory(octironType, refs) {
             return getIterableValue(value);
         }
         return self.value[type] ?? null;
-    };
+    });
     self.enter = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1 instanceof URL ? arg1.toString() : arg1, arg2, arg3);
         return m(SelectionRenderer2, {
@@ -2311,23 +2318,34 @@ function octironFactory(octironType, refs) {
             break;
         }
     }
-    if (typeKey !== TypeKeys['root']) {
-        const updateArgs = (factoryArgs) => {
-            refs.factoryArgs = factoryArgs;
-        };
-        // deno-lint-ignore no-explicit-any
-        self._updateArgs = updateArgs;
-    }
-    return self;
+    const hooks = {
+        argsChanged() {
+        },
+        parentArgsChanged() {
+        },
+        rendererArgsChanged() {
+            self.value = refs.rendererArgs.value ?? null;
+            self.index = refs.rendererArgs.index;
+            refs.childArgs.value = self.value;
+            if (typeKey !== TypeKeys['root']) {
+                self.propType = refs.rendererArgs.propType;
+                self.dataType = getDataType(refs.rendererArgs.value);
+            }
+        },
+    };
+    return [self, hooks];
 }
 
 function rootFactory(parentArgs) {
     const factoryArgs = {};
-    const self = octironFactory('root', {
+    const res = octironFactory('root', {
         factoryArgs,
         parentArgs,
+        rendererArgs: {},
+        childArgs: {},
     });
-    return self;
+    Object.seal(res[0]);
+    return res;
 }
 
 function fragmentToHTML(fragment) {
@@ -3950,7 +3968,7 @@ function octiron({ typeHandlers, ...storeArgs }) {
     return rootFactory({
         store,
         typeHandlers: config,
-    });
+    })[0];
 }
 octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
     const store = Store.fromInitialState({
@@ -3962,7 +3980,7 @@ octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
     return rootFactory({
         store,
         typeHandlers: config,
-    });
+    })[0];
 };
 
 exports.Debug = Debug;

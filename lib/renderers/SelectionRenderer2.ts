@@ -2,6 +2,7 @@ import {isJSONObject} from "@occultist/mini-jsonld";
 import m from 'mithril';
 import {selectionFactory} from "../factories/selectionFactory.ts";
 import type {CommonRendererArgs, JSONObject, JSONValue, Mutable, OctironSelectArgs, OctironSelection, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, SelectView, Store} from "../octiron.ts";
+import type {InstanceHooks} from "../factories/octironFactory.ts";
 
 
 export type SelectionRendererAttrs = {
@@ -22,6 +23,7 @@ type Instance = {
   refs: SelectionRefs,
   selectionResult: ReadonlySelectionResult;
   octiron: OctironSelection;
+  hooks: InstanceHooks;
 };
 
 
@@ -52,10 +54,8 @@ function createInstances(
       instance.refs.rendererArgs.propType = selectionResult.type === 'entity'
         ? undefined
         : selectionResult.propType;
-      
-      (instance.octiron as any).index = i;
-      (instance.octiron as any).value = instance.refs.rendererArgs.value;
-      (instance.octiron as any).propType = instance.refs.rendererArgs.propType;
+
+      instance.hooks.rendererArgsChanged();
       
       instances.set(selectionResult.key, instance);
     } else {
@@ -65,7 +65,7 @@ function createInstances(
         propType: selectionResult.type === 'entity' ? undefined : selectionResult.propType,
       } satisfies CommonRendererArgs;
 
-      const octiron = selectionFactory(
+      const [octiron, hooks] = selectionFactory(
         args,
         parentArgs as SelectionParentArgs,
         rendererArgs,
@@ -79,8 +79,9 @@ function createInstances(
   
       instances.set(selectionResult.key, {
         refs,
-        octiron,
         selectionResult,
+        octiron,
+        hooks,
       });
     }
   }

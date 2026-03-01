@@ -1,2 +1,3 @@
 import type { CommonParentArgs, OctironRoot } from '../types/octiron.ts';
-export declare function rootFactory(parentArgs: CommonParentArgs): OctironRoot;
+import { type InstanceHooks } from "./octironFactory.ts";
+export declare function rootFactory(parentArgs: CommonParentArgs): [octiron: OctironRoot, hooks: InstanceHooks];

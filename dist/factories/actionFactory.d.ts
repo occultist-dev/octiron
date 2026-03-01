@@ -12,4 +12,4 @@ export type ActionRefs = {
     typeHandlers: TypeHandlers;
     submitResult?: EntityState;
 };
-export declare function actionFactory<Attrs extends Record<string, unknown> = Record<string, unknown>>(args: OctironPerformArgs<Attrs>, parentArgs: ActionParentArgs, rendererArgs: PerformRendererArgs, events: ActionEvents): OctironAction & InstanceHooks;
+export declare function actionFactory<Attrs extends Record<string, unknown> = Record<string, unknown>>(args: OctironPerformArgs<Attrs>, parentArgs: ActionParentArgs, rendererArgs: PerformRendererArgs, events: ActionEvents): [octiron: OctironAction, hooks: InstanceHooks];

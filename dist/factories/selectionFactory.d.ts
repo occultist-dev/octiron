@@ -7,4 +7,4 @@ import { type InstanceHooks } from "./octironFactory.ts";
   * @param parentArgs - Args passed from the Octiron parent instance of this instance.
   * @param rendererArgs - Args passed from the Mithril renderer component.
   */
-export declare function selectionFactory<Attrs extends BaseAttrs>(args: OctironSelectArgs<Attrs>, parentArgs: SelectionParentArgs, rendererArgs: CommonRendererArgs): OctironSelection & InstanceHooks;
+export declare function selectionFactory<Attrs extends BaseAttrs>(args: OctironSelectArgs<Attrs>, parentArgs: SelectionParentArgs, rendererArgs: CommonRendererArgs): [octiron: OctironSelection, hooks: InstanceHooks];

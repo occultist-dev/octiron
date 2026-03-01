@@ -1,18 +1,23 @@
 import type { CommonParentArgs, OctironRoot } from '../types/octiron.ts';
-import { octironFactory } from "./octironFactory.ts";
+import { type InstanceHooks, octironFactory } from "./octironFactory.ts";
 
 
 export function rootFactory(
   parentArgs: CommonParentArgs,
-): OctironRoot {
+): [octiron: OctironRoot, hooks: InstanceHooks] {
   const factoryArgs = {};
-  const self = octironFactory(
+
+  const res = octironFactory(
     'root',
     {
       factoryArgs,
       parentArgs,
+      rendererArgs: {},
+      childArgs: {},
     },
   );
+  
+  Object.seal(res[0]);
 
-  return self as unknown as OctironRoot;
+  return res as [OctironRoot, InstanceHooks];
 }

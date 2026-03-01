@@ -3,4 +3,4 @@ import type { ActionSelectionParentArgs, ActionSelectionRendererArgs, OctironAct
 import { type InstanceHooks } from "./octironFactory.ts";
 export type OnActionSelectionSubmit = () => Promise<void>;
 export type OnActionSelectionUpdate = (pointer: string, value: JSONValue, args?: UpdateArgs) => void;
-export declare function actionSelectionFactory<Attrs extends Record<string, any> = Record<string, any>>(args: OctironActionSelectionArgs<Attrs>, parentArgs: ActionSelectionParentArgs, rendererArgs: ActionSelectionRendererArgs): OctironActionSelection & InstanceHooks;
+export declare function actionSelectionFactory<Attrs extends Record<string, unknown> = Record<string, unknown>>(args: OctironActionSelectionArgs<Attrs>, parentArgs: ActionSelectionParentArgs, rendererArgs: ActionSelectionRendererArgs): [octiron: OctironActionSelection, hooks: InstanceHooks];
