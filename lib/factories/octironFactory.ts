@@ -205,7 +205,9 @@ export function octironFactory<O extends Octiron>(
 
   const rootChildArgs = {
     ...refs.childArgs,
-    value: refs.parentArgs.store.entity(refs.parentArgs.store.rootIRI)?.value,
+    value: refs.parentArgs.store.entity(refs.parentArgs.store.rootIRI, {
+      accept: refs.factoryArgs.accept,
+    })?.value,
   }
 
   self.root = (

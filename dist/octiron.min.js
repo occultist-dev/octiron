@@ -1001,7 +1001,7 @@ function selectEntity({ pointer, iri, fragment, accept, filter, selector, store,
     // to solve later...
     const key = normalizedURL;
     pointer = makePointer(pointer, normalizedURL);
-    const cache = store.entity(normalizedURL, accept);
+    const cache = store.entity(normalizedURL, { accept });
     details.dependencies.push(normalizedURL);
     // if loading is required mark found as false
     if (cache == null || cache.loading) {
@@ -1495,6 +1495,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             console.error(err);
             isError = true;
         }
+        self.submitting = false;
         mithrilRedraw();
         if (isError && typeof args.onSubmitFailure === 'function' && isBrowserRender) {
             args.onSubmitFailure(self);
@@ -1653,7 +1654,10 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         console.error(err);
     }
     if (self.url != null) {
-        submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
+        submitResult = refs.parentArgs.store.entity(self.url, {
+            method: self.method,
+            accept: args.accept,
+        });
     }
     if (isBrowserRender && args.submitOnInit) {
         if (submitResult == null) {
@@ -2263,7 +2267,9 @@ function octironFactory(octironType, refs) {
     };
     const rootChildArgs = {
         ...refs.childArgs,
-        value: refs.parentArgs.store.entity(refs.parentArgs.store.rootIRI)?.value,
+        value: refs.parentArgs.store.entity(refs.parentArgs.store.rootIRI, {
+            accept: refs.factoryArgs.accept,
+        })?.value,
     };
     self.root = (arg1, arg2, arg3) => {
         let selector;
@@ -2896,6 +2902,7 @@ class Store {
     #responseHook;
     #dependencies = new Map();
     #listeners = new Map();
+    #primaryContentTypes = new Set();
     // iri => accept => [loading, contentType]
     #acceptMap = new Map();
     constructor(args) {
@@ -2909,6 +2916,10 @@ class Store {
         if (args.handlers != null) {
             for (let i = 0, l = args.handlers.length; i < l; i++) {
                 this.#handlers.set(args.handlers[i].contentType, args.handlers[i]);
+                if (args.handlers[i].integrationType === 'jsonld' ||
+                    args.handlers[i].integrationType === 'problem-details') {
+                    this.#primaryContentTypes.add(args.handlers[i].contentType);
+                }
             }
         }
         if (args.primary != null) {
@@ -2944,13 +2955,21 @@ class Store {
     get rootIRI() {
         return this.#rootIRI;
     }
+    isLoading(iri, args) {
+        const keys = this.#getKeys(iri, args);
+        return this.#loading.has(keys[1]);
+    }
     /**
      * Retrieves an entity state object relating to an IRI.
+     *
+     * @param iri The IRI of the entity.
+     * @param args.method The method used for the request.
+     * @param args.accept Accept headers used for the request.
      */
-    entity(iri, accept) {
+    entity(iri, args) {
         const normalizedURL = new URL(iri).toString();
-        const key = this.#getLoadingKey(iri, 'get', accept);
-        const loading = this.#loading.has(key);
+        const [entityKey, loadingKey] = this.#getKeys(iri, args);
+        const loading = this.#loading.has(loadingKey);
         if (loading) {
             return {
                 type: 'entity-loading',
@@ -2959,17 +2978,28 @@ class Store {
                 isProblem: false,
             };
         }
-        if (accept == null) {
-            return this.#primary.get(normalizedURL) ?? null;
+        if (args?.accept == null) {
+            return this.#primary.get(entityKey) ?? null;
         }
-        const contentType = this.#acceptMap.get(normalizedURL)?.get?.(accept);
+        const contentType = this.#acceptMap.get(entityKey)?.get(args.accept);
         if (contentType == null) {
+            console.log('IRI', iri);
+            console.log('METHOD', args?.method);
+            console.log('ACCEPTS', args?.accept);
+            console.log('CONTENT TYPE', contentType);
+            console.log(new Error().stack);
             return null;
         }
-        const integration = this.#integrations.get(contentType)?.get(normalizedURL);
+        else if (this.#primaryContentTypes.has(contentType)) {
+            return this.#primary.get(entityKey) ?? null;
+        }
+        const integration = this.#integrations.get(contentType)?.get(entityKey);
         if (integration == null) {
+            console.log(new Error().stack);
+            console.log('CONTENT TYPE', contentType);
             return null;
         }
+        console.log('ALT');
         return {
             type: 'alternative-success',
             iri: normalizedURL,
@@ -2980,17 +3010,21 @@ class Store {
             integration,
         };
     }
+    /**
+     * Retrieves the integration class used for a content type.
+     */
     integration(contentType) {
         const integrationType = this.#handlers.get(contentType)?.integrationType;
         return integrationClasses[integrationType];
     }
     /**
      * Retrieves a text representation of a value in the store
-     * if it is supported by the int4egration.
+     * if it is supported by the integration.
      */
-    text(iri, accept) {
+    text(iri, args) {
+        console.log('TEXT', args);
         const [key, fragment] = iri.split('#');
-        const entity = this.entity(key, accept);
+        const entity = this.entity(key, args);
         if (entity == null) {
             return;
         }
@@ -3074,31 +3108,30 @@ class Store {
                 if (isBrowserRender) {
                     setTimeout(() => {
                         if (this.#dependencies.get(normalizedURL)?.size === 0) {
-                            this.#primary.delete(normalizedURL);
+                            const [entityKey] = this.#getKeys(dependency);
+                            this.#primary.delete(entityKey);
                         }
                     }, 5000);
                 }
             }
         };
     }
-    /**
-     * Creates a unique key for the ir, method and accept headers
-     * to be used to mark the request's loading status.
-     */
-    #getLoadingKey(iri, method, accept) {
-        accept = accept ?? this.#headers.get('accept') ?? defaultAccept;
-        return `${method?.toLowerCase()}|${iri}|${accept.toLowerCase()}`;
-    }
-    isLoading(iri) {
-        const loadingKey = this.#getLoadingKey(iri, 'get');
-        return this.#loading.has(loadingKey);
+    #getKeys(iri, args) {
+        const url = new URL(iri).toString();
+        const method = args?.method?.toLowerCase() ?? 'get';
+        const accept = args?.accept ?? '';
+        const entityKey = `${method}|${url}`;
+        return [
+            entityKey,
+            `${entityKey}|${accept}`,
+        ];
     }
     /**
      * Called on change to an entity. All listeners with dependencies in their
      * selection for this entity have the latest selection result pushed to
      * their listener functions.
      */
-    #publish(iri, contentType) {
+    #publish(iri, contentType, entityKey) {
         const keys = this.#dependencies.get(iri);
         if (keys == null) {
             return;
@@ -3110,7 +3143,7 @@ class Store {
             }
             // construct a new url to normalize the iri. Eg add a trailing
             // slash to an iri with no pathname part.
-            const mappedType = this.#acceptMap.get(new URL(iri).toString())
+            const mappedType = this.#acceptMap.get(entityKey)
                 ?.get(listenerDetails.accept ?? defaultAccept);
             // TODO: A more sophisticated check might be required 
             // to correctly check the content type matches the
@@ -3140,10 +3173,11 @@ class Store {
             listenerDetails.listener(details);
         }
     }
-    #handleJSONLD({ iri, res, contentType, output, }) {
+    #handleJSONLD({ iri, res, contentType, output, entityKey, }) {
         const iris = [iri];
         if (res.ok) {
-            this.#primary.set(iri, {
+            console.log('SETTING PRIMARY', entityKey);
+            this.#primary.set(entityKey, {
                 type: 'entity-success',
                 iri,
                 loading: false,
@@ -3155,7 +3189,8 @@ class Store {
         }
         else {
             const reason = new HTTPFailure(res.status, res);
-            this.#primary.set(iri, {
+            console.log('SETTING PRIMARY', entityKey);
+            this.#primary.set(entityKey, {
                 type: 'entity-failure',
                 iri,
                 loading: false,
@@ -3169,10 +3204,11 @@ class Store {
         }
         for (const entity of flattenIRIObjects(output.jsonld)) {
             const normalizedURL = new URL(entity['@id']).toString();
+            const [entityKey] = this.#getKeys(entity['@id']);
             if (iris.includes(normalizedURL)) {
                 continue;
             }
-            this.#primary.set(normalizedURL, {
+            this.#primary.set(entityKey, {
                 type: 'entity-success',
                 iri: entity['@id'],
                 loading: false,
@@ -3184,10 +3220,10 @@ class Store {
         }
         for (const iri of iris) {
             const normalizedURL = new URL(iri).toString();
-            this.#publish(normalizedURL, contentType);
+            this.#publish(normalizedURL, contentType, entityKey);
         }
     }
-    async handleResponse(res, iri) {
+    async handleResponse(res, iri, entityKey) {
         const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
         if (contentType == null) {
             throw new Error('Content type not specified in response');
@@ -3215,6 +3251,7 @@ class Store {
                 res,
                 contentType,
                 output,
+                entityKey,
             });
         }
         else if (handler.integrationType === 'problem-details') {
@@ -3222,7 +3259,7 @@ class Store {
                 res,
                 store: this,
             });
-            this.#primary.set(iri, {
+            this.#primary.set(entityKey, {
                 type: 'entity-failure',
                 iri,
                 loading: false,
@@ -3243,7 +3280,7 @@ class Store {
                 integrations = new Map();
                 this.#integrations.set(contentType, integrations);
             }
-            integrations.set(iri, new HTMLFragmentsIntegration(handler, {
+            integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
                 iri,
                 contentType,
                 output,
@@ -3260,7 +3297,11 @@ class Store {
         const method = args.method || 'get';
         const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
         const dispatchURL = url.toString();
-        const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
+        const [entityKey, loadingKey] = this.#getKeys(url, {
+            method,
+            accept,
+        });
+        console.log('LOADING?', this.#loading.has(loadingKey));
         if (this.#loading.has(loadingKey)) {
             return;
         }
@@ -3303,15 +3344,15 @@ class Store {
                 // if SSR store the first 400+ status for the final HTTP response
                 this.#httpStatus = res.status;
             }
-            if (this.#acceptMap.has(dispatchURL)) {
+            if (this.#acceptMap.has(entityKey)) {
                 this.#acceptMap
-                    .get(dispatchURL)?.set(accept, res.headers.get('content-type'));
+                    .get(entityKey)?.set(accept, res.headers.get('content-type'));
             }
             else {
-                this.#acceptMap.set(dispatchURL, new Map([[accept, res.headers.get('content-type')]]));
+                this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type')]]));
             }
             this.#loading.delete(loadingKey);
-            await this.handleResponse(res, dispatchURL);
+            await this.handleResponse(res, dispatchURL, entityKey);
             mithrilRedraw();
             resolve(res);
         });
@@ -3365,8 +3406,10 @@ class Store {
         this.#listeners.get(key)?.cleanup();
     }
     async fetch(iri, args = {}) {
+        console.log('FETCH');
+        const [entityKey] = this.#getKeys(iri, args);
         await this.#callFetcher(iri.toString(), args);
-        return this.#primary.get(iri.toString());
+        return this.#primary.get(entityKey);
     }
     /**
      * Submits an action. Like fetch this will overwrite
@@ -3380,8 +3423,9 @@ class Store {
      * @param {string} [args.body]        The body of the request.
      */
     async submit(iri, args) {
+        console.log('SUBMIT');
         await this.#callFetcher(iri, args);
-        return this.entity(iri, args?.accept);
+        return this.entity(iri, args);
     }
     /**
      * Creates an Octiron store from initial state written to the page's HTML.

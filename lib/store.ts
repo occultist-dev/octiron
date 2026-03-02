@@ -168,6 +168,7 @@ export class Store {
     #responseHook?: ResponseHook;
     #dependencies: Dependencies = new Map();
     #listeners: Listeners = new Map();
+    #primaryContentTypes: Set<string> = new Set();
 
     // iri => accept => [loading, contentType]
     #acceptMap: Map<string, Map<string, string>> = new Map();
@@ -185,6 +186,11 @@ export class Store {
       if (args.handlers != null) {
         for (let i = 0, l = args.handlers.length; i < l; i++) {
           this.#handlers.set(args.handlers[i].contentType, args.handlers[i]);
+
+          if (args.handlers[i].integrationType === 'jsonld' ||
+              args.handlers[i].integrationType === 'problem-details') {
+            this.#primaryContentTypes.add(args.handlers[i].contentType);
+          }
         }
       }
 
@@ -228,13 +234,29 @@ export class Store {
       return this.#rootIRI;
     }
 
+    public isLoading(iri: string, args?: {
+      method?: string;
+      accept?: string;
+    }): boolean {
+      const keys = this.#getKeys(iri, args);
+
+      return this.#loading.has(keys[1]);
+    }
+
     /**
      * Retrieves an entity state object relating to an IRI.
+     * 
+     * @param iri The IRI of the entity.
+     * @param args.method The method used for the request.
+     * @param args.accept Accept headers used for the request.
      */
-    public entity(iri: string, accept?: string): EntityState | null {
+    public entity(iri: string | URL, args?: {
+      method?: string;
+      accept?: string;
+    }): EntityState | null {
       const normalizedURL = new URL(iri).toString();
-      const key = this.#getLoadingKey(iri, 'get', accept);
-      const loading = this.#loading.has(key);
+      const [entityKey, loadingKey] = this.#getKeys(iri, args);
+      const loading = this.#loading.has(loadingKey);
 
       if (loading) {
         return {
@@ -245,22 +267,32 @@ export class Store {
         };
       }
 
-      if (accept == null) {
-        return this.#primary.get(normalizedURL) ?? null;
+      if (args?.accept == null) {
+        return this.#primary.get(entityKey) ?? null;
       }
 
-      const contentType = this.#acceptMap.get(normalizedURL)?.get?.(accept);
+      const contentType = this.#acceptMap.get(entityKey)?.get(args.accept);
 
       if (contentType == null) {
+        console.log('IRI', iri);
+        console.log('METHOD', args?.method);
+        console.log('ACCEPTS', args?.accept);
+        console.log('CONTENT TYPE', contentType);
+        console.log(new Error().stack);
         return null;
+      } else if (this.#primaryContentTypes.has(contentType)) {
+        return this.#primary.get(entityKey) ?? null;
       }
 
-      const integration = this.#integrations.get(contentType)?.get(normalizedURL);
+      const integration = this.#integrations.get(contentType)?.get(entityKey);
 
       if (integration == null) {
+        console.log(new Error().stack);
+        console.log('CONTENT TYPE', contentType);
         return null;
       }
 
+      console.log('ALT');
       return {
         type: 'alternative-success',
         iri: normalizedURL,
@@ -272,6 +304,9 @@ export class Store {
       };
     }
 
+    /**
+     * Retrieves the integration class used for a content type.
+     */
     integration(contentType: string): IntegrationState {
       const integrationType = this.#handlers.get(contentType)?.integrationType;
 
@@ -280,11 +315,15 @@ export class Store {
 
     /**
      * Retrieves a text representation of a value in the store
-     * if it is supported by the int4egration.
+     * if it is supported by the integration.
      */
-    public text(iri: string, accept?: string): string | undefined {
+    public text(iri: string, args?: {
+      method?: string;
+      accept?: string;
+    }): string | undefined {
+      console.log('TEXT', args);
       const [key, fragment] = iri.split('#');
-      const entity = this.entity(key, accept);
+      const entity = this.entity(key, args);
 
       if (entity == null) {
         return;
@@ -391,7 +430,9 @@ export class Store {
           if (isBrowserRender) {
             setTimeout(() => {
               if (this.#dependencies.get(normalizedURL)?.size === 0) {
-                this.#primary.delete(normalizedURL);
+                const [entityKey] = this.#getKeys(dependency);
+
+                this.#primary.delete(entityKey);
               }
             }, 5000);
           }
@@ -399,20 +440,19 @@ export class Store {
       }
     }
 
-    /**
-     * Creates a unique key for the ir, method and accept headers
-     * to be used to mark the request's loading status.
-     */
-    #getLoadingKey(iri: string, method: string, accept?: string): string {
-      accept = accept ?? this.#headers.get('accept') ?? defaultAccept;
+    #getKeys(iri: string | URL, args?: {
+      method?: string;
+      accept?: string;
+    }): [entityKey: string, loadingKey: string] {
+      const url = new URL(iri).toString();
+      const method = args?.method?.toLowerCase() ?? 'get';
+      const accept = args?.accept ?? '';
+      const entityKey = `${method}|${url}`;
 
-      return `${method?.toLowerCase()}|${iri}|${accept.toLowerCase()}`;
-    }
-
-    public isLoading(iri: string): boolean {
-      const loadingKey = this.#getLoadingKey(iri, 'get');
-
-      return this.#loading.has(loadingKey);
+      return [
+        entityKey,
+        `${entityKey}|${accept}`,
+      ];
     }
 
     /**
@@ -420,7 +460,7 @@ export class Store {
      * selection for this entity have the latest selection result pushed to
      * their listener functions.
      */
-    #publish(iri: string, contentType: string): void {
+    #publish(iri: string, contentType: string, entityKey: string): void {
       const keys = this.#dependencies.get(iri);
 
       if (keys == null) {
@@ -436,7 +476,7 @@ export class Store {
 
         // construct a new url to normalize the iri. Eg add a trailing
         // slash to an iri with no pathname part.
-        const mappedType = this.#acceptMap.get(new URL(iri).toString())
+        const mappedType = this.#acceptMap.get(entityKey)
           ?.get(listenerDetails.accept ?? defaultAccept);
 
         // TODO: A more sophisticated check might be required 
@@ -477,16 +517,19 @@ export class Store {
       res,
       contentType,
       output,
+      entityKey,
     }: {
       iri: string;
       res: Response;
       contentType: string;
-      output: JSONLDHandlerResult,
+      output: JSONLDHandlerResult;
+      entityKey: string;
     }): void {
       const iris = [iri];
 
       if (res.ok) {
-        this.#primary.set(iri, {
+        console.log('SETTING PRIMARY', entityKey);
+        this.#primary.set(entityKey, {
           type: 'entity-success',
           iri,
           loading: false,
@@ -498,7 +541,8 @@ export class Store {
       } else {
         const reason = new HTTPFailure(res.status, res);
 
-        this.#primary.set(iri, {
+        console.log('SETTING PRIMARY', entityKey);
+        this.#primary.set(entityKey, {
           type: 'entity-failure',
           iri,
           loading: false,
@@ -513,12 +557,13 @@ export class Store {
 
       for (const entity of flattenIRIObjects(output.jsonld)) {
         const normalizedURL = new URL(entity['@id']).toString();
+        const [entityKey] = this.#getKeys(entity['@id']);
 
         if (iris.includes(normalizedURL)) {
           continue;
         }
 
-        this.#primary.set(normalizedURL, {
+        this.#primary.set(entityKey, {
           type: 'entity-success',
           iri: entity['@id'],
           loading: false,
@@ -532,13 +577,14 @@ export class Store {
       for (const iri of iris) {
         const normalizedURL = new URL(iri).toString();
 
-        this.#publish(normalizedURL, contentType);
+        this.#publish(normalizedURL, contentType, entityKey);
       }
     }
 
     async handleResponse(
       res: Response,
       iri: string,
+      entityKey: string,
     ) {
       const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
 
@@ -574,6 +620,7 @@ export class Store {
           res,
           contentType,
           output,
+          entityKey,
         });
       } else if (handler.integrationType === 'problem-details') {
         const output = await handler.handler({
@@ -581,7 +628,7 @@ export class Store {
           store: this,
         });
 
-        this.#primary.set(iri, {
+        this.#primary.set(entityKey, {
           type: 'entity-failure',
           iri,
           loading: false,
@@ -604,7 +651,7 @@ export class Store {
           this.#integrations.set(contentType, integrations);
         }
 
-        integrations.set(iri, new HTMLFragmentsIntegration(handler, {
+        integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
           iri,
           contentType,
           output,
@@ -631,7 +678,12 @@ export class Store {
       const method = args.method || 'get';
       const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
       const dispatchURL = url.toString();
-      const loadingKey = this.#getLoadingKey(dispatchURL, method, args.accept);
+      const [entityKey, loadingKey] = this.#getKeys(url, {
+        method,
+        accept,
+      });
+
+      console.log('LOADING?', this.#loading.has(loadingKey));
 
       if (this.#loading.has(loadingKey)) {
         return;
@@ -682,16 +734,16 @@ export class Store {
           this.#httpStatus = res.status;
         }
 
-        if (this.#acceptMap.has(dispatchURL)) {
+        if (this.#acceptMap.has(entityKey)) {
           this.#acceptMap
-            .get(dispatchURL)?.set(accept, res.headers.get('content-type') as string);
+            .get(entityKey)?.set(accept, res.headers.get('content-type') as string);
         } else {
-          this.#acceptMap.set(dispatchURL, new Map([[accept, res.headers.get('content-type') as string]]));
+          this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type') as string]]));
         }
 
         this.#loading.delete(loadingKey);
         
-        await this.handleResponse(res, dispatchURL);
+        await this.handleResponse(res, dispatchURL, entityKey);
 
         mithrilRedraw();
 
@@ -773,9 +825,11 @@ export class Store {
     }
 
     public async fetch(iri: string | URL, args: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
+      console.log('FETCH');
+      const [entityKey] = this.#getKeys(iri, args);
       await this.#callFetcher(iri.toString(), args);
 
-      return this.#primary.get(iri.toString()) as SuccessEntityState | FailureEntityState;
+      return this.#primary.get(entityKey) as SuccessEntityState | FailureEntityState;
     }
 
     /**
@@ -790,9 +844,10 @@ export class Store {
      * @param {string} [args.body]        The body of the request.
      */
     public async submit(iri: string, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState> {
+      console.log('SUBMIT');
       await this.#callFetcher(iri, args);
 
-      return this.entity(iri, args?.accept) as SuccessEntityState | FailureEntityState;
+      return this.entity(iri, args) as SuccessEntityState | FailureEntityState;
     }
 
     /**

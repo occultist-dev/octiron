@@ -603,7 +603,7 @@ function selectEntity({
   const key = normalizedURL;
   pointer = makePointer(pointer, normalizedURL);
 
-  const cache: EntityState | null = store.entity(normalizedURL, accept)
+  const cache: EntityState | null = store.entity(normalizedURL, { accept })
 
   details.dependencies.push(normalizedURL);
 

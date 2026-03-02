@@ -65,16 +65,33 @@ export declare class Store {
      * The root IRI this store is configured to work with.
      */
     get rootIRI(): string;
+    isLoading(iri: string, args?: {
+        method?: string;
+        accept?: string;
+    }): boolean;
     /**
      * Retrieves an entity state object relating to an IRI.
+     *
+     * @param iri The IRI of the entity.
+     * @param args.method The method used for the request.
+     * @param args.accept Accept headers used for the request.
      */
-    entity(iri: string, accept?: string): EntityState | null;
+    entity(iri: string | URL, args?: {
+        method?: string;
+        accept?: string;
+    }): EntityState | null;
+    /**
+     * Retrieves the integration class used for a content type.
+     */
     integration(contentType: string): IntegrationState;
     /**
      * Retrieves a text representation of a value in the store
-     * if it is supported by the int4egration.
+     * if it is supported by the integration.
      */
-    text(iri: string, accept?: string): string | undefined;
+    text(iri: string, args?: {
+        method?: string;
+        accept?: string;
+    }): string | undefined;
     get vocab(): string | undefined;
     get aliases(): Aliases;
     get context(): Context;
@@ -92,8 +109,7 @@ export declare class Store {
      * Generates a unique key for server rendering only.
      */
     key(): string;
-    isLoading(iri: string): boolean;
-    handleResponse(res: Response, iri: string): Promise<void>;
+    handleResponse(res: Response, iri: string, entityKey: string): Promise<void>;
     subscribe({ key, selector, fragment, accept, value, listener, mainEntity, }: {
         key: symbol;
         selector: string;

@@ -297,7 +297,10 @@ export function actionFactory<
   }
 
   if (self.url != null) {
-    submitResult = refs.parentArgs.store.entity(self.url.toString(), args.accept);
+    submitResult = refs.parentArgs.store.entity(self.url, {
+      method: self.method,
+      accept: args.accept,
+    });
   }
 
   if (
