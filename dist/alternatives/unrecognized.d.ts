@@ -2,10 +2,12 @@ import type { Children } from "mithril";
 import type { ErrorView, IntegrationState } from "../types/store.ts";
 export type UnrecognizedStateInfo = {
     iri: string;
+    method: string;
     contentType: string;
 };
 export type UnrecognizedIntegrationArgs = {
     iri: string;
+    method: string;
     contentType: string;
 };
 /**
@@ -19,7 +21,8 @@ export declare class UnrecognizedIntegration implements IntegrationState {
     constructor(args: UnrecognizedIntegrationArgs);
     error(view: Children | ErrorView): Children;
     get iri(): string;
+    get method(): string;
     get contentType(): string;
     getStateInfo(): UnrecognizedStateInfo;
-    static fromInitialState({ iri, contentType, }: UnrecognizedStateInfo): UnrecognizedIntegration;
+    static fromInitialState({ iri, method, contentType, }: UnrecognizedStateInfo): UnrecognizedIntegration;
 }

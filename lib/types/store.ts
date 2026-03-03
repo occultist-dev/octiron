@@ -856,6 +856,7 @@ export type ProblemDetails = {
 export interface IntegrationState {
   integrationType: IntegrationType;
   iri: string;
+  method: string;
   contentType: string;
   getStateInfo(): IntegrationStateInfo;
   toInitialState?(): string;

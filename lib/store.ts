@@ -40,7 +40,13 @@ type FetchArgs = {
   mainEntity?: boolean;
 };
 
-function getJSONLdValues(vocab?: string, aliases?: Record<string, string>): [Map<string, string>, Context] {
+
+function makeEntityKey(iri: string | URL, method: string) {
+  const url = new URL(iri).toString();
+  return `${method.toLowerCase()}|${url}`;
+}
+
+function getJSONLDValues(vocab?: string, aliases?: Record<string, string>): [Map<string, string>, Context] {
   const aliasMap: Map<string, string> = new Map<string, string>();
   const context: Context = {};
 
@@ -181,7 +187,7 @@ export class Store {
       this.#responseHook = args.responseHook;
 
       [this.#headers, this.#origins] = getInternalHeaderValues(args.headers, args.origins);
-      [this.#aliases,this.#context] = getJSONLdValues(args.vocab, args.aliases);
+      [this.#aliases,this.#context] = getJSONLDValues(args.vocab, args.aliases);
 
       if (args.handlers != null) {
         for (let i = 0, l = args.handlers.length; i < l; i++) {
@@ -253,7 +259,7 @@ export class Store {
     public entity(iri: string | URL, args?: {
       method?: string;
       accept?: string;
-    }): EntityState | null {
+    }): EntityState {
       const normalizedURL = new URL(iri).toString();
       const [entityKey, loadingKey] = this.#getKeys(iri, args);
       const loading = this.#loading.has(loadingKey);
@@ -268,31 +274,23 @@ export class Store {
       }
 
       if (args?.accept == null) {
-        return this.#primary.get(entityKey) ?? null;
+        return this.#primary.get(entityKey);
       }
 
       const contentType = this.#acceptMap.get(entityKey)?.get(args.accept);
 
       if (contentType == null) {
-        console.log('IRI', iri);
-        console.log('METHOD', args?.method);
-        console.log('ACCEPTS', args?.accept);
-        console.log('CONTENT TYPE', contentType);
-        console.log(new Error().stack);
-        return null;
+        return;
       } else if (this.#primaryContentTypes.has(contentType)) {
-        return this.#primary.get(entityKey) ?? null;
+        return this.#primary.get(entityKey);
       }
 
       const integration = this.#integrations.get(contentType)?.get(entityKey);
 
       if (integration == null) {
-        console.log(new Error().stack);
-        console.log('CONTENT TYPE', contentType);
-        return null;
+        return;
       }
 
-      console.log('ALT');
       return {
         type: 'alternative-success',
         iri: normalizedURL,
@@ -321,7 +319,6 @@ export class Store {
       method?: string;
       accept?: string;
     }): string | undefined {
-      console.log('TEXT', args);
       const [key, fragment] = iri.split('#');
       const entity = this.entity(key, args);
 
@@ -528,7 +525,6 @@ export class Store {
       const iris = [iri];
 
       if (res.ok) {
-        console.log('SETTING PRIMARY', entityKey);
         this.#primary.set(entityKey, {
           type: 'entity-success',
           iri,
@@ -541,7 +537,6 @@ export class Store {
       } else {
         const reason = new HTTPFailure(res.status, res);
 
-        console.log('SETTING PRIMARY', entityKey);
         this.#primary.set(entityKey, {
           type: 'entity-failure',
           iri,
@@ -584,6 +579,7 @@ export class Store {
     async handleResponse(
       res: Response,
       iri: string,
+      method: string,
       entityKey: string,
     ) {
       const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
@@ -597,6 +593,7 @@ export class Store {
       if (handler == null) {
         const integration = new UnrecognizedIntegration({
           iri,
+          method,
           contentType,
         });
 
@@ -643,6 +640,7 @@ export class Store {
           res,
           store: this,
         });
+
         let integrations = this.#integrations.get(contentType);
 
         if (integrations == null) {
@@ -653,13 +651,14 @@ export class Store {
 
         integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
           iri,
+          method,
           contentType,
           output,
         }));
       }
 
       if (handler?.integrationType !== 'jsonld') {
-        this.#publish(iri, contentType);
+        this.#publish(iri, contentType, entityKey);
       }
     }
 
@@ -682,8 +681,6 @@ export class Store {
         method,
         accept,
       });
-
-      console.log('LOADING?', this.#loading.has(loadingKey));
 
       if (this.#loading.has(loadingKey)) {
         return;
@@ -743,7 +740,7 @@ export class Store {
 
         this.#loading.delete(loadingKey);
         
-        await this.handleResponse(res, dispatchURL, entityKey);
+        await this.handleResponse(res, dispatchURL, method, entityKey);
 
         mithrilRedraw();
 
@@ -825,7 +822,6 @@ export class Store {
     }
 
     public async fetch(iri: string | URL, args: FetchArgs = {}): Promise<SuccessEntityState | FailureEntityState> {
-      console.log('FETCH');
       const [entityKey] = this.#getKeys(iri, args);
       await this.#callFetcher(iri.toString(), args);
 
@@ -844,7 +840,6 @@ export class Store {
      * @param {string} [args.body]        The body of the request.
      */
     public async submit(iri: string, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState> {
-      console.log('SUBMIT');
       await this.#callFetcher(iri, args);
 
       return this.entity(iri, args) as SuccessEntityState | FailureEntityState;
@@ -935,7 +930,8 @@ export class Store {
               alternatives.set(state.contentType, integrations);
             }
 
-            integrations.set(state.iri, state);
+            const entityKey = makeEntityKey(state.iri, state.method);
+            integrations.set(entityKey, state);
           }
         }
 

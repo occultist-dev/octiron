@@ -164,6 +164,7 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
 
 export type HTMLFragmentsIntegrationArgs = {
   iri: string;
+  method: string;
   contentType: string;
   output: HTMLFragmentsHandlerResult<true>;
 };
@@ -176,8 +177,9 @@ export type FragmentState = {
 };
 
 type HTMLFragmentsStateInfo = {
-  iri: string,
-  contentType: string,
+  iri: string;
+  method: string;
+  contentType: string;
   rendered?: boolean;
   selector?: string;
   fragments: FragmentState[];
@@ -192,23 +194,30 @@ export class HTMLFragmentsIntegration implements IntegrationState {
   #rootRendered: boolean = false;
   #rendered: Set<string> = new Set();
   #iri: string;
+  #method: string;
   #contentType: string;
   #handler: HTMLFragmentsHandler;
   #output: HTMLFragmentsHandlerResult<true>;
 
   constructor(handler: HTMLFragmentsHandler, {
     iri,
+    method,
     contentType,
     output,
   }: HTMLFragmentsIntegrationArgs) {
     this.#handler = handler;
     this.#iri = iri;
+    this.#method = method;
     this.#contentType = contentType;
     this.#output = output;
   }
 
   get iri(): string {
     return this.#iri;
+  }
+
+  get method(): string {
+    return this.#method;
   }
 
   get contentType(): string {
@@ -335,6 +344,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
 
     return {
       iri: this.#iri,
+      method: this.#method,
       contentType: this.#contentType,
       rendered: this.#rootRendered,
       selector: this.#output.selector,
@@ -349,7 +359,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     const entries = Object.values(this.#output.fragments);
 
     if (this.#output.root != null && !this.#rootRendered) {
-      html += `<template id="htmlfrag:${this.#iri}|${this.#contentType}">${this.#output.root}</template>\n`;
+      html += `<template id="htmlfrag:${this.#iri}|${this.#method}|${this.#contentType}">${this.#output.root}</template>\n`;
     }
 
     for (let i = 0; i < entries.length; i++) {
@@ -367,6 +377,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
 
   static fromInitialState({
     iri,
+    method,
     contentType,
     rendered,
     selector,
@@ -404,7 +415,6 @@ export class HTMLFragmentsIntegration implements IntegrationState {
 
     for (let i = 0; i < fragments.length; i++) {
       const fragment = fragments[i];
-      const dom = document.createDocumentFragment();
 
       if (fragment.rendered) {
         let element: Element | undefined;
@@ -470,6 +480,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     return new HTMLFragmentsIntegration(handler, {
       contentType,
       iri,
+      method,
       output,
     });
   }

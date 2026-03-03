@@ -79,7 +79,7 @@ export declare class Store {
     entity(iri: string | URL, args?: {
         method?: string;
         accept?: string;
-    }): EntityState | null;
+    }): EntityState;
     /**
      * Retrieves the integration class used for a content type.
      */
@@ -109,7 +109,7 @@ export declare class Store {
      * Generates a unique key for server rendering only.
      */
     key(): string;
-    handleResponse(res: Response, iri: string, entityKey: string): Promise<void>;
+    handleResponse(res: Response, iri: string, method: string, entityKey: string): Promise<void>;
     subscribe({ key, selector, fragment, accept, value, listener, mainEntity, }: {
         key: symbol;
         selector: string;

@@ -2512,17 +2512,22 @@ class HTMLFragmentsIntegration {
     #rootRendered = false;
     #rendered = new Set();
     #iri;
+    #method;
     #contentType;
     #handler;
     #output;
-    constructor(handler, { iri, contentType, output, }) {
+    constructor(handler, { iri, method, contentType, output, }) {
         this.#handler = handler;
         this.#iri = iri;
+        this.#method = method;
         this.#contentType = contentType;
         this.#output = output;
     }
     get iri() {
         return this.#iri;
+    }
+    get method() {
+        return this.#method;
     }
     get contentType() {
         return this.#contentType;
@@ -2626,6 +2631,7 @@ class HTMLFragmentsIntegration {
         }
         return {
             iri: this.#iri,
+            method: this.#method,
             contentType: this.#contentType,
             rendered: this.#rootRendered,
             selector: this.#output.selector,
@@ -2638,7 +2644,7 @@ class HTMLFragmentsIntegration {
         let html = '';
         const entries = Object.values(this.#output.fragments);
         if (this.#output.root != null && !this.#rootRendered) {
-            html += `<template id="htmlfrag:${this.#iri}|${this.#contentType}">${this.#output.root}</template>\n`;
+            html += `<template id="htmlfrag:${this.#iri}|${this.#method}|${this.#contentType}">${this.#output.root}</template>\n`;
         }
         for (let i = 0; i < entries.length; i++) {
             if (entries[i].type === 'text') {
@@ -2650,7 +2656,7 @@ class HTMLFragmentsIntegration {
         }
         return html;
     }
-    static fromInitialState({ iri, contentType, rendered, selector, texts, fragments, templates, }, handler) {
+    static fromInitialState({ iri, method, contentType, rendered, selector, texts, fragments, templates, }, handler) {
         const output = Object.create(null);
         output.fragments = Object.create(null);
         output.templates = templates;
@@ -2675,7 +2681,6 @@ class HTMLFragmentsIntegration {
         }
         for (let i = 0; i < fragments.length; i++) {
             const fragment = fragments[i];
-            document.createDocumentFragment();
             if (fragment.rendered) {
                 let element;
                 switch (fragment.type) {
@@ -2732,6 +2737,7 @@ class HTMLFragmentsIntegration {
         return new HTMLFragmentsIntegration(handler, {
             contentType,
             iri,
+            method,
             output,
         });
     }
@@ -2745,9 +2751,11 @@ class UnrecognizedIntegration {
     static type = 'unrecognized';
     integrationType = 'unrecognized';
     #iri;
+    #method;
     #contentType;
     constructor(args) {
         this.#iri = args.iri;
+        this.#method = args.method;
         this.#contentType = args.contentType;
     }
     error(view) {
@@ -2759,17 +2767,21 @@ class UnrecognizedIntegration {
     get iri() {
         return this.#iri;
     }
+    get method() {
+        return this.#method;
+    }
     get contentType() {
         return this.#contentType;
     }
     getStateInfo() {
         return {
             iri: this.#iri,
+            method: this.#method,
             contentType: this.#contentType,
         };
     }
-    static fromInitialState({ iri, contentType, }) {
-        return new UnrecognizedIntegration({ iri, contentType });
+    static fromInitialState({ iri, method, contentType, }) {
+        return new UnrecognizedIntegration({ iri, method, contentType });
     }
 }
 
@@ -2849,7 +2861,11 @@ const integrationClasses = {
     [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
     [UnrecognizedIntegration.type]: UnrecognizedIntegration,
 };
-function getJSONLdValues(vocab, aliases) {
+function makeEntityKey(iri, method) {
+    const url = new URL(iri).toString();
+    return `${method.toLowerCase()}|${url}`;
+}
+function getJSONLDValues(vocab, aliases) {
     const aliasMap = new Map();
     const context = {};
     if (vocab != null) {
@@ -2912,7 +2928,7 @@ class Store {
         this.#fetcher = args.fetcher;
         this.#responseHook = args.responseHook;
         [this.#headers, this.#origins] = getInternalHeaderValues(args.headers, args.origins);
-        [this.#aliases, this.#context] = getJSONLdValues(args.vocab, args.aliases);
+        [this.#aliases, this.#context] = getJSONLDValues(args.vocab, args.aliases);
         if (args.handlers != null) {
             for (let i = 0, l = args.handlers.length; i < l; i++) {
                 this.#handlers.set(args.handlers[i].contentType, args.handlers[i]);
@@ -2979,27 +2995,20 @@ class Store {
             };
         }
         if (args?.accept == null) {
-            return this.#primary.get(entityKey) ?? null;
+            return this.#primary.get(entityKey);
         }
         const contentType = this.#acceptMap.get(entityKey)?.get(args.accept);
         if (contentType == null) {
-            console.log('IRI', iri);
-            console.log('METHOD', args?.method);
-            console.log('ACCEPTS', args?.accept);
-            console.log('CONTENT TYPE', contentType);
-            console.log(new Error().stack);
-            return null;
+            return;
         }
         else if (this.#primaryContentTypes.has(contentType)) {
-            return this.#primary.get(entityKey) ?? null;
+            return this.#primary.get(entityKey);
         }
         const integration = this.#integrations.get(contentType)?.get(entityKey);
+        console.log('INTEGRATION', integration);
         if (integration == null) {
-            console.log(new Error().stack);
-            console.log('CONTENT TYPE', contentType);
-            return null;
+            return;
         }
-        console.log('ALT');
         return {
             type: 'alternative-success',
             iri: normalizedURL,
@@ -3022,7 +3031,6 @@ class Store {
      * if it is supported by the integration.
      */
     text(iri, args) {
-        console.log('TEXT', args);
         const [key, fragment] = iri.split('#');
         const entity = this.entity(key, args);
         if (entity == null) {
@@ -3176,7 +3184,6 @@ class Store {
     #handleJSONLD({ iri, res, contentType, output, entityKey, }) {
         const iris = [iri];
         if (res.ok) {
-            console.log('SETTING PRIMARY', entityKey);
             this.#primary.set(entityKey, {
                 type: 'entity-success',
                 iri,
@@ -3189,7 +3196,6 @@ class Store {
         }
         else {
             const reason = new HTTPFailure(res.status, res);
-            console.log('SETTING PRIMARY', entityKey);
             this.#primary.set(entityKey, {
                 type: 'entity-failure',
                 iri,
@@ -3223,7 +3229,7 @@ class Store {
             this.#publish(normalizedURL, contentType, entityKey);
         }
     }
-    async handleResponse(res, iri, entityKey) {
+    async handleResponse(res, iri, method, entityKey) {
         const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
         if (contentType == null) {
             throw new Error('Content type not specified in response');
@@ -3232,6 +3238,7 @@ class Store {
         if (handler == null) {
             const integration = new UnrecognizedIntegration({
                 iri,
+                method,
                 contentType,
             });
             let integrations = this.#integrations.get(contentType);
@@ -3282,12 +3289,13 @@ class Store {
             }
             integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
                 iri,
+                method,
                 contentType,
                 output,
             }));
         }
         if (handler?.integrationType !== 'jsonld') {
-            this.#publish(iri, contentType);
+            this.#publish(iri, contentType, entityKey);
         }
     }
     async #callFetcher(iri, args = {}) {
@@ -3301,7 +3309,6 @@ class Store {
             method,
             accept,
         });
-        console.log('LOADING?', this.#loading.has(loadingKey));
         if (this.#loading.has(loadingKey)) {
             return;
         }
@@ -3352,7 +3359,7 @@ class Store {
                 this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type')]]));
             }
             this.#loading.delete(loadingKey);
-            await this.handleResponse(res, dispatchURL, entityKey);
+            await this.handleResponse(res, dispatchURL, method, entityKey);
             mithrilRedraw();
             resolve(res);
         });
@@ -3406,7 +3413,6 @@ class Store {
         this.#listeners.get(key)?.cleanup();
     }
     async fetch(iri, args = {}) {
-        console.log('FETCH');
         const [entityKey] = this.#getKeys(iri, args);
         await this.#callFetcher(iri.toString(), args);
         return this.#primary.get(entityKey);
@@ -3423,7 +3429,6 @@ class Store {
      * @param {string} [args.body]        The body of the request.
      */
     async submit(iri, args) {
-        console.log('SUBMIT');
         await this.#callFetcher(iri, args);
         return this.entity(iri, args);
     }
@@ -3484,7 +3489,8 @@ class Store {
                         integrations = new Map();
                         alternatives.set(state.contentType, integrations);
                     }
-                    integrations.set(state.iri, state);
+                    const entityKey = makeEntityKey(state.iri, state.method);
+                    integrations.set(entityKey, state);
                 }
             }
             const store = new Store({

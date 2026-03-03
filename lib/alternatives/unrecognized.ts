@@ -4,11 +4,13 @@ import type {ErrorView, IntegrationState} from "../types/store.ts";
 
 export type UnrecognizedStateInfo = {
   iri: string;
+  method: string;
   contentType: string;
 };
 
 export type UnrecognizedIntegrationArgs = {
   iri: string;
+  method: string;
   contentType: string;
 };
 
@@ -21,10 +23,12 @@ export class UnrecognizedIntegration implements IntegrationState {
   readonly integrationType = 'unrecognized' as const
 
   #iri: string;
+  #method: string;
   #contentType: string;
   
   constructor(args: UnrecognizedIntegrationArgs) {
     this.#iri = args.iri;
+    this.#method = args.method;
     this.#contentType = args.contentType;
   }
 
@@ -40,6 +44,10 @@ export class UnrecognizedIntegration implements IntegrationState {
     return this.#iri;
   }
 
+  get method(): string {
+    return this.#method;
+  }
+
   get contentType(): string {
     return this.#contentType;
   }
@@ -47,15 +55,17 @@ export class UnrecognizedIntegration implements IntegrationState {
   public getStateInfo(): UnrecognizedStateInfo {
     return {
       iri: this.#iri,
+      method: this.#method,
       contentType: this.#contentType,
     };
   }
 
   static fromInitialState({
     iri,
+    method,
     contentType,
   }: UnrecognizedStateInfo) {
-    return new UnrecognizedIntegration({ iri, contentType });
+    return new UnrecognizedIntegration({ iri, method, contentType });
   }
 
 }

@@ -11,6 +11,7 @@ export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmen
 export declare const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType;
 export type HTMLFragmentsIntegrationArgs = {
     iri: string;
+    method: string;
     contentType: string;
     output: HTMLFragmentsHandlerResult<true>;
 };
@@ -22,6 +23,7 @@ export type FragmentState = {
 };
 type HTMLFragmentsStateInfo = {
     iri: string;
+    method: string;
     contentType: string;
     rendered?: boolean;
     selector?: string;
@@ -33,8 +35,9 @@ export declare class HTMLFragmentsIntegration implements IntegrationState {
     #private;
     static type: "html-fragments";
     readonly integrationType: "html-fragments";
-    constructor(handler: HTMLFragmentsHandler, { iri, contentType, output, }: HTMLFragmentsIntegrationArgs);
+    constructor(handler: HTMLFragmentsHandler, { iri, method, contentType, output, }: HTMLFragmentsIntegrationArgs);
     get iri(): string;
+    get method(): string;
     get contentType(): string;
     get output(): HTMLFragmentsHandlerResult<true>;
     getFragment(fragment?: string): string | Node | null;
@@ -53,6 +56,6 @@ export declare class HTMLFragmentsIntegration implements IntegrationState {
     render(o: Octiron, fragment?: string): m.Vnode<HTMLFragmentsIntegrationComponentAttrs, {}>;
     getStateInfo(): HTMLFragmentsStateInfo;
     toInitialState(): string;
-    static fromInitialState({ iri, contentType, rendered, selector, texts, fragments, templates, }: HTMLFragmentsStateInfo, handler: HTMLFragmentsHandler): HTMLFragmentsIntegration | null;
+    static fromInitialState({ iri, method, contentType, rendered, selector, texts, fragments, templates, }: HTMLFragmentsStateInfo, handler: HTMLFragmentsHandler): HTMLFragmentsIntegration | null;
 }
 export {};
