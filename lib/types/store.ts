@@ -619,9 +619,14 @@ export type LoadingEntityState = {
   readonly reason?: undefined;
 
   /**
-   * The IRI of the entity.
+   * The IRI of the entity less the fragment.
    */
   readonly iri: string;
+  
+  /**
+   * The IRI fragment value.
+   */
+  readonly fragment?: string;
 
   /**
    * The current value of the entity.
@@ -670,9 +675,14 @@ export type SuccessEntityState = {
   readonly reason?: undefined;
 
   /**
-   * The IRI of the entity.
+   * The IRI of the entity less the fragment.
    */
   readonly iri: string;
+
+  /**
+   * The IRI fragment value.
+   */
+  readonly fragment: string;
 
   /**
    * The current value of the entity.
@@ -722,9 +732,14 @@ export type SuccessAlternativeState = {
   readonly reason?: undefined;
 
   /**
-   * The IRI of the entity.
+   * The IRI of the entity less the fragment.
    */
   readonly iri: string;
+
+  /**
+   * The IRI fragment value.
+   */
+  readonly fragment?: string;
 
   /**
    * The current value of the entity.
@@ -772,9 +787,14 @@ export type FailureEntityState = {
   readonly ok: false;
 
   /**
-   * The IRI of the entity.
+   * The IRI of the entity less the fragment.
    */
   readonly iri: string;
+
+  /**
+   * The IRI fragment value.
+   */
+  readonly fragment?: string;
 
   /**
    * The current value of the entity.

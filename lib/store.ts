@@ -257,6 +257,7 @@ export class Store {
      * @param args.accept Accept headers used for the request.
      */
     public entity(iri: string | URL, args?: {
+      fragment?: string;
       method?: string;
       accept?: string;
     }): EntityState {
@@ -294,6 +295,7 @@ export class Store {
       return {
         type: 'alternative-success',
         iri: normalizedURL,
+        fragment: args?.fragment,
         loading: false,
         ok: true,
         contentType,
@@ -841,9 +843,41 @@ export class Store {
      * @param {string} [args.body]        The body of the request.
      */
     public async submit(iri: string, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState> {
-      await this.#callFetcher(iri, args);
+      const url = new URL(iri);
+      const fragment = url.hash === '' ? undefined : url.hash.substring(1, url.hash.length);
 
-      return this.entity(iri, args) as SuccessEntityState | FailureEntityState;
+      url.hash = '';
+
+      await this.#callFetcher(url.toString(), args);
+
+      const entity = this.entity(url.toString(), {
+        fragment,
+        method: args.method,
+        accept: args.accept,
+      }) as SuccessEntityState | FailureEntityState;
+
+      if (entity.loading) {
+        const key = Symbol('submit');
+        const { promise, resolve } = Promise.withResolvers<SuccessEntityState | FailureEntityState>();
+
+        this.subscribe({
+          key,
+          selector: url.toString(),
+          // fragment,
+          accept: args.accept,
+          listener: () => {
+            resolve(this.entity(url.toString(), {
+              fragment,
+              method: args.method,
+              accept: args.accept,
+            }) as SuccessEntityState | FailureEntityState)
+          }
+        });
+
+        return promise;
+      }
+
+      return entity;
     }
 
     /**

@@ -50,7 +50,7 @@ function applySubmission(
         pointer: '/',
         type: 'alternative',
         iri: submitResult.iri,
-        fragment: args.fragment,
+        fragment: submitResult.fragment,
         accept: args.accept,
         ok: submitResult.ok,
         status: submitResult.status,

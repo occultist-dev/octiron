@@ -1,6 +1,6 @@
 import m from 'mithril';
 import {selectionFactory} from '../factories/selectionFactory.ts';
-import type {ActionEvents, ActionSelectionDetailsListener, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
+import type {ActionEvents, ActionSelectionDetailsListener, IntegrationState, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
 import type {InstanceHooks} from '../factories/octironFactory.ts';
 import {getSubmitDetails} from '../utils/getSubmitDetails.ts';
 
@@ -26,6 +26,8 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
   let type!: ActionState;
   let octiron: OctironSelection | undefined;
   let hooks: InstanceHooks | undefined;
+  let fragment: string | undefined;
+  let integration: IntegrationState;
   let args!: OctironSelectArgs;
   let parentArgs!: SelectionParentArgs;
 
@@ -48,14 +50,24 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     }
 
     render = true;
-    [octiron, hooks] = selectionFactory(
-      args,
-      parentArgs,
-      {
-        index: 0,
-        value: selectionDetails.result[0].value,
-      },
-    );
+
+    if (submitResult.type === 'alternative-success') {
+      octiron = null;
+      hooks = null;
+      fragment = selectionDetails.result[0].fragment;
+      integration = submitResult.integration;
+    } else {
+      fragment = null;
+      integration = null;
+      [octiron, hooks] = selectionFactory(
+        args,
+        parentArgs,
+        {
+          index: 0,
+          value: selectionDetails.result[0].value,
+        },
+      );
+    }
   };
 
   return {
@@ -80,7 +92,12 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
     view(vnode) {
       if (!render) return;
 
-      if (vnode.attrs.selector != null && octiron != null) {
+      if (integration != null) {
+        return integration.render(
+          vnode.attrs.parentArgs.parent,
+          fragment,
+        );
+      } else if (vnode.attrs.selector != null && octiron != null) {
         return octiron.select(
           vnode.attrs.selector,
           vnode.attrs.args,

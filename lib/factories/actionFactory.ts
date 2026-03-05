@@ -304,7 +304,7 @@ export function actionFactory<
   }
 
   if (args.submitOnInit) {
-    if (submitResult == null) {
+    if (submitResult == null || submitResult.type === 'entity-loading') {
       submit();
     } else if (submitResult != null) {
       events.onSubmitResult(submitResult);

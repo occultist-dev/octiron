@@ -669,6 +669,7 @@ function selectEntity({
       key,
       pointer,
       type: 'entity',
+      fragment,
       iri: cache.iri,
       ok: false,
       status: cache.status,
@@ -714,6 +715,8 @@ function selectEntity({
     return selectEntity({
       pointer,
       iri: value['@id'],
+      fragment,
+      accept,
       filter,
       selector,
       details,
