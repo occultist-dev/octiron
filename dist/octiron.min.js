@@ -221,7 +221,7 @@ function isIterable(value) {
     return false;
 }
 
-const isBrowserRender = typeof window !== 'undefined';
+let isBrowserRender = typeof window !== 'undefined';
 
 /**
  * @description
@@ -625,7 +625,7 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
         selectEntity({
             pointer: '',
             iri,
-            fragment: iriFragment ?? fragment,
+            fragment: fragment ?? iriFragment,
             accept,
             filter,
             selector: selector.length > 0 ? selector : undefined,
@@ -639,6 +639,8 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
     traverseSelector({
         key: '',
         pointer: '',
+        fragment,
+        accept,
         value,
         actionValue,
         selector,
@@ -687,7 +689,7 @@ function isTraversable(value) {
  * If a @id, @value jsonld object is provided further
  * recursion might be nessacary.
  */
-function resolveValue({ key, pointer, value, propType, filter, spec, actionValue, store, details, }) {
+function resolveValue({ key, pointer, accept, fragment, value, propType, filter, spec, actionValue, store, details, }) {
     if (value === undefined) {
         details.hasMissing = true;
         return;
@@ -748,6 +750,8 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
             resolveValue({
                 key: finalKey,
                 pointer: makePointer(pointer, index),
+                accept,
+                fragment,
                 value: item,
                 spec,
                 actionValue,
@@ -769,6 +773,8 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
         resolveValue({
             key,
             pointer,
+            accept,
+            fragment,
             value: value['@value'],
             propType,
             store,
@@ -781,6 +787,8 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
             pointer,
             iri: value['@id'],
             filter,
+            accept,
+            fragment,
             store,
             details,
         });
@@ -795,6 +803,7 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
             iri,
             ok: true,
             value,
+            contentType: undefined,
         });
         return;
     }
@@ -810,7 +819,7 @@ function resolveValue({ key, pointer, value, propType, filter, spec, actionValue
 /**
  * Selects a type from a json value, handling invalid situations.
  */
-function selectTypedValue({ key, pointer, propType, value, actionValue, filter, store, details, }) {
+function selectTypedValue({ key, pointer, accept, fragment, propType, value, actionValue, filter, store, details, }) {
     pointer = makePointer(pointer, propType);
     if (!isTraversable(value)) {
         return;
@@ -825,6 +834,8 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
             selectTypedValue({
                 key,
                 pointer: makePointer(pointer, index),
+                accept,
+                fragment,
                 propType,
                 value: item,
                 actionValue,
@@ -843,6 +854,8 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
             pointer,
             iri: value['@id'],
             selector: [{ subject: propType, filter }],
+            accept,
+            fragment,
             store,
             details,
         });
@@ -862,6 +875,8 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
     resolveValue({
         key,
         pointer,
+        accept,
+        fragment,
         value: value[propType],
         spec,
         actionValue: actionValue?.[propType],
@@ -874,7 +889,7 @@ function selectTypedValue({ key, pointer, propType, value, actionValue, filter, 
 /**
  * Recurses through the selection until there are no further selection items.
  */
-function traverseSelector({ key, pointer, selector, value, actionValue, store, details, defaultValue, }) {
+function traverseSelector({ key, pointer, selector, accept, fragment, value, actionValue, store, details, defaultValue, }) {
     if (selector.length === 0) {
         return;
     }
@@ -895,6 +910,8 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
                 key,
                 pointer: makePointer(pointer, index),
                 selector,
+                accept,
+                fragment,
                 value: item,
                 actionValue,
                 store,
@@ -912,6 +929,8 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
             key,
             pointer,
             selector,
+            accept,
+            fragment,
             value: value['@value'],
             actionValue,
             store,
@@ -923,6 +942,8 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
         selectEntity({
             pointer,
             selector,
+            accept,
+            fragment,
             iri: value['@id'],
             store,
             details,
@@ -951,6 +972,8 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
             pointer,
             value: value[propType],
             propType,
+            accept,
+            fragment,
             details,
             store,
             actionValue: actionValue?.[propType],
@@ -963,7 +986,9 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
         selectTypedValue({
             key,
             pointer,
-            propType: propType,
+            propType,
+            accept,
+            fragment,
             filter,
             value,
             actionValue,
@@ -982,6 +1007,8 @@ function traverseSelector({ key, pointer, selector, value, actionValue, store, d
     traverseSelector({
         key: updateKey(key, propType),
         pointer: makePointer(pointer, propType),
+        accept,
+        fragment,
         selector: rest,
         value: value[propType],
         actionValue: traversedActionValue,
@@ -1089,6 +1116,8 @@ function selectEntity({ pointer, iri, fragment, accept, filter, selector, store,
     traverseSelector({
         key,
         pointer,
+        accept,
+        fragment,
         value,
         selector,
         store,
@@ -2018,7 +2047,7 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
     instances.clear();
     for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
         selectionResult = selectionDetails.result[i];
-        if (prev.has(selectionResult.key)) {
+        if (prev.has(selectionResult.key) && selectionResult.type !== 'alternative') {
             const instance = prev.get(selectionResult.key);
             instance.refs.rendererArgs.index = i;
             instance.refs.rendererArgs.value = selectionResult.value;
@@ -2028,7 +2057,7 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
             instance.hooks.rendererArgsChanged();
             instances.set(selectionResult.key, instance);
         }
-        else {
+        else if (selectionResult.type != 'alternative') {
             const rendererArgs = {
                 index: i,
                 value: selectionResult.value,
@@ -2045,6 +2074,11 @@ function createInstances(instances, args, parentArgs, selectionDetails) {
                 selectionResult,
                 octiron,
                 hooks,
+            });
+        }
+        else {
+            instances.set(selectionResult.key, {
+                selectionResult,
             });
         }
     }
@@ -2156,7 +2190,9 @@ const SelectionRenderer2 = () => {
             }
             for (let i = 0, l = l2.length; i < l; i++) {
                 child = [];
-                l2[i].octiron.position = i + 1;
+                if (l2[i].octiron !== undefined) {
+                    l2[i].octiron.position = i + 1;
+                }
                 if (i !== 0)
                     child.push(m.fragment({ key: '@sep' }, [vnode.attrs.args.sep]));
                 if (l2[i].selectionResult.type === 'value') {
@@ -2168,8 +2204,14 @@ const SelectionRenderer2 = () => {
                 else if (!l2[i].selectionResult.ok) {
                     child.push(m.fragment({ key: '@value' }, [vnode.attrs.args.fallback]));
                 }
-                else {
+                else if (l2[i].selectionResult.type === 'entity') {
                     child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
+                }
+                else {
+                    console.log('RENDERING INTEGRATION');
+                    child.push(m.fragment({ key: '@value' }, [
+                        l2[i].selectionResult.integration.render(vnode.attrs.parentArgs.parent, vnode.attrs.args.fragment),
+                    ]));
                 }
                 children.push(m.fragment({ key: l2[i].selectionResult.key }, child));
             }
@@ -2385,7 +2427,7 @@ function fragmentToHTML(fragment) {
     return html;
 }
 const HTMLFragmentsIntegrationComponent = () => {
-    let fragment;
+    let fragment = null;
     let html;
     let prevIRI;
     let prevFragment;
@@ -2492,7 +2534,9 @@ const HTMLFragmentsIntegrationComponent = () => {
             prevIRI = attrs.integration.iri;
             prevFragment = attrs.fragment;
         },
-        view() {
+        view(vnode) {
+            console.log('LONGFORM', vnode.attrs.fragment);
+            console.log(html);
             if (isBrowserRender && Array.isArray(html)) {
                 return m.dom(html);
             }
@@ -2613,7 +2657,7 @@ class HTMLFragmentsIntegration {
         const texts = {};
         const fragments = [];
         const entries = Object.values(this.#output.fragments);
-        for (let i = 0; i < entries.length; i++) {
+        for (let i = 0, l = entries.length; i < l; i++) {
             if (entries[i].type === 'text') {
                 texts[entries[i].id] = entries[i].html;
             }

@@ -1,4 +1,4 @@
-import { isBrowserRender } from "../consts.ts";
+import {isBrowserRender} from "../consts.ts";
 import m from 'mithril';
 import type { HTMLCleanupFn, HTMLHandler, IntegrationState } from "../types/store.ts";
 import type { Octiron } from "../types/octiron.ts";

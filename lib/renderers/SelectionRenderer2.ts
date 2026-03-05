@@ -20,10 +20,10 @@ type SelectionRefs = {
 };
 
 type Instance = {
-  refs: SelectionRefs,
   selectionResult: ReadonlySelectionResult;
-  octiron: OctironSelection;
-  hooks: InstanceHooks;
+  refs?: SelectionRefs,
+  octiron?: OctironSelection;
+  hooks?: InstanceHooks;
 };
 
 
@@ -45,8 +45,8 @@ function createInstances(
 
   for (let i = 0, l = selectionDetails.result.length; i < l; i++) {
     selectionResult = selectionDetails.result[i];
-
-    if (prev.has(selectionResult.key)) {
+    
+    if (prev.has(selectionResult.key) && selectionResult.type !== 'alternative') {
       const instance = prev.get(selectionResult.key);
 
       instance.refs.rendererArgs.index = i;
@@ -58,7 +58,7 @@ function createInstances(
       instance.hooks.rendererArgsChanged();
       
       instances.set(selectionResult.key, instance);
-    } else {
+    } else if (selectionResult.type != 'alternative') {
       const rendererArgs = {
         index: i,
         value: selectionResult.value,
@@ -82,6 +82,10 @@ function createInstances(
         selectionResult,
         octiron,
         hooks,
+      });
+    } else {
+      instances.set(selectionResult.key, {
+        selectionResult,
       });
     }
   }
@@ -242,18 +246,28 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
       for (let i = 0, l = l2.length; i < l; i++) {
         child = [];
 
-        (l2[i].octiron as Mutable<OctironSelection>).position = i + 1;
+        if (l2[i].octiron !== undefined) {
+          (l2[i].octiron as Mutable<OctironSelection>).position = i + 1;
+        }
 
         if (i !== 0) child.push(m.fragment({ key: '@sep' }, [vnode.attrs.args.sep]));
 
         if (l2[i].selectionResult.type === 'value') {
-          child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]))
+          child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
         } else if (!l2[i].selectionResult.ok && typeof vnode.attrs.args.fallback === 'function') {
           throw new Error(`Fallback functions are not yet supported`);
         } else if (!l2[i].selectionResult.ok) {
           child.push(m.fragment({ key: '@value' }, [vnode.attrs.args.fallback as m.Children]));
-        } else {
+        } else if (l2[i].selectionResult.type === 'entity') {
           child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
+        } else {
+          console.log('RENDERING INTEGRATION');
+          child.push(m.fragment({ key: '@value' }, [
+            l2[i].selectionResult.integration.render(
+              vnode.attrs.parentArgs.parent,
+              vnode.attrs.args.fragment,
+            ),
+          ]));
         }
 
         children.push(m.fragment({ key: l2[i].selectionResult.key }, child));

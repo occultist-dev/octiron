@@ -8,6 +8,7 @@ import {makeJSONLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
 import {longformHandler, octiron} from '../../lib/octiron.ts';
 import {type StoreArgs} from '../../lib/store.ts';
 import {format} from 'prettier';
+import { setIsBrowserRender } from '../../lib/consts.ts';
 
 
 class Scheduler {
@@ -31,6 +32,8 @@ class Scheduler {
 
 
 export function domTest() {
+  // setIsBrowserRender(true);
+
   const rootIRI = 'http://example.com';
   const vocab = 'http://schema.example.com/';
   const dom = new JSDOM(`
@@ -42,8 +45,10 @@ export function domTest() {
   });
   const window = dom.window;
   const document = dom.window.document;
+
   globalThis.window = window;
   globalThis.document = dom.window.document;
+  
   const registry = new Registry({
     rootIRI: 'http://example.com',
   });

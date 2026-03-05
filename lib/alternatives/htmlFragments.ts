@@ -24,7 +24,7 @@ export type HTMLFragmentsIntegrationComponentAttrs = {
 export type HTMLFragmentsIntegrationComponentType = m.ComponentTypes<HTMLFragmentsIntegrationComponentAttrs>;
 
 export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponentType = () => {
-  let fragment: string | undefined;
+  let fragment: string | undefined | null = null;
   let html: string | Element[] | undefined;
   let prevIRI: string | undefined;
   let prevFragment: string | undefined;
@@ -150,7 +150,9 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
       prevIRI = attrs.integration.iri;
       prevFragment = attrs.fragment;
     },
-    view() {
+    view(vnode: m.Vnode<HTMLFragmentsIntegrationComponentAttrs>) {
+      console.log('LONGFORM', vnode.attrs.fragment);
+      console.log(html);
       if (isBrowserRender && Array.isArray(html)) {
         return m.dom(html);
       } else if (typeof html === 'string') {
@@ -329,7 +331,7 @@ export class HTMLFragmentsIntegration implements IntegrationState {
     const fragments: FragmentState[] = [];
     const entries = Object.values(this.#output.fragments);
 
-    for (let i = 0; i < entries.length; i++) {
+    for (let i = 0, l = entries.length; i < l; i++) {
       if (entries[i].type === 'text') {
         texts[entries[i].id] = entries[i].html as string;
       } else {
