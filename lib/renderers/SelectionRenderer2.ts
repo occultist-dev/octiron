@@ -261,7 +261,6 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
         } else if (l2[i].selectionResult.type === 'entity') {
           child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
         } else {
-          console.log('RENDERING INTEGRATION');
           child.push(m.fragment({ key: '@value' }, [
             l2[i].selectionResult.integration.render(
               vnode.attrs.parentArgs.parent,

@@ -151,8 +151,6 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
       prevFragment = attrs.fragment;
     },
     view(vnode: m.Vnode<HTMLFragmentsIntegrationComponentAttrs>) {
-      console.log('LONGFORM', vnode.attrs.fragment);
-      console.log(html);
       if (isBrowserRender && Array.isArray(html)) {
         return m.dom(html);
       } else if (typeof html === 'string') {
