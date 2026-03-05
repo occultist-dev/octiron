@@ -738,6 +738,7 @@ export class Store {
           this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type') as string]]));
         }
 
+        // Loading state must be reset before handling responses.
         this.#loading.delete(loadingKey);
         
         await this.handleResponse(res, dispatchURL, method, entityKey);

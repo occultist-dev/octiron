@@ -62,14 +62,14 @@ export function actionFactory<
       }
 
       submitResult = await refs.parentArgs.store.submit(url, {
-        mainEntity: args.mainEntity,
         method,
+        mainEntity: args.mainEntity,
+        accept: args.accept,
         contentType: contentType ?? 'application/ld+json',
         body,
-        accept: args.accept,
       });
-      
-      events.onSubmitResult(submitResult);
+
+      if (submitResult != null) events.onSubmitResult(submitResult);
     } catch (err) {
       console.error(err);
       
@@ -299,22 +299,16 @@ export function actionFactory<
   if (self.url != null) {
     submitResult = refs.parentArgs.store.entity(self.url, {
       method: self.method,
-      accept: args.accept,
+      accept: refs.factoryArgs.accept,
     });
   }
 
-  if (
-    isBrowserRender && args.submitOnInit
-  ) {
+  if (args.submitOnInit) {
     if (submitResult == null) {
       submit();
-    } else {
+    } else if (submitResult != null) {
       events.onSubmitResult(submitResult);
     }
-  } else if (
-    !isBrowserRender &&
-    args.submitOnInit) {
-    submit();
   }
 
   Object.seal(self);

@@ -137,7 +137,7 @@ export const HTMLFragmentsIntegrationComponent: HTMLFragmentsIntegrationComponen
       prevIRI = attrs.integration.iri;
       prevFragment = attrs.fragment;
     },
-    onupdate({ attrs }) {
+    onbeforeupdate({ attrs }) {
       if (prevIRI !== attrs.integration.iri ||
           prevFragment !== attrs.fragment) {
         if (isBrowserRender) {

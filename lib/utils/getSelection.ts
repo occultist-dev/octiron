@@ -78,7 +78,7 @@ export function getSelection<T extends SelectionResult>({
     selectEntity({
       pointer: '',
       iri,
-      fragment: iriFragment ?? fragment,
+      fragment: fragment ?? iriFragment,
       accept,
       filter,
       selector: selector.length > 0 ? selector : undefined,
@@ -96,6 +96,8 @@ export function getSelection<T extends SelectionResult>({
   traverseSelector({
     key: '',
     pointer: '',
+    fragment,
+    accept,
     value,
     actionValue,
     selector,
@@ -165,6 +167,8 @@ function isTraversable(value: JSONValue): value is JSONObject | JSONArray {
 function resolveValue({
   key,
   pointer,
+  accept,
+  fragment,
   value,
   propType,
   filter,
@@ -175,6 +179,8 @@ function resolveValue({
 }: {
   key?: string;
   pointer: string;
+  fragment: string;
+  accept: string;
   value: JSONValue;
   spec?: JSONObject;
   actionValue?: JSONValue;
@@ -253,6 +259,8 @@ function resolveValue({
       resolveValue({
         key: finalKey,
         pointer: makePointer(pointer, index),
+        accept,
+        fragment,
         value: item,
         spec,
         actionValue,
@@ -277,6 +285,8 @@ function resolveValue({
     resolveValue({
       key,
       pointer,
+      accept,
+      fragment,
       value: value['@value'],
       propType,
       store,
@@ -289,6 +299,8 @@ function resolveValue({
       pointer,
       iri: value['@id'],
       filter,
+      accept,
+      fragment,
       store,
       details,
     });
@@ -306,6 +318,7 @@ function resolveValue({
       iri,
       ok: true,
       value,
+      contentType: undefined,
     });
 
     return;
@@ -327,6 +340,8 @@ function resolveValue({
 function selectTypedValue({
   key,
   pointer,
+  accept,
+  fragment,
   propType,
   value,
   actionValue,
@@ -337,6 +352,8 @@ function selectTypedValue({
   key?: string;
   pointer: string;
   propType: string;
+  fragment: string;
+  accept: string;
   value: JSONValue;
   actionValue?: JSONObject;
   filter?: string;
@@ -362,6 +379,8 @@ function selectTypedValue({
       selectTypedValue({
         key,
         pointer: makePointer(pointer, index),
+        accept,
+        fragment,
         propType,
         value: item,
         actionValue,
@@ -383,6 +402,8 @@ function selectTypedValue({
       pointer,
       iri: value['@id'],
       selector: [{ subject: propType, filter }],
+      accept,
+      fragment,
       store,
       details,
     });
@@ -404,6 +425,8 @@ function selectTypedValue({
   resolveValue({
     key,
     pointer,
+    accept,
+    fragment,
     value: value[propType],
     spec,
     actionValue: actionValue?.[propType],
@@ -421,6 +444,8 @@ function traverseSelector({
   key,
   pointer,
   selector,
+  accept,
+  fragment,
   value,
   actionValue,
   store,
@@ -430,6 +455,8 @@ function traverseSelector({
   key?: string;
   pointer: string;
   selector: SelectorObject[];
+  fragment: string;
+  accept: string;
   value: JSONValue;
   actionValue?: JSONObject;
   store: Store;
@@ -459,6 +486,8 @@ function traverseSelector({
         key,
         pointer: makePointer(pointer, index),
         selector,
+        accept,
+        fragment,
         value: item,
         actionValue,
         store,
@@ -477,6 +506,8 @@ function traverseSelector({
       key,
       pointer,
       selector,
+      accept,
+      fragment,
       value: value['@value'],
       actionValue,
       store,
@@ -489,6 +520,8 @@ function traverseSelector({
     selectEntity({
       pointer,
       selector,
+      accept,
+      fragment,
       iri: value['@id'],
       store,
       details,
@@ -526,6 +559,8 @@ function traverseSelector({
       pointer,
       value: value[propType],
       propType,
+      accept,
+      fragment,
       details,
       store,
       actionValue: actionValue?.[propType],
@@ -538,7 +573,9 @@ function traverseSelector({
     selectTypedValue({
       key,
       pointer,
-      propType: propType,
+      propType,
+      accept,
+      fragment,
       filter,
       value,
       actionValue,
@@ -562,6 +599,8 @@ function traverseSelector({
   traverseSelector({
     key: updateKey(key, propType),
     pointer: makePointer(pointer, propType),
+    accept,
+    fragment,
     selector: rest,
     value: value[propType],
     actionValue: traversedActionValue,
@@ -587,8 +626,8 @@ function selectEntity({
 }: {
   pointer: string;
   iri: string;
-  fragment?: string;
-  accept?: string;
+  fragment: string;
+  accept: string;
   filter?: string;
   selector?: SelectorObject[];
   store: Store;
@@ -705,6 +744,8 @@ function selectEntity({
   traverseSelector({
     key,
     pointer,
+    accept,
+    fragment,
     value,
     selector,
     store,

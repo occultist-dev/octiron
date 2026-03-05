@@ -2,6 +2,7 @@ import m from 'mithril';
 import {selectionFactory} from '../factories/selectionFactory.ts';
 import type {ActionEvents, ActionSelectionDetailsListener, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
 import type {InstanceHooks} from '../factories/octironFactory.ts';
+import {getSubmitDetails} from '../utils/getSubmitDetails.ts';
 
 
 export type ActionState =

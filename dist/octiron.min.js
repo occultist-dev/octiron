@@ -1483,13 +1483,14 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
                 args.onSubmit(self);
             }
             submitResult = await refs.parentArgs.store.submit(url, {
-                mainEntity: args.mainEntity,
                 method,
+                mainEntity: args.mainEntity,
+                accept: args.accept,
                 contentType: contentType ?? 'application/ld+json',
                 body,
-                accept: args.accept,
             });
-            events.onSubmitResult(submitResult);
+            if (submitResult != null)
+                events.onSubmitResult(submitResult);
         }
         catch (err) {
             console.error(err);
@@ -1656,20 +1657,16 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     if (self.url != null) {
         submitResult = refs.parentArgs.store.entity(self.url, {
             method: self.method,
-            accept: args.accept,
+            accept: refs.factoryArgs.accept,
         });
     }
-    if (isBrowserRender && args.submitOnInit) {
+    if (args.submitOnInit) {
         if (submitResult == null) {
             submit();
         }
-        else {
+        else if (submitResult != null) {
             events.onSubmitResult(submitResult);
         }
-    }
-    else if (!isBrowserRender &&
-        args.submitOnInit) {
-        submit();
     }
     Object.seal(self);
     const wrappedHooks = {
@@ -2482,7 +2479,7 @@ const HTMLFragmentsIntegrationComponent = () => {
             prevIRI = attrs.integration.iri;
             prevFragment = attrs.fragment;
         },
-        onupdate({ attrs }) {
+        onbeforeupdate({ attrs }) {
             if (prevIRI !== attrs.integration.iri ||
                 prevFragment !== attrs.fragment) {
                 if (isBrowserRender) {
@@ -3005,7 +3002,6 @@ class Store {
             return this.#primary.get(entityKey);
         }
         const integration = this.#integrations.get(contentType)?.get(entityKey);
-        console.log('INTEGRATION', integration);
         if (integration == null) {
             return;
         }
@@ -3358,6 +3354,7 @@ class Store {
             else {
                 this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type')]]));
             }
+            // Loading state must be reset before handling responses.
             this.#loading.delete(loadingKey);
             await this.handleResponse(res, dispatchURL, method, entityKey);
             mithrilRedraw();
