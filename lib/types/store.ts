@@ -74,33 +74,33 @@ export type HTMLHandler = {
   onCreate?: HTMLOnCreate;
 };
 
-export type HTMLFragment<
-  IsInternal extends boolean = false,
-> = IsInternal extends false ? {
+export type HTMLFragmentSSR = {
   id: string;
   type: 'embed' | 'bare' | 'text' | 'range';
   html?: string;
   selector: string;
-} : {
-  id: string;
-  type: 'embed' | 'bare' | 'text' | 'range';
-  html?: string;
-  dom?: Element[];
-  selector: string;
-}
+};
 
-export type HTMLFragmentsHandlerResult<
-  IsInternal extends boolean = false,
-> = IsInternal extends false ? {
+export type HTMLFragment = {
+  id: string;
+  type: 'embed' | 'bare' | 'text' | 'range';
+  html?: string;
+  dom?: Element[];
+  selector: string;
+};
+
+export type HTMLFragmentsHandlerResultSSR = {
   root?: string | null;
   selector?: string;
-  fragments: Record<string, HTMLFragment<IsInternal>>;
+  fragments: Record<string, HTMLFragmentSSR>;
   templates: Record<string, string>;
-} : {
+};
+
+export type HTMLFragmentsHandlerResult = {
   root?: string | null;
   dom?: Element[];
   selector?: string;
-  fragments: Record<string, HTMLFragment<IsInternal>>;
+  fragments: Record<string, HTMLFragment>;
   templates: Record<string, string>;
 };
 
@@ -116,7 +116,7 @@ export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFra
 export type HTMLFragmentsHandler = {
   integrationType: 'html-fragments';
   contentType: string;
-  handler: RequestHandler<HTMLFragmentsHandlerResult<false>>;
+  handler: RequestHandler<HTMLFragmentsHandlerResultSSR>;
   onCreate?: HTMLFragmentsOnCreate;
 };
 

@@ -1051,6 +1051,7 @@ function selectEntity({ pointer, iri, fragment, accept, filter, selector, store,
             key,
             pointer,
             type: 'entity',
+            fragment,
             iri: cache.iri,
             ok: false,
             status: cache.status,
@@ -1092,6 +1093,8 @@ function selectEntity({ pointer, iri, fragment, accept, filter, selector, store,
         return selectEntity({
             pointer,
             iri: value['@id'],
+            fragment,
+            accept,
             filter,
             selector,
             details,
@@ -1361,6 +1364,8 @@ const ActionStateRenderer3 = () => {
     let type;
     let octiron;
     let hooks;
+    let fragment;
+    let integration;
     let args;
     let parentArgs;
     const listener = (submitResult, selectionDetails) => {
@@ -1375,10 +1380,20 @@ const ActionStateRenderer3 = () => {
             return;
         }
         render = true;
-        [octiron, hooks] = selectionFactory(args, parentArgs, {
-            index: 0,
-            value: selectionDetails.result[0].value,
-        });
+        if (submitResult.type === 'alternative-success') {
+            octiron = null;
+            hooks = null;
+            fragment = selectionDetails.result[0].fragment;
+            integration = submitResult.integration;
+        }
+        else {
+            fragment = null;
+            integration = null;
+            [octiron, hooks] = selectionFactory(args, parentArgs, {
+                index: 0,
+                value: selectionDetails.result[0].value,
+            });
+        }
     };
     return {
         oninit(vnode) {
@@ -1401,7 +1416,10 @@ const ActionStateRenderer3 = () => {
         view(vnode) {
             if (!render)
                 return;
-            if (vnode.attrs.selector != null && octiron != null) {
+            if (integration != null) {
+                return integration.render(vnode.attrs.parentArgs.parent, fragment);
+            }
+            else if (vnode.attrs.selector != null && octiron != null) {
                 return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
             }
             else if (vnode.attrs.view != null && octiron != null) {
@@ -1558,6 +1576,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             payload = next;
         }
         childArgs.value = self.value = value;
+        console.log('SUBMIT?', args2, args);
         if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
@@ -1688,11 +1707,10 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     if (self.url != null) {
         submitResult = refs.parentArgs.store.entity(self.url, {
             method: self.method,
-            accept: refs.factoryArgs.accept,
         });
     }
     if (args.submitOnInit) {
-        if (submitResult == null) {
+        if (submitResult == null || submitResult.type === 'entity-loading') {
             submit();
         }
         else if (submitResult != null) {
@@ -1743,7 +1761,7 @@ function applySubmission(key, listener, store, args, submitResult, listeners) {
                 pointer: '/',
                 type: 'alternative',
                 iri: submitResult.iri,
-                fragment: args.fragment,
+                fragment: submitResult.fragment,
                 accept: args.accept,
                 ok: submitResult.ok,
                 status: submitResult.status,
@@ -2210,7 +2228,6 @@ const SelectionRenderer2 = () => {
                     child.push(m.fragment({ key: '@value' }, [vnode.attrs.view(l2[i].octiron)]));
                 }
                 else {
-                    console.log('RENDERING INTEGRATION');
                     child.push(m.fragment({ key: '@value' }, [
                         l2[i].selectionResult.integration.render(vnode.attrs.parentArgs.parent, vnode.attrs.args.fragment),
                     ]));
@@ -2537,8 +2554,6 @@ const HTMLFragmentsIntegrationComponent = () => {
             prevFragment = attrs.fragment;
         },
         view(vnode) {
-            console.log('LONGFORM', vnode.attrs.fragment);
-            console.log(html);
             if (isBrowserRender && Array.isArray(html)) {
                 return m.dom(html);
             }
@@ -3054,6 +3069,7 @@ class Store {
         return {
             type: 'alternative-success',
             iri: normalizedURL,
+            fragment: args?.fragment,
             loading: false,
             ok: true,
             contentType,
@@ -3472,8 +3488,34 @@ class Store {
      * @param {string} [args.body]        The body of the request.
      */
     async submit(iri, args) {
-        await this.#callFetcher(iri, args);
-        return this.entity(iri, args);
+        const url = new URL(iri);
+        const fragment = url.hash === '' ? undefined : url.hash.substring(1, url.hash.length);
+        url.hash = '';
+        await this.#callFetcher(url.toString(), args);
+        const entity = this.entity(url.toString(), {
+            fragment,
+            method: args.method,
+            accept: args.accept,
+        });
+        if (entity.loading) {
+            const key = Symbol('submit');
+            const { promise, resolve } = Promise.withResolvers();
+            this.subscribe({
+                key,
+                selector: url.toString(),
+                // fragment,
+                accept: args.accept,
+                listener: () => {
+                    resolve(this.entity(url.toString(), {
+                        fragment,
+                        method: args.method,
+                        accept: args.accept,
+                    }));
+                }
+            });
+            return promise;
+        }
+        return entity;
     }
     /**
      * Creates an Octiron store from initial state written to the page's HTML.

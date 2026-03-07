@@ -113,6 +113,8 @@ export function actionFactory<
 
     childArgs.value = self.value = value;
 
+    console.log('SUBMIT?', args2, args);
+
     if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
       submit();
     } else {
@@ -299,7 +301,6 @@ export function actionFactory<
   if (self.url != null) {
     submitResult = refs.parentArgs.store.entity(self.url, {
       method: self.method,
-      accept: refs.factoryArgs.accept,
     });
   }
 

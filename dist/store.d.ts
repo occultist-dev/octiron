@@ -77,6 +77,7 @@ export declare class Store {
      * @param args.accept Accept headers used for the request.
      */
     entity(iri: string | URL, args?: {
+        fragment?: string;
         method?: string;
         accept?: string;
     }): EntityState;
