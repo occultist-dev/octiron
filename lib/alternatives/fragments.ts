@@ -3,14 +3,14 @@ import type {RequestHandler} from '../octiron.ts';
 import {isBrowserRender} from '../consts.ts';
 
 
-export type FragmentCache = [
+type FragmentCache = [
   identifier: string,
   type: Fragment['type'] | undefined,
   html: string,
   dom?: Element[],
 ];
 
-export type OnRendered = (identifier: string) => void;
+type OnRendered = (identifier: string) => void;
 
 export type FragmentsRemoveHandler = () => void;
 export type FragmentsCreateHandler = (dom: Element) => undefined | FragmentsRemoveHandler;
@@ -21,7 +21,7 @@ export type FragmentRendererAttrs = {
   onRendered: OnRendered;
 };
 
-export type FragmentRendererState = {
+type FragmentRendererState = {
   fragment: FragmentCache;
   didChange?: boolean;
   onRemove?: FragmentsRemoveHandler;
@@ -360,10 +360,10 @@ export interface FragmentsIntegrationFactory {
    * The integration does not support passing args to the root fragment
    * or rendering the root fragment as text.
    *
-   * @param handler The content type's handler configuration.
    * @param args The fragments integration args.
+   * @param handler The content type's handler configuration.
    */
-  (handler: FragmentsHandler, args: FragmentsIntegrationArgs): FragmentsIntegrationType;
+  (args: FragmentsIntegrationArgs, handler: FragmentsHandler): FragmentsIntegrationType;
 
   /**
    * Creates a fragments integration from initial state rendered into a
@@ -376,8 +376,8 @@ export interface FragmentsIntegrationFactory {
 };
 
 export const FragmentsIntegration = ((
-  handler: FragmentsHandler,
   args: FragmentsIntegrationArgs,
+  handler: FragmentsHandler,
 ): Readonly<FragmentsIntegrationType> => {
   let root: FragmentCache | undefined | null;
   let renderedRoot = false;
@@ -600,14 +600,13 @@ FragmentsIntegration.fromInitialState = (
     }
   }
 
-  return FragmentsIntegration(handler, {
+  return FragmentsIntegration({
     iri: stateInfo.iri,
     method: stateInfo.method,
     contentType: stateInfo.contentType,
     content,
-  });
+  }, handler);
 }
 
 Object.freeze(FragmentsIntegration);
-
 

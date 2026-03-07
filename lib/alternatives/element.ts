@@ -3,7 +3,7 @@ import {RequestHandler} from '../octiron';
 import {isBrowserRender} from '../consts';
 
 
-export type OnRendered = () => void;
+type OnRendered = () => void;
 
 export type ElementHashParser<
   ParsedHash extends unknown = string,
@@ -34,7 +34,7 @@ export type ElementRendererAttrs = {
   onRendered: OnRendered;
 };
 
-export type ElementRendererState = {
+type ElementRendererState = {
   fragment: string;
   onFragmentChange?: ElementFragmentChangeHandler;
   onRemove?: ElementRemoveHandler;
@@ -222,10 +222,10 @@ export interface ElementIntegrationFactory {
    * as according to the configured media-type rules and dynamically
    * update the contents of the rendered HTML.
    *
-   * @param handler The content type's handler configuration.
    * @param args The fragments integration args.
+   * @param handler The content type's handler configuration.
    */
-  (handler: ElementHandler, args: ElementIntegrationArgs): ElementIntegrationType;
+  (args: ElementIntegrationArgs, handler: ElementHandler): ElementIntegrationType;
 
   /**
    * Creates a elements integration from initial state rendered into a
@@ -238,8 +238,8 @@ export interface ElementIntegrationFactory {
 };
 
 export const ElementIntegration = ((
-  handler: ElementHandler,
   args: ElementIntegrationArgs,
+  handler: ElementHandler,
 ): Readonly<ElementIntegrationType> => {
   let rendered = false;
   const hashParser = handler.hashParser;
@@ -315,15 +315,13 @@ ElementIntegration.fromInitialState = (
     }
   }
 
-  return ElementIntegration(handler, {
+  return ElementIntegration({
     iri: stateInfo.iri,
     method: stateInfo.method,
     contentType: stateInfo.contentType,
     content,
-  });
+  }, handler);
 };
 
 Object.freeze(ElementIntegration);
-
-
 

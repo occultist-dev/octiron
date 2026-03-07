@@ -1,5 +1,6 @@
-import {HTMLFragmentsIntegration} from "./alternatives/htmlFragments.ts";
-import {UnrecognizedIntegration} from "./alternatives/unrecognized.ts";
+import {ElementIntegration} from "./alternatives/element.ts";
+import {FragmentsIntegration} from "./alternatives/fragments.ts";
+import {UnrecognizedIntegration} from "./alternatives/unrecognized-old.ts";
 import {isBrowserRender} from "./consts.ts";
 import {HTTPFailure} from "./failures.ts";
 import type {JSONObject} from "./types/common.ts";
@@ -9,10 +10,11 @@ import {getSelection} from './utils/getSelection.ts';
 import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
 
 const defaultAccept = 'application/problem+json, application/ld+json';
-const integrationClasses = {
-  [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
-  [UnrecognizedIntegration.type]: UnrecognizedIntegration,
-};
+const integrationFactories = {
+  'unrecognised': UnrecognizedIntegration,
+  'element': ElementIntegration,
+  'fragments': FragmentsIntegration,
+} as const;
 
 type StateInfo = {
   primary: Record<string, EntityState>;
@@ -310,11 +312,11 @@ export class Store {
     integration(contentType: string): IntegrationState {
       const integrationType = this.#handlers.get(contentType)?.integrationType;
 
-      return integrationClasses[integrationType];
+      return integrationFactories[integrationType];
     }
 
     /**
-     * Retrieves a text representation of a value in the store
+     * retrieves a text representation of a value in the store
      * if it is supported by the integration.
      */
     public text(iri: string, args?: {
@@ -578,7 +580,7 @@ export class Store {
       }
     }
 
-    async handleResponse(
+    async #handleResponse(
       res: Response,
       iri: string,
       method: string,
@@ -637,7 +639,7 @@ export class Store {
           isProblem: true,
           reason: new HTTPFailure(res.status, res),
         });
-      } else if (handler.integrationType === 'html-fragments') {
+      } else if (handler.integrationType === 'element') {
         const output = await handler.handler({
           res,
           store: this,
@@ -651,12 +653,32 @@ export class Store {
           this.#integrations.set(contentType, integrations);
         }
 
-        integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
+        integrations.set(entityKey, ElementIntegration({
           iri,
           method,
           contentType,
-          output,
-        }));
+          content: output,
+        }, handler));
+      } else if (handler.integrationType === 'fragments') {
+        const output = await handler.handler({
+          res,
+          store: this,
+        });
+
+        let integrations = this.#integrations.get(contentType);
+
+        if (integrations == null) {
+          integrations = new Map();
+
+          this.#integrations.set(contentType, integrations);
+        }
+
+        integrations.set(entityKey, FragmentsIntegration({
+          iri,
+          method,
+          contentType,
+          content: output,
+        }, handler));
       }
 
       if (handler?.integrationType !== 'jsonld') {
@@ -743,7 +765,7 @@ export class Store {
         // Loading state must be reset before handling responses.
         this.#loading.delete(loadingKey);
         
-        await this.handleResponse(res, dispatchURL, method, entityKey);
+        await this.#handleResponse(res, dispatchURL, method, entityKey);
 
         mithrilRedraw();
 
@@ -945,7 +967,7 @@ export class Store {
         for (const [integrationType, entities] of Object.entries(stateInfo.alternatives)) {
           for (const stateInfo of entities) {
             const handler = handlersMap[stateInfo.contentType];
-            const cls = integrationClasses[integrationType as IntegrationType];
+            const cls = integrationFactories[integrationType as IntegrationType];
 
             if (cls === null || cls.type !== handler?.integrationType) {
               continue;
