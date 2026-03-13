@@ -1,16 +1,26 @@
-import {ElementHandler, ElementIntegration, ElementIntegrationType} from "./alternatives/element";
-import {FragmentsHandler, FragmentsIntegration, FragmentsIntegrationType} from "./alternatives/fragments";
+import {ElementHandler, ElementIntegration, ElementIntegrationType} from "./alternatives/element.ts";
+import {FragmentsHandler, FragmentsIntegration, FragmentsIntegrationType} from "./alternatives/fragments.ts";
 import {UnrecognisedIntegration, UnrecognisedIntegrationType} from "./alternatives/unrecognised";
-import {Aliases, Context, EntityState, FailureEntityState, IntegrationState, JSONLDHandler, JSONObject, ProblemDetailsHandler, ReadonlySelectionResult, SelectionDetails, SelectionListener, SuccessEntityState} from "./octiron";
+import {isBrowserRender} from "./consts";
+import {HTTPFailure} from "./failures.ts";
+import {Aliases, AlternativeSelectionResult, AlternativesState, AlternativeState, Context, EntitySelectionResult, EntityState, FailureEntityState, JSONLDHandler, JSONLDHandlerResult, JSONObject, ProblemDetailsHandler, ReadonlySelectionResult, SelectionDetails, SelectionListener, SuccessEntityState, ValueSelectionResult} from "./octiron";
+import {flattenIRIObjects} from "./utils/flattenIRIObjects";
 import {getSelection} from './utils/getSelection.ts';
+import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
 
+/**
+ * The accept header used for requests by the store if none is provided.
+ */
+export const defaultAccept = 'application/problem+json, application/ld+json' as const;
 
-export const integrations = {
+/**
+ * Integration factories.
+ */
+export const integrations = Object.freeze({
   unrecognised: UnrecognisedIntegration,
   element: ElementIntegration,
   fragments: FragmentsIntegration,
-} as const;
-
+});
 
 export type Handler =
   | JSONLDHandler
@@ -30,35 +40,461 @@ export type Alternative =
 ;
 
 export type ResourceVaryArgs = {
+  mainEntity?: boolean;
   method?: string;
   accept?: string;
   locale?: string;
   fragment?: string;
 };
 
-function makeAcceptKey(iri: string | URL, args: ResourceVaryArgs): string {
-  const url = new URL(iri).toString();
+type Dependencies = Map<string, Set<symbol>>;
+type Listener = (details: SelectionDetails<ReadonlySelectionResult>) => void;
+type ListenerDetails = {
+  key: symbol;
+  selector?: string;
+  value?: JSONObject;
+  fragment?: string;
+  accept?: string;
+  required: string[];
+  dependencies: string[];
+  listener: Listener;
+  cleanup: () => void;
+};
+
+type Fetcher = typeof fetch;
+type Listeners = Map<symbol, ListenerDetails>;
+type Handlers = Map<string, Handler>;
+type AcceptMap = Map<string, string>;
+type PrimaryCache = Map<string, EntityState>;
+type AlternativesCache = Map<string, AlternativeState>;
+type Origins = Map<string, Headers>;
+type ResponseHook = (promise: Promise<Response>) => void;
+
+/**
+ * The accept key is used to locate the last content type
+ * value that was returned for an equivalent request.
+ *
+ * For Octiron an equivalent request is one that has
+ * the same method, IRI (less the fragment) and accept header value.
+ *
+ * TODO: Determine handling of requests with bodies.
+ */
+function makeContentTypeKey(iri: string | URL, args?: ResourceVaryArgs): string {
+  let url: URL | string = new URL(iri);
+
+  url.hash = '';
+  url = url.toString();
+
   const method = args?.method?.toLowerCase() ?? 'get';
   const accept = args?.accept ?? '';
 
   return `${method}|${url}|${accept}`;
 }
 
-function makeKeys(iri: string | URL, args: ResourceVaryArgs): [
-  entityKey: string,
-  acceptKey: string,
+/**
+ * Creates the primary key as well as the content type key since
+ * they are often used together if the primary key is used.
+ *
+ * The primary cache is shared by JSONLD content types (theoretically
+ * including any RDF type if one wanted to used them) and the problem
+ * detail types. The primary cache is not varied by content type since
+ * it should either have a current JSONLD equiv state (this could be
+ * an bad response) or hold problem details (which should be a bad
+ * response).
+ *
+ * TODO: Redesign the sharing of the primary cache for JSONLD and
+ * problem details responses. Bad alternative responses would cause
+ * overwrites on JSONLD responses, even if they were for an
+ * incompatible content type.
+ */
+function makePrimaryKey(iri: string | URL, args?: ResourceVaryArgs): [
+  primaryKey: string,
+  contentTypeKey: string,
   normalizedURL: string,
 ] {
-  const url = new URL(iri).toString();
+  let url: URL | string = new URL(iri);
+
+  url.hash = '';
+  url = url.toString();
+
   const method = args?.method?.toLowerCase() ?? 'get';
   const accept = args?.accept ?? '';
-  const entityKey = `${method}|${url}`;
+  const primaryKey = `${method}|${url}`;
 
   return [
-    entityKey,
-    `${entityKey}|${accept}`,
+    primaryKey,
+    `${primaryKey}|${accept}`,
     url,
   ];
+}
+
+/**
+ * The alternative type key is used to locate a entity state from
+ * the alternative cache.
+ */
+function makeAlternativeKey(iri: string | URL, contentType?: string, args?: ResourceVaryArgs): string {
+  let url: URL | string = new URL(iri);
+
+  url.hash = '';
+  url = url.toString();
+
+  const method = args?.method?.toLowerCase() ?? 'get';
+
+  return `${method}|${url}|${contentType ?? ''}`;
+}
+
+/**
+ * Creates a function that cleans up when a listener unsubscribes.
+ */
+function makeCleanupFn(
+  key: symbol,
+  details: SelectionDetails,
+  primary: PrimaryCache,
+  dependencies: Dependencies,
+  listeners: Listeners,
+): () => void {
+  return () => {
+    listeners.delete(key);
+
+    for (const dependency of details.dependencies) {
+      const normalizedURL = new URL(dependency).toString();
+      dependencies.delete(normalizedURL);
+
+      if (isBrowserRender) {
+        // TODO: Make this configurable and support deleting alternatives
+        setTimeout(() => {
+          if (dependencies.get(normalizedURL)?.size === 0) {
+            const [primaryKey] = makePrimaryKey(dependency);
+
+            primary.delete(primaryKey);
+          }
+        }, 5000);
+      }
+    }
+  }
+}
+
+/**
+ * Loops over all listeners registers against an entity,
+ * calling them with an updated selection.
+ */
+function publish(
+  normalizedURL: string,
+  contentType: string,
+  contentTypeKey: string,
+  acceptMap: AcceptMap,
+  primary: PrimaryCache,
+  dependencies: Dependencies,
+  listeners: Listeners,
+): void {
+  const keys = dependencies.get(normalizedURL);
+
+  if (keys == null) {
+    return;
+  }
+
+  for (const key of keys) {
+    const listenerDetails = listeners.get(key);
+
+    if (listenerDetails == null) {
+      continue;
+    }
+
+    const mappedType = acceptMap.get(contentTypeKey);
+
+    // TODO: A more sophisticated check might be required 
+    // to correctly check the content type matches the
+    // listener's accept header
+    // TODO: Review this is required. The accept map should be
+    // source of truth.
+    if (contentType !== mappedType) continue;
+
+    const details = getSelection<EntitySelectionResult | ValueSelectionResult | AlternativeSelectionResult>({
+      selector: listenerDetails.selector,
+      value: listenerDetails.value,
+      fragment: listenerDetails.fragment,
+      accept: listenerDetails.accept,
+      store: this,
+    } as Parameters<typeof getSelection>[0]);
+
+    const cleanup = makeCleanupFn(
+      key,
+      details,
+      primary,
+      dependencies,
+      listeners,
+    );
+
+    for (const dependency of details.dependencies) {
+      const normalizedURL = new URL(dependency).toString();
+      let depSet = dependencies.get(normalizedURL);
+
+      if (depSet == null) {
+        depSet = new Set([key]);
+
+        dependencies.set(normalizedURL, depSet);
+      } else {
+        depSet.add(key);
+      }
+    }
+
+    listenerDetails.cleanup = cleanup;
+    listenerDetails.listener(details);
+  }
+}
+
+function handleJSONLD(
+  res: Response,
+  content: JSONLDHandlerResult,
+  normalizedURL: string,
+  contentType: string,
+  contentTypeKey: string,
+  primaryKey: string,
+  acceptMap: AcceptMap,
+  primary: PrimaryCache,
+  dependencies: Dependencies,
+  listeners: Listeners,
+): void {
+  const iris: string[] = [normalizedURL];
+
+  if (res.ok) {
+    primary.set(primaryKey, {
+      type: 'entity-success',
+      iri: normalizedURL,
+      fragment: undefined,
+      loading: false,
+      ok: true,
+      contentType,
+      value: content.jsonld,
+      isProblem: false,
+    })
+  } else {
+    const reason = new HTTPFailure(res.status, res);
+
+    primary.set(primaryKey, {
+      type: 'entity-failure',
+      iri: normalizedURL,
+      loading: false,
+      ok: false,
+      value: content.jsonld,
+      contentType,
+      status: res.status,
+      isProblem: false,
+      reason,
+    });
+  }
+
+  for (const entity of flattenIRIObjects(content.jsonld)) {
+    const [primaryKey,, normalizedURL] = makePrimaryKey(entity['@id']);
+
+    if (iris.includes(normalizedURL)) {
+      continue;
+    }
+
+    primary.set(primaryKey, {
+      type: 'entity-success',
+      iri: normalizedURL,
+      fragment: undefined,
+      loading: false,
+      ok: true,
+      value: entity,
+      contentType,
+      isProblem: false,
+    });
+  }
+
+  for (const iri of iris) {
+    publish(
+      iri,
+      contentType,
+      contentTypeKey,
+      acceptMap,
+      primary,
+      dependencies,
+      listeners,
+    );
+  }
+}
+
+/**
+ * Handles a resolved response object, parsing the content and
+ * caching the results in the correct store.
+ *
+ * TODO: Support responses with no content / no content-type.
+ */
+async function handleResponse(
+  res: Response,
+  method: string,
+  normalizedURL: string,
+  contentTypeKey: string,
+  primaryKey: string,
+  handlers: Handlers,
+  acceptMap: AcceptMap,
+  primary: PrimaryCache,
+  alternatives: AlternativesCache,
+  dependencies: Dependencies,
+  listeners: Listeners,
+  args?: ResourceVaryArgs,
+): Promise<void> {
+  const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
+  const etag = res.headers.get('Etag');
+
+  if (contentType == null) {
+    throw new Error('Content type not specified in response');
+  }
+
+  const handler = handlers.get(contentType);
+  const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
+
+  if (handler?.integrationType === 'jsonld') {
+    const content = await handler.handler({
+      res,
+      store: this,
+    });
+
+    handleJSONLD(
+      res,
+      content,
+      normalizedURL,
+      contentType,
+      contentTypeKey,
+      primaryKey,
+      acceptMap,
+      primary,
+      dependencies,
+      listeners,
+    );
+  } else {
+    // TODO: Support problem details 
+    const integration = integrations[handler?.integrationType ?? 'unrecognised']({
+      iri: normalizedURL,
+      method,
+      contentType,
+    });
+
+    alternatives.set(alternativeKey, {
+      type: 'alternative-success',
+      ok: res.ok,
+      status: res.status,
+      iri: normalizedURL,
+      contentType,
+      isProblem: false,
+      etag,
+      integration,
+    });
+
+    publish(
+      normalizedURL,
+      contentType,
+      contentTypeKey,
+      acceptMap,
+      primary,
+      dependencies,
+      listeners,
+    );
+  }
+}
+
+async function performFetch(
+  iri: string | URL,
+  args: SubmitArgs,
+  rootOrigin: string,
+  headers: Headers,
+  origins: Origins,
+  inflight: Set<string>,
+  fetcher: Fetcher,
+  handlers: Handlers,
+  acceptMap: AcceptMap,
+  primary: PrimaryCache,
+  alternatives: AlternativesCache,
+  dependencies: Dependencies,
+  listeners: Listeners,
+  responseHook: ResponseHook,
+): Promise<number> {
+  let status: number;
+
+  const url = new URL(iri);
+  const method = args.method || 'get';
+  const accept = args.accept ?? headers.get('Accept') ?? defaultAccept;
+  const [primaryKey, contentTypeKey, normalizedURL] = makePrimaryKey(iri, {
+    method,
+    accept,
+  });
+
+  if (inflight.has(contentTypeKey)) {
+    return;
+  }
+
+  if (url.origin === rootOrigin) {
+    headers = new Headers(headers);
+  } else if (origins.has(url.origin)) {
+    headers = new Headers(origins.get(url.origin));
+  } else {
+    throw new Error(`Un-configured origin "${url.origin}"`);
+  }
+  
+  headers.set('Accept', accept);
+
+  if (args.body != null && args.contentType != null) {
+    headers.set('Content-Type', args.contentType);
+  }
+
+  inflight.add(contentTypeKey);
+
+  mithrilRedraw();
+
+  // This promise wrapping is so SSR can hook in and await the promise.
+  const promise = new Promise<Response>(async (resolve) => {
+    let res: Response;
+
+    if (fetcher != null) {
+      res = await fetcher(normalizedURL, {
+        method,
+        headers,
+        body: args.body,
+      });
+    } else {
+      res = await fetch(normalizedURL, {
+        method,
+        headers,
+        body: args.body,
+      });
+    }
+
+    const contentType = res.headers.get('Content-Type');
+
+    acceptMap.set(contentTypeKey, contentType);
+
+    // Loading state must be reset before handling responses.
+    inflight.delete(contentTypeKey);
+    
+    await handleResponse(
+      res,
+      method,
+      normalizedURL,
+      contentTypeKey,
+      primaryKey,
+      handlers,
+      acceptMap,
+      primary,
+      alternatives,
+      dependencies,
+      listeners,
+      args,
+    );
+
+    mithrilRedraw();
+
+    resolve(res);
+  });
+
+  if (responseHook != null) {
+    responseHook(promise);
+  }
+
+  await promise;
+
+  return status;
 }
 
 export type SubscribeArgs = {
@@ -78,7 +514,7 @@ export type SubmitArgs = {
    * as the main entity of the page.
    *
    * When marked as the main entity, the HTTP status of the first response
-   * triggered by this selection will be saved to the `store.httpStatus` value
+   * triggered by this selection will be saved to the `store.status` value
    * allowing the framework SSR rendering the Octiron app to use that status
    * code when responding with the rendered HTML.
    */
@@ -88,6 +524,16 @@ export type SubmitArgs = {
    * The http method of the request.
    */
   method?: string;
+
+  /**
+   * Fragment identifier override.
+   */
+  fragment?: string;
+
+  /**
+   * The content type of the body.
+   */
+  contentType?: string;
 
   /**
    * The accept header to use when submitting the request.
@@ -235,7 +681,7 @@ export interface StoreType {
    * content within the response representation, instead of the whole representation.
    * @param args.accept The accept header to use for any needed requests when making
    * the selection.
-   * @param args.mainEntity Causes the store to set the httpStatus value if bad status
+   * @param args.mainEntity Causes the store to set the status value if bad status
    * codes are returned by any responses in the selection. If multiple bad status codes
    * are returned, the largest generally wins.
    * @param args.listener A function to be called with any selection updates.
@@ -251,28 +697,58 @@ export interface StoreType {
    * Submits an action.
    */
   submit(iri: string | URL, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState>;
+
+  /**
+   * Fetches an entity.
+   *
+   * @param args.iri The IRI or URL of the entity.
+   * @param args.fragment A URL fragment override which can cause Octiron to render
+   * content within the response representation, instead of the whole representation.
+   * @param args.accept The accept header to use for any needed requests when making
+   * the selection.
+   * @param args.mainEntity Causes the store to set the status value if bad status
+   * codes are returned by any responses in the selection. If multiple bad status codes
+   * are returned, the largest generally wins.
+   * @param args.listener A function to be called with any selection updates.
+   */
+  fetch(iri: string | URL, args?: ResourceVaryArgs): Promise<EntityState>;
 };
 
-type PrimaryCache = Map<string, EntityState>;
-type AlternativesCache = Map<string, IntegrationState>;
 
 export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
   let status: number;
   const root = args.root;
+  const rootOrigin = new URL(root).origin;
+  const headers = new Headers(args.headers);
   const vocab = args.vocab;
   const aliases: Record<string, string> = Object.create(null);
   const context: Context = Object.create(null);
   const termExpansions = new Map<string, string>();
+  const fetcher: Fetcher = args.fetcher ?? fetch;
+  const origins: Origins = args.origins ?? Object.create(null);
+  const handlers: Handlers = new Map();
 
   /**
-   * The primary cache.
+   * The primary cache behaves differently to the alternatives.
+   * JSONLD is a concrete implementation of RDF. In theory other
+   * RDF implementations can map to JSONLD, and Octiron can
+   * in theory be configured to have them use the JSONLD integration
+   * type push their representations into the primary cache as an
+   * alternative to JSONLD. The primary cache COULD be used as a cache
+   * for all RDF media-types, but their handlers would have to parse
+   * their content into the JSONLD data model for that to work.
    */
-  const primary = new Map<string, EntityState>();
+  const primary: PrimaryCache = new Map(
+    Object.entries(args.primary ?? {}),
+  );
 
   /**
-   * The alternative cache.
+   * The alternatives cache.
+   * This stores all non-JSONLD equiv content types.
    */
-  const alternative = new Map<string, Map<string, IntegrationState>>();
+  const alternatives: AlternativesCache = new Map(
+    Object.entries(args.alternatives ?? {}),
+  );
 
   // Set of accept keys which currently have requests inflight.
   const inflight = new Set<string>();
@@ -282,9 +758,14 @@ export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
   const acceptMap = new Map<string, string>();
 
   // Content types that are used in the primary store.
-  // Typically this will be JSONLD compat types and
-  // problem detail types.
+  // Typically this will be JSONLD compat types.
   const primaryContentTypes = new Set<string>();
+
+  const dependencies: Dependencies = new Map();
+
+  const listeners: Listeners = new Map();
+
+  const responseHook: ResponseHook = args.responseHook;
 
   if (vocab != null) {
     context['@vocab'] = vocab;
@@ -296,10 +777,26 @@ export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
       context[key] = value;
     }
   }
+
+  if (args.origins != null) {
+    for (const [origin, headers] of Object.entries(args.origins)) {
+      origins.set(origin, new Headers(headers));
+    }
+  }
+
+  if (args.handlers != null) {
+    for (let i = 0, l = args.handlers.length; i < l; i++) {
+      handlers.set(args.handlers[i].contentType, args.handlers[i]);
+
+      if (args.handlers[i].integrationType === 'jsonld') {
+        primaryContentTypes.add(args.handlers[i].contentType);
+      }
+    }
+  }
   
   Object.freeze(aliases);
   Object.freeze(context);
-  
+
   const store: StoreType = {
     root,
     vocab,
@@ -337,16 +834,16 @@ export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
       return expanded ?? termOrType;
     },
     inflight(this: StoreType, iri, args) {
-      return inflight.has(makeAcceptKey(iri, args));
+      return inflight.has(makeContentTypeKey(iri, args));
     },
     entity(this: StoreType, iri, args) {
       const [
-        entityKey,
-        acceptKey,
+        primaryKey,
+        contentTypeKey,
         normalizedURL,
-      ] = makeKeys(iri, args);
+      ] = makePrimaryKey(iri, args);
       
-      if (inflight.has(acceptKey)) {
+      if (inflight.has(contentTypeKey)) {
         return {
           type: 'entity-loading',
           iri: normalizedURL,
@@ -355,28 +852,17 @@ export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
         };
       }
 
-      const contentType = acceptMap.get(acceptKey);
+      const contentType = acceptMap.get(contentTypeKey);
 
       if (contentType == null) {
         return;
       } else if (primaryContentTypes.has(contentType)) {
-        return primary.get(entityKey);
+        return primary.get(primaryKey);
       }
 
-      const integration = alternative.get(contentType)?.get(entityKey);
+      const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
 
-      if (integration == null) return;
-      
-      return {
-        type: 'alternative-success',
-        iri: normalizedURL,
-        fragment: args?.fragment,
-        loading: false,
-        ok: true,
-        contentType,
-        isProblem: false,
-        integration,
-      };
+      return alternatives.get(alternativeKey);
     },
     text(this: StoreType, iri, args) {
       const [key, fragment] = iri.toString().split('#');
@@ -397,6 +883,143 @@ export function Store(args: StoreFactoryArgs): Readonly<StoreType> {
         accept: args?.accept,
         store: this,
       });
+    },
+    async fetch(this: StoreType, iri, args) {
+      const responseStatus = await performFetch(
+        iri,
+        args,
+        rootOrigin,
+        headers,
+        origins,
+        inflight,
+        fetcher,
+        handlers,
+        acceptMap,
+        primary,
+        alternatives,
+        dependencies,
+        listeners,
+        responseHook,
+      );
+
+      if (args?.mainEntity &&
+          !isBrowserRender &&
+          (status == null || status < 400) &&
+          (responseStatus < 300 || responseStatus <= 400)
+      ) {
+        status = responseStatus;
+      }
+
+      return this.entity(iri, args);
+    },
+    async submit(this: StoreType, iri, args) {
+      const url = new URL(iri);
+      args.fragment = url.hash === '' ? undefined : url.hash.substring(1, url.hash.length);
+
+      const responseStatus = await performFetch(
+        iri,
+        args,
+        rootOrigin,
+        headers,
+        origins,
+        inflight,
+        fetcher,
+        handlers,
+        acceptMap,
+        primary,
+        alternatives,
+        dependencies,
+        listeners,
+        responseHook,
+      );
+
+      if (args?.mainEntity &&
+          !isBrowserRender &&
+          (status == null || status < 400) &&
+          (responseStatus < 300 || responseStatus <= 400)
+      ) {
+        // if SSR store the first 400+ status for the final HTTP response
+        status = responseStatus;
+      }
+
+      const loading = this.inflight(iri, args);
+
+      if (loading && !isBrowserRender) {
+        const key = Symbol();
+        const { promise, resolve } = Promise.withResolvers<SuccessEntityState | FailureEntityState>();
+
+        this.subscribe({
+          key,
+          selector: iri.toString(),
+          // fragment,
+          accept: args.accept,
+          listener: () => {
+            this.unsubscribe(key);
+
+            resolve(this.entity(iri, args) as SuccessEntityState | FailureEntityState)
+          }
+        });
+
+        return promise;
+      }
+
+      return this.entity(iri, args) as SuccessEntityState | FailureEntityState;
+    },
+    subscribe(args) {
+      const selector = args.selector.toString();
+      const details = getSelection<ReadonlySelectionResult>({
+        selector,
+        value: args.value,
+        accept: args.accept,
+        fragment: args.fragment,
+        store,
+      });
+      const cleanup = makeCleanupFn(
+        args.key,
+        details,
+        primary,
+        dependencies,
+        listeners
+      );
+
+      for (const dependency of details.dependencies) {
+        const normalizedURL = new URL(dependency).toString();
+        const depSet = dependencies.get(normalizedURL);
+
+        if (depSet == null) {
+          dependencies.set(normalizedURL, new Set([args.key]));
+        } else {
+          depSet.add(args.key);
+        }
+      }
+
+      listeners.set(args.key, {
+        selector,
+        key: args.key,
+        value: args.value,
+        fragment: args.fragment,
+        accept: args.accept,
+        required: details.required,
+        dependencies: details.dependencies,
+        listener: args.listener,
+        cleanup,
+      });
+
+      // If this is the main entity and the details has
+      // missing deps simulate a 404 if no other bad
+      // status code has been set
+      if (!isBrowserRender &&
+          args.mainEntity &&
+          details.hasMissing &&
+          status < 400
+      ) {
+        status = 404;
+      }
+
+      return details;
+    },
+    unsubscribe(this: StoreType, key) {
+      listeners.get(key)?.cleanup();
     },
   };
 

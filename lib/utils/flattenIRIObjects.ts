@@ -21,6 +21,10 @@ import { isValueObject } from "./isValueObject.ts";
  *              function and isn't required by upstream callers.
  */
 export function flattenIRIObjects(value: JSONValue, agg: IRIObject[] = []): IRIObject[] {
+  if (Array.isArray(value) || isJSONObject(value)) {
+    Object.freeze(value);
+  }
+
   if (Array.isArray(value)) {
     for (const item of value) {
       flattenIRIObjects(item, agg);

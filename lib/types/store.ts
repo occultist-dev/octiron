@@ -716,20 +716,19 @@ export type SuccessEntityState = {
   readonly integration?: undefined;
 };
 
-export type SuccessAlternativeState = {
+export type AlternativeState = {
+  // TODO Refactor to just "alternative"
   readonly type: 'alternative-success';
-  /**
-   * True if this entity has an in progress request.
-   */
-  readonly loading: false;
 
   /**
    * Indicates if the request responded with a success or error status.
    */
-  readonly ok: true;
+  readonly ok: boolean;
 
-
-  readonly reason?: undefined;
+  /**
+   * The response status. Only used for failure responses.
+   */
+  readonly status?: number;
 
   /**
    * The IRI of the entity less the fragment.
@@ -747,14 +746,14 @@ export type SuccessAlternativeState = {
   readonly value?: undefined;
 
   /**
-   * The response status. Only used for failure responses.
-   */
-  readonly status?: undefined;
-
-  /**
    * True if the response was of the problem details type
    */
   readonly isProblem: false;
+
+  /**
+   * A reason for this responses failure state.
+   */
+  readonly reason?: undefined;
 
   /**
    * Response content type value if present.
@@ -767,8 +766,7 @@ export type SuccessAlternativeState = {
   readonly etag?: string;
   
   /**
-   * Component to render if the returned content type is
-   * not jsonld or problem detail types.
+   * Alternative integration instance.
    */
   readonly integration: IntegrationState;
 };
@@ -840,7 +838,7 @@ export type LoadingResult = {
 export type EntityState =
   | LoadingEntityState
   | SuccessEntityState
-  | SuccessAlternativeState
+  | AlternativeState
   | FailureEntityState;
 ;
 
