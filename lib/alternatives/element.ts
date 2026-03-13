@@ -110,6 +110,7 @@ export type ElementStateInfo = {
   iri: string;
   method: string;
   contentType: string;
+  integrationType: 'element';
   rendered: boolean;
   selector: string;
 };
@@ -173,6 +174,11 @@ export interface ElementIntegrationType {
    * The HTTP content type.
    */
   contentType: string;
+
+  /**
+   * The Octiron integration type.
+   */
+  integrationType: 'element';
 
   /**
    * Returns the vdom representation of the fragment.

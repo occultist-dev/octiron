@@ -198,6 +198,7 @@ export type FragmentsStateInfo = {
   iri: string;
   method: string;
   contentType: string;
+  integrationType: 'fragments';
   rendered?: boolean;
   selector?: string;
   fragments: FragmentState[];

@@ -1,4 +1,4 @@
-import type {Store} from '../store.ts';
+import {StoreType} from '../store.ts';
 import type {JSONArray, JSONObject, JSONValue, SCMPropertyValueSpecification} from '../types/common.ts';
 import type {EntityState, SelectionDetails, SelectionResult} from '../types/store.ts';
 import {escapeJSONPointerParts} from './escapeJSONPointerParts.ts';
@@ -38,7 +38,7 @@ export class CircularSelectionError extends Error {}
  * @param {JSONObject} [args.value]         Context object to begin the selection from.
  * @param {JSONObject} [args.actionValue]   The action, or point in the action definition which describes this value.
  * @param {JSONValue} [args.defaultValue]   A default value when used to select action values.
- * @param {Store} args.store                Octiron store to search using.
+ * @param {StoreType} args.store                Octiron store to search using.
  * @returns {SelectionDetails}              Selection contained in a details object.
  */
 export function getSelection<T extends SelectionResult>({
@@ -56,7 +56,7 @@ export function getSelection<T extends SelectionResult>({
   accept?: string;
   actionValue?: JSONObject;
   defaultValue?: JSONValue;
-  store: Store;
+  store: StoreType;
 }): SelectionDetails<T> {
   const details: SelectionDetails<T> = {
     selector: selectorStr,
@@ -186,7 +186,7 @@ function resolveValue({
   actionValue?: JSONValue;
   propType: string;
   filter?: string;
-  store: Store;
+  store: StoreType;
   details: SelectionDetails;
 }) {
   if (value === undefined) {
@@ -357,7 +357,7 @@ function selectTypedValue({
   value: JSONValue;
   actionValue?: JSONObject;
   filter?: string;
-  store: Store;
+  store: StoreType;
   details: SelectionDetails;
 }): void {
   pointer = makePointer(pointer, propType);
@@ -459,7 +459,7 @@ function traverseSelector({
   accept: string;
   value: JSONValue;
   actionValue?: JSONObject;
-  store: Store;
+  store: StoreType;
   details: SelectionDetails;
   defaultValue?: JSONValue;
 }): void {
@@ -630,7 +630,7 @@ function selectEntity({
   accept: string;
   filter?: string;
   selector?: SelectorObject[];
-  store: Store;
+  store: StoreType;
   details: SelectionDetails;
   handledIRIs?: Set<string>;
 }): void {

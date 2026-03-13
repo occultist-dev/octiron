@@ -1,4 +1,4 @@
-import type { Store } from "../store.ts";
+import type {StoreType} from "../store.ts";
 
 export type SelectorObject = {
   subject?: string;
@@ -15,7 +15,7 @@ const selectorRe = /\s*(?<subject>([^\[\s]+))(\[(?<filter>([^\]])+)\])?\s*/g;
  *
  * @param selector - The selector string to parse.
  */
-export function parseSelectorString(selector: string, store: Store): SelectorObject[] {
+export function parseSelectorString(selector: string, store: StoreType): SelectorObject[] {
   let match: RegExpExecArray | null;
   const selectors: SelectorObject[] = [];
 

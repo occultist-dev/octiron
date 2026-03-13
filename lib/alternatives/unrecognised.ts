@@ -8,6 +8,7 @@ export type UnrecognisedStateInfo = {
   iri: string;
   method: string;
   contentType: string;
+  integrationType: 'unrecognised';
 };
 
 export interface UnrecognisedIntegrationType {

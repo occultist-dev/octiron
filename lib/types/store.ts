@@ -1,18 +1,10 @@
-import type { Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONValue, SCMPropertyValueSpecification } from './common.ts';
-import type { Store } from '../store.ts';
-import type { Octiron, Spec } from "./octiron.ts";
-import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.ts';
+import type {Children, ComponentTypes} from 'mithril';
+import type {HTMLFragmentsIntegration} from '../alternatives/htmlFragments.ts';
+import type {JSONObject, JSONValue} from './common.ts';
+import type {Octiron, Spec} from "./octiron.ts";
 
 
-export type Aliases = Record<string, string>;
-export type Origins = Record<string, Headers>;
-export type Context = {
-  '@vocab'?: string;
-} & {
-  [vocab: string]: string;
-};
-
+// TODO: remove
 export type IntegrationType =
   // | 'jsonld'
   // | 'problem-details'
@@ -764,6 +756,8 @@ export type AlternativeState = {
    * Response etag value if present.
    */
   readonly etag?: string;
+
+  readonly integrationType: string;
   
   /**
    * Alternative integration instance.
