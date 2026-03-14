@@ -386,10 +386,14 @@ async function handleResponse(
     );
   } else {
     // TODO: Support problem details 
+    const content = await handler.handler({
+      res,
+    });
     const integration = integrations[handler?.integrationType ?? 'unrecognised']({
       iri: normalizedURL,
       method,
       contentType,
+      content,
     }, handler);
 
     alternatives.set(alternativeKey, {
