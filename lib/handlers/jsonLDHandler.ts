@@ -1,6 +1,5 @@
-import type {JSONLDContextStore} from "@occultist/mini-jsonld";
-import type {JSONObject} from "../types/common.ts";
-import type { JSONLDHandler } from "../types/store.ts";
+import type {JSONLDContextStore, JSONObject} from "@occultist/mini-jsonld";
+import type { JSONLDHandler } from "../store.ts";
 
 let store: JSONLDContextStore | undefined;
 
@@ -24,11 +23,8 @@ export const makeJSONLDHandler = (args?: MakeJSONLDHandlerArgs): JSONLDHandler =
       }
   
       const json = await res.json();
-      const jsonld = await expand(json, { store, url: res.url }) as JSONObject;
-  
-      return {
-        jsonld,
-      };
+
+      return expand(json, { store, url: res.url }) as Promise<JSONObject>;
     },
   } satisfies JSONLDHandler;
 }

@@ -8,8 +8,6 @@ describe('store.subscribe()', () => {
   it('Calls listener on changes to primary entity changes', async () => {
     const { registry, pretty, document, dom, store, redraw, vocab, mount, o, m } = domTest();
 
-    console.log('RUNNING TEST');
-
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),
       makeTypeDef({ term: 'entity', schema: vocab, isIRI: true }),
@@ -61,7 +59,6 @@ describe('store.subscribe()', () => {
     });
     
     await redraw();
-    console.log(await pretty());
 
     assert.equal(
       document.body.querySelector('#root-parent h1')?.textContent,

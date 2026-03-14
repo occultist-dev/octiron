@@ -1,10 +1,8 @@
-import {describe, it} from "node:test";
 import {contextBuilder, makeTypeDef, makeTypeDefs} from "@occultist/occultist";
 import {domTest} from "../utils/dom.ts";
 import type {SelectionDetails} from "../../lib/octiron.ts";
 import assert from "node:assert";
-import {en} from "@faker-js/faker";
-import {encodePointer} from "json-ptr";
+import {describe, it} from 'node:test';
 
 
 
@@ -128,7 +126,7 @@ describe('store.subscribe()', () => {
     assert.equal(callCount, 3);
   });
 
-  it('Calls listener on changes to alternative entity changes', {only: true}, async () => {
+  it('Calls listener on changes to alternative entity changes', async () => {
     const { registry, store, vocab } = domTest();
 
     const typeDefs = makeTypeDefs([

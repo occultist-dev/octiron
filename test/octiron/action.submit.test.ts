@@ -182,8 +182,6 @@ describe('o.submit()', () => {
     
     await redraw();
 
-    console.log(await pretty());
-
     let listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[];
 
     assert.equal(listElements[0].firstChild?.textContent, 'First');
@@ -222,8 +220,6 @@ describe('o.submit()', () => {
     select[1].dispatchEvent(new dom.window.Event('change', { bubbles: true }));
 
     await redraw();
-
-    console.log(await pretty());
 
     listElements = Array.from(document.querySelectorAll('li[data-position]')) as HTMLLIElement[]
     

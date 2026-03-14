@@ -1,13 +1,11 @@
 import assert from 'node:assert';
 import {describe, it} from "node:test";
-import {domTest} from '../utils/dom.ts';
-import { Debug } from '../../lib/octiron.ts';
+import {createTest} from '../utils/dom.ts';
 
 
 describe('o.select()', () => {
   it('Re-orders DOM children on updates to store data ordering', { only: true }, async () => {
-    const { m, o, document, registry, mount, pretty, redraw, vocab } = domTest();
-
+    const { m, o, document, registry, mount, pretty, redraw, vocab } = createTest();
     let jsonld = {
       '@context': { '@vocab': vocab },
       members: [

@@ -30,12 +30,12 @@ export type JSONLDHandlerFnArgs = {
 // TODO: Support arrays for top level results?
 export type JSONLDHandlerResult = JSONObject;
 
-export type JSONLDHandlerFn = (args: JSONLDHandlerFnArgs) => JSONLDHandlerResult;
+export type JSONLDHandlerFn = (args: JSONLDHandlerFnArgs) => Promise<JSONLDHandlerResult>;
 
 export type JSONLDHandler = {
   integrationType: 'jsonld';
   contentType: string;
-  handler: JSONLDHandlerFn
+  handler: JSONLDHandlerFn;
 };
 
 export type HandlerFn =
@@ -133,7 +133,7 @@ function makePrimaryKey(iri: string | URL, args?: ResourceVaryArgs): [
   url = url.toString();
 
   const method = args?.method?.toLowerCase() ?? 'get';
-  const accept = args?.accept ?? '';
+  const accept = args?.accept ?? defaultAccept;
   const primaryKey = `${method}|${url}`;
 
   return [
@@ -201,6 +201,7 @@ function publish(
   primary: PrimaryCache,
   dependencies: Dependencies,
   listeners: Listeners,
+  store: StoreType,
 ): void {
   const keys = dependencies.get(normalizedURL);
 
@@ -229,7 +230,7 @@ function publish(
       value: listenerDetails.value,
       fragment: listenerDetails.fragment,
       accept: listenerDetails.accept,
-      store: this,
+      store,
     } as Parameters<typeof getSelection>[0]);
 
     const cleanup = makeCleanupFn(
@@ -269,6 +270,7 @@ function handleJSONLD(
   primary: PrimaryCache,
   dependencies: Dependencies,
   listeners: Listeners,
+  store: StoreType,
 ): void {
   const iris: string[] = [normalizedURL];
 
@@ -280,7 +282,7 @@ function handleJSONLD(
       loading: false,
       ok: true,
       contentType,
-      value: content.jsonld,
+      value: content,
       isProblem: false,
     })
   } else {
@@ -299,7 +301,7 @@ function handleJSONLD(
     });
   }
 
-  for (const entity of flattenIRIObjects(content.jsonld)) {
+  for (const entity of flattenIRIObjects(content)) {
     const [primaryKey,, normalizedURL] = makePrimaryKey(entity['@id']);
 
     if (iris.includes(normalizedURL)) {
@@ -327,6 +329,7 @@ function handleJSONLD(
       primary,
       dependencies,
       listeners,
+      store,
     );
   }
 }
@@ -349,6 +352,7 @@ async function handleResponse(
   alternatives: AlternativesCache,
   dependencies: Dependencies,
   listeners: Listeners,
+  store: StoreType,
   args?: ResourceVaryArgs,
 ): Promise<void> {
   const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
@@ -378,6 +382,7 @@ async function handleResponse(
       primary,
       dependencies,
       listeners,
+      store,
     );
   } else {
     // TODO: Support problem details 
@@ -385,7 +390,7 @@ async function handleResponse(
       iri: normalizedURL,
       method,
       contentType,
-    });
+    }, handler);
 
     alternatives.set(alternativeKey, {
       type: 'alternative-success',
@@ -407,6 +412,7 @@ async function handleResponse(
       primary,
       dependencies,
       listeners,
+      store,
     );
   }
 }
@@ -426,12 +432,13 @@ async function performFetch(
   dependencies: Dependencies,
   listeners: Listeners,
   responseHook: ResponseHook,
+  store: StoreType,
 ): Promise<number> {
   let status: number;
 
   const url = new URL(iri);
-  const method = args.method || 'get';
-  const accept = args.accept ?? headers.get('Accept') ?? defaultAccept;
+  const method = args?.method || 'get';
+  const accept = args?.accept ?? headers.get('Accept') ?? defaultAccept;
   const [primaryKey, contentTypeKey, normalizedURL] = makePrimaryKey(iri, {
     method,
     accept,
@@ -451,7 +458,7 @@ async function performFetch(
   
   headers.set('Accept', accept);
 
-  if (args.body != null && args.contentType != null) {
+  if (args?.body != null && args?.contentType != null) {
     headers.set('Content-Type', args.contentType);
   }
 
@@ -467,13 +474,13 @@ async function performFetch(
       res = await fetcher(normalizedURL, {
         method,
         headers,
-        body: args.body,
+        body: args?.body,
       });
     } else {
       res = await fetch(normalizedURL, {
         method,
         headers,
-        body: args.body,
+        body: args?.body,
       });
     }
 
@@ -496,6 +503,7 @@ async function performFetch(
       alternatives,
       dependencies,
       listeners,
+      store,
       args,
     );
 
@@ -958,6 +966,7 @@ export const makeStore = ((args) => {
         dependencies,
         listeners,
         responseHook,
+        store,
       );
 
       if (args?.mainEntity &&
@@ -989,6 +998,7 @@ export const makeStore = ((args) => {
         dependencies,
         listeners,
         responseHook,
+        store,
       );
 
       if (args?.mainEntity &&
@@ -1136,7 +1146,7 @@ makeStore.fromInitialState = ({
     } catch {
       if (enableLogs) {
         console.warn('Failed to construct store from initial state');
-        console.log(el);
+        console.info(el);
       }
 
       return makeStore(storeArgs);
@@ -1146,8 +1156,8 @@ makeStore.fromInitialState = ({
         initialState.length !== 3) {
       if (enableLogs) {
         console.warn('Invalid initial state');
-        console.log(el);
-        console.log(initialState);
+        console.info(el);
+        console.info(initialState);
       }
 
       return makeStore(storeArgs);

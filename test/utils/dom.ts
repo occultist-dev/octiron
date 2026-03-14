@@ -31,10 +31,8 @@ class Scheduler {
 }
 
 
-export function domTest() {
+export function createTest() {
   // setIsBrowserRender(true);
-
-  console.log('CREATING TEST UTILS');
 
   const rootIRI = 'http://example.com';
   const vocab = 'http://schema.example.com/';

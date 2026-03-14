@@ -11,6 +11,7 @@ import {isIRIObject} from "../utils/isIRIObject.ts";
 import {isIterable} from "../utils/isIterable.ts";
 import {isJSONObject} from "../utils/isJSONObject.ts";
 import {unravelArgs} from "../utils/unravelArgs.ts";
+import {key} from '../utils/key.ts';
 
 const TypeKeys = {
   'root': 0,
@@ -124,7 +125,7 @@ export function octironFactory<O extends Octiron>(
     return null;
   } })[name] as unknown as O & InstanceHooks;
 
-  self.id = refs.parentArgs.store.key();
+  self.id = key();
   self.isOctiron = true;
   self.octironType = octironType;
   self.readonly = true;

@@ -88,8 +88,6 @@ describe('store.subscribe()', () => {
     
     await redraw();
 
-    console.log(await pretty());
-
     assert.equal(
       document.body.querySelector('#root-parent h1')?.textContent,
       'Root',

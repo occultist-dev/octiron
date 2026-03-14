@@ -1,6 +1,6 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts'
-import type { Store } from '../store.ts';
+import type { Store, StoreType } from '../store.ts';
 import type {
   ContentHandlingFailure,
   HTTPFailure,
@@ -669,7 +669,7 @@ export interface OctironRoot
   /**
    * The octiron store used for this value.
    */
-  readonly store: Store;
+  readonly store: StoreType;
 
   /**
    * Expands a term into a type.
