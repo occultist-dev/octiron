@@ -238,10 +238,21 @@ export type FragmentsTemplateParser = (
   hook?: (fragmentIdentifier: string) => string | undefined,
 ) => string | undefined;
 
+export type FragmentsHandlerFnArgs = {
+  res: Response;
+};
+
+export type FragmentsHandlerFn = (args: FragmentsHandlerFnArgs) => Promise<SerializableFragmentsHandlerResult>;
+
 export type FragmentsHandler = {
   integrationType: 'fragments';
   contentType: string;
-  handler: RequestHandler<SerializableFragmentsHandlerResult>;
+
+  /**
+   * Function for producing the parsed fragments content from a
+   * request of the configured content type.
+   */
+  handler: FragmentsHandlerFn;
 
   /**
    * Function for parsing the fragment identifier

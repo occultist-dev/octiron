@@ -1,6 +1,6 @@
 import m from 'mithril';
-import {RequestHandler} from '../octiron';
-import {isBrowserRender} from '../consts';
+import type {RequestHandler} from '../store.ts';
+import {isBrowserRender} from '../consts.ts';
 
 
 type OnRendered = () => void;
@@ -115,12 +115,18 @@ export type ElementStateInfo = {
   selector: string;
 };
 
+export type ElementHandlerFnArgs = {
+  res: Response;
+};
+
+export type ElementHandlerFn = (args: ElementHandlerFnArgs) => Promise<SerializableElementHandlerResult>;
+
 export type ElementHandler<
   ParsedHash extends unknown = '',
 > = {
   integrationType: 'element',
   contentType: string;
-  handler: RequestHandler<SerializableElementHandlerResult>;
+  handler: ElementHandlerFn;
 
   /**
    * The fragment parser is run on every fragment update and

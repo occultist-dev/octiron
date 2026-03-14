@@ -1,5 +1,5 @@
-import type { JSONValue } from '../types/common.ts';
-import type { TypeHandler } from '../types/octiron.ts';
+import type {JSONValue} from '../types/common.ts';
+import type {TypeHandler} from '../types/octiron.ts';
 
 /**
  * @description

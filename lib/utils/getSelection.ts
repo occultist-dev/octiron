@@ -1,4 +1,4 @@
-import {StoreType} from '../store.ts';
+import type {StoreType} from '../store.ts';
 import type {JSONArray, JSONObject, JSONValue, SCMPropertyValueSpecification} from '../types/common.ts';
 import type {EntityState, SelectionDetails, SelectionResult} from '../types/store.ts';
 import {escapeJSONPointerParts} from './escapeJSONPointerParts.ts';

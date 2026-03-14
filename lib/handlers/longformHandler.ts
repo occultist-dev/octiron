@@ -1,7 +1,7 @@
-import type { Handler } from "../types/store.ts";
+import type {Handler} from "../store.ts";
 
 export const longformHandler: Handler = {
-  integrationType: 'html-fragments',
+  integrationType: 'fragments',
   contentType: 'text/longform',
   handler: async ({ res }) => {
     const { longform } = await import('@longform/longform');

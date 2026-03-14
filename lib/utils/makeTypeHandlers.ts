@@ -1,5 +1,5 @@
-import { Store } from "../store.ts";
-import type { TypeHandler, TypeHandlers } from "../types/octiron.ts";
+import {makeStore, type StoreType} from "../store.ts";
+import type {TypeHandler, TypeHandlers} from "../types/octiron.ts";
 
 
 export function makeTypeHandlers<
@@ -7,7 +7,7 @@ export function makeTypeHandlers<
   // deno-lint-ignore no-explicit-any
   const TypeHandlerList extends TypeHandler<any, Type> = TypeHandler<any, Type>,
 >(
-  store: Store,
+  store: StoreType,
   ...typeHandlers: Readonly<TypeHandlerList[]>
 ): TypeHandlers<Type, TypeHandlerList>;
 
@@ -32,18 +32,18 @@ export function makeTypeHandlers<
   const TypeHandlerList extends TypeHandler<any, Type> = TypeHandler<any, Type>,
 >(
   // deno-lint-ignore no-explicit-any
-  storeOrTypeHandler: Store | TypeHandler<any, Type>,
+  storeOrTypeHandler: StoreType | TypeHandler<any, Type>,
   ...typeHandlers: Readonly<TypeHandlerList[]>
 ): TypeHandlers<Type, TypeHandlerList> {
   const config = {} as TypeHandlers<Type, TypeHandlerList>;
 
-  if (storeOrTypeHandler instanceof Store) {
+  if (storeOrTypeHandler.type === 'octiron-store') {
     for (const typeHandler of typeHandlers) {
       if (typeHandler.type === '@id') {
         config['@id'] = typeHandler;
       } else {
       // deno-lint-ignore no-explicit-any
-        config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
+        config[(storeOrTypeHandler as StoreType).expand(typeHandler.type)] = typeHandler;
       }
     }
   } else {

@@ -1,10 +1,11 @@
-import {type ElementHandler, ElementIntegration, ElementIntegrationType, ElementStateInfo} from "./alternatives/element.ts";
-import {type FragmentsHandler, FragmentsIntegration, FragmentsIntegrationType, FragmentsStateInfo} from "./alternatives/fragments.ts";
-import {UnrecognisedIntegration, UnrecognisedIntegrationType} from "./alternatives/unrecognised";
-import {isBrowserRender} from "./consts";
+import {type ElementHandler, type ElementHandlerFn, ElementIntegration, type ElementIntegrationType, type ElementStateInfo} from "./alternatives/element.ts";
+import {type FragmentsHandler, type FragmentsHandlerFn, FragmentsIntegration, type FragmentsIntegrationType, type FragmentsStateInfo} from "./alternatives/fragments.ts";
+import {UnrecognisedIntegration, type UnrecognisedIntegrationType} from "./alternatives/unrecognised.ts";
+import {isBrowserRender} from "./consts.ts";
 import {HTTPFailure} from "./failures.ts";
-import type {Aliases, AlternativeSelectionResult, AlternativeState, Context, EntitySelectionResult, EntityState, FailureEntityState, JSONLDHandler, JSONLDHandlerResult, JSONObject, ProblemDetailsHandler, ReadonlySelectionResult, SelectionDetails, SelectionListener, SuccessEntityState, ValueSelectionResult} from "./octiron";
-import {flattenIRIObjects} from "./utils/flattenIRIObjects";
+import type {JSONObject} from "@occultist/mini-jsonld";
+import type {AlternativeSelectionResult, AlternativeState, EntitySelectionResult, EntityState, FailureEntityState, ReadonlySelectionResult, SelectionDetails, SuccessEntityState, ValueSelectionResult} from "./types/store.ts";
+import {flattenIRIObjects} from "./utils/flattenIRIObjects.ts";
 import {getSelection} from './utils/getSelection.ts';
 import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
 
@@ -22,16 +23,35 @@ const integrations = {
   fragments: FragmentsIntegration,
 } as const;
 
+export type JSONLDHandlerFnArgs = {
+  res: Response;
+};
+
+// TODO: Support arrays for top level results?
+export type JSONLDHandlerResult = JSONObject;
+
+export type JSONLDHandlerFn = (args: JSONLDHandlerFnArgs) => JSONLDHandlerResult;
+
+export type JSONLDHandler = {
+  integrationType: 'jsonld';
+  contentType: string;
+  handler: JSONLDHandlerFn
+};
+
+export type HandlerFn =
+  | JSONLDHandlerFn
+  | ElementHandlerFn
+  | FragmentsHandlerFn
+
 export type Handler =
   | JSONLDHandler
-  | ProblemDetailsHandler
   | ElementHandler
   | FragmentsHandler
 ;
 
-export type Listener = (details: SelectionDetails<ReadonlySelectionResult>) => void;
+export type SelectionListener = (details: SelectionDetails<ReadonlySelectionResult>) => void;
 export type Aliases = Record<string, string>;
-export type Fetcher = typeof fetch;
+export type Fetcher = (iri: string | URL, init: RequestInit) => Promise<Response>;
 export type Listeners = Map<symbol, ListenerDetails>;
 export type Handlers = Map<string, Handler>;
 export type AcceptMap = Map<string, string>;
@@ -61,7 +81,7 @@ type ListenerDetails = {
   accept?: string;
   required: string[];
   dependencies: string[];
-  listener: Listener;
+  listener: SelectionListener;
   cleanup: () => void;
 };
 
@@ -271,7 +291,7 @@ function handleJSONLD(
       iri: normalizedURL,
       loading: false,
       ok: false,
-      value: content.jsonld,
+      value: content,
       contentType,
       status: res.status,
       isProblem: false,
@@ -373,6 +393,7 @@ async function handleResponse(
       status: res.status,
       iri: normalizedURL,
       contentType,
+      integrationType: handler?.integrationType ?? 'unrecognised',
       isProblem: false,
       etag,
       integration,
@@ -556,7 +577,7 @@ export type MakeStoreArgs = {
   /**
    * Root endpoint of the API.
    */
-  root: string;
+  rootIRI: string;
 
   /**
    * Headers to send when making requests to endpoints
@@ -629,10 +650,11 @@ type SSRAlternativeState = AlternativeState & {
 type InitialState = [
   acceptMap: Array<[string, string]>,
   primary: Array<[string, EntityState]>,
-  alternatives: Array<[string, AlternativesStateInfo, SSRAlternativeState]>,
+  alternatives: Array<[string, SSRAlternativeState, AlternativesStateInfo]>,
 ];
 
 export interface StoreType {
+  readonly type: 'octiron-store';
 
   /**
    * Used only in SSR for reporting the HTTP status of the
@@ -643,7 +665,7 @@ export interface StoreType {
   /**
    * The root IRI the store is configured to work with.
    */
-  readonly root: string;
+  readonly rootIRI: string;
 
   readonly vocab: string | undefined;
 
@@ -740,7 +762,7 @@ export interface StoreType {
 };
 
 export type MakeStoreFromInitialStateArgs = {
-  root: string;
+  rootIRI: string;
   vocab?: string;
   aliases?: Record<string, string>;
   headers?: Record<string, string>;
@@ -756,8 +778,8 @@ export type MakeStoreFactory = {
 
 export const makeStore = ((args) => {
   let status: number;
-  const root = args.root;
-  const rootOrigin = new URL(root).origin;
+  const rootIRI = args.rootIRI;
+  const rootOrigin = new URL(rootIRI).origin;
   const headers = new Headers(args.headers);
   const vocab = args.vocab;
   const aliases: Record<string, string> = Object.create(null);
@@ -833,7 +855,8 @@ export const makeStore = ((args) => {
   Object.freeze(context);
 
   const store: StoreType = {
-    root,
+    type: 'octiron-store',
+    rootIRI,
     vocab,
     aliases,
     context,
@@ -1064,7 +1087,7 @@ export const makeStore = ((args) => {
           .map(([contentTypeKey, alternative]) => {
             const altState = alternative.integration.getStateInfo();
             delete (alternative as any).integration;
-            return [contentTypeKey, altState, alternative] as [string, AlternativesStateInfo, SSRAlternativeState];
+            return [contentTypeKey, alternative, altState] as [string, SSRAlternativeState, AlternativesStateInfo];
           }),
       ];
 
@@ -1075,8 +1098,9 @@ export const makeStore = ((args) => {
   return Object.freeze(store);
 }) as MakeStoreFactory;
 
+
 makeStore.fromInitialState = ({
-  root,
+  rootIRI,
   vocab,
   aliases,
   headers,
@@ -1087,7 +1111,7 @@ makeStore.fromInitialState = ({
   performance.mark('octiron:from-initial-state:start')
   
   const storeArgs: MakeStoreArgs = {
-    root,
+    rootIRI,
     vocab,
     aliases,
     handlers,
@@ -1096,11 +1120,34 @@ makeStore.fromInitialState = ({
   };
 
   try {
+    let initialState: InitialState;
     const el = document.getElementById('oct-state') as HTMLScriptElement;
 
     if (el == null) {
       if (enableLogs) {
-        console.warn('Failed to construct Octiron state from initial state');
+        console.warn('Could not locate initial state');
+      }
+
+      return makeStore(storeArgs);
+    }
+
+    try {
+      initialState = JSON.parse(el.innerText);
+    } catch {
+      if (enableLogs) {
+        console.warn('Failed to construct store from initial state');
+        console.log(el);
+      }
+
+      return makeStore(storeArgs);
+    }
+
+    if (!Array.isArray(initialState) ||
+        initialState.length !== 3) {
+      if (enableLogs) {
+        console.warn('Invalid initial state');
+        console.log(el);
+        console.log(initialState);
       }
 
       return makeStore(storeArgs);
@@ -1115,7 +1162,7 @@ makeStore.fromInitialState = ({
     }, {});
 
     for (let i = 0, l = stateInfo[2].length; i < l; i++) {
-      const [contentTypeKey, altInfo, alternative] = stateInfo[2][i];
+      const [contentTypeKey, alternative, altInfo] = stateInfo[2][i];
 
       const factory = integrations[altInfo.integrationType];
       const handler = handlersMap[altInfo.contentType];

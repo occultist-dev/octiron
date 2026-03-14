@@ -3,148 +3,15 @@ import type {HTMLFragmentsIntegration} from '../alternatives/htmlFragments.ts';
 import type {JSONObject, JSONValue} from './common.ts';
 import type {Octiron, Spec} from "./octiron.ts";
 
-
-// TODO: remove
-export type IntegrationType =
-  // | 'jsonld'
-  // | 'problem-details'
-  | 'html'
-  | 'html-fragments'
-  | 'unrecognized';
-;
-
-export type HandlerArgs = {
-  res: Response;
-  store: Store;
-};
-
-export type RequestHandler<T extends Record<string, JSONValue>> = (args: HandlerArgs) => Promise<T> | T;
-
-export type JSONLDContentTypeResult = {
-  value: JSONObject;
-};
-
-export type JSONLDHandlerResult = {
-  jsonld: JSONObject;
-};
-
-export type JSONLDHandler = {
-  integrationType: 'jsonld';
-  contentType: string;
-  handler: RequestHandler<JSONLDHandlerResult>;
-};
-
-export type ProblemDetailsHandlerResult = {
-  problemDetails: JSONObject;
-};
-
-export type ProblemDetailsHandler = {
-  integrationType: 'problem-details';
-  contentType: string;
-  handler: RequestHandler<ProblemDetailsHandlerResult>;
-};
-
-export type HTMLHandlerResult = {
-  id?: string;
-  selector?: string;
-  html: string;
-};
-export type FragmentListener = (fragment: string) => void;
-export type AddFragmentListener = (listener: FragmentListener) => void;
-export type HTMLCleanupFn = () => void;
-export type HTMLOnCreateArgs = {
-  o: Octiron;
-  dom: Element;
-  fragment?: string;
-  addFragmentListener: AddFragmentListener;
-};
-export type HTMLOnCreate = (args: HTMLOnCreateArgs) => HTMLCleanupFn;
-export type HTMLHandler = {
-  integrationType: 'html';
-  contentType: string;
-  handler: RequestHandler<HTMLHandlerResult>;
-  onCreate?: HTMLOnCreate;
-};
-
-export type HTMLFragmentSSR = {
-  id: string;
-  type: 'embed' | 'bare' | 'text' | 'range';
-  html?: string;
-  selector: string;
-};
-
-export type HTMLFragment = {
-  id: string;
-  type: 'embed' | 'bare' | 'text' | 'range';
-  html?: string;
-  dom?: Element[];
-  selector: string;
-};
-
-export type HTMLFragmentsHandlerResultSSR = {
-  root?: string | null;
-  selector?: string;
-  fragments: Record<string, HTMLFragmentSSR>;
-  templates: Record<string, string>;
-};
-
-export type HTMLFragmentsHandlerResult = {
-  root?: string | null;
-  dom?: Element[];
-  selector?: string;
-  fragments: Record<string, HTMLFragment>;
-  templates: Record<string, string>;
-};
-
-export type HTMLFragmentsCleanupFn = () => void;
-export type HTMLFragmentsOnCreateArgs = {
-  o: Octiron;
-  dom: Element;
-  fragment?: string;
-};
-
-export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFragmentsCleanupFn;
-
-export type HTMLFragmentsHandler = {
-  integrationType: 'html-fragments';
-  contentType: string;
-  handler: RequestHandler<HTMLFragmentsHandlerResultSSR>;
-  onCreate?: HTMLFragmentsOnCreate;
-};
-
-export type UnrecognizedContentTypeHandler = {
-  integrationType: 'unrecognized';
-  contentType: string;
-};
-
-export type Handler =
-  | JSONLDHandler
-  | ProblemDetailsHandler
-  | HTMLHandler
-  | HTMLFragmentsHandler
-  | UnrecognizedContentTypeHandler
-;
-
 export type FetcherArgs = {
   method?: string;
   body?: string;
   headers?: Headers;
 };
 
-export type Fetcher = (iri: string, args: FetcherArgs) => Promise<Response>;
-
-export type ResponseHook = (res: Promise<Response>) => void;
-
 export type HTTPErrorView = (status: number) => Children;
 
 export type ContentParsingView = (error: Error) => Children;
-
-export type AlternativeContentProps = {
-  o: Octiron;
-  fragment?: string;
-};
-
-export type AlternativeContentComponent = ComponentTypes<AlternativeContentProps>;
 
 export interface Failure {
 

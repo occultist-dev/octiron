@@ -5,10 +5,10 @@ import m from 'mithril';
 import mountRedraw from 'mithril/api/mount-redraw.js';
 import render from 'mithril/render.js';
 import {makeJSONLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
-import {longformHandler, octiron} from '../../lib/octiron.ts';
-import {type StoreArgs} from '../../lib/store.ts';
+import {octiron} from '../../lib/octiron.ts';
+import {longformHandler} from '../../lib/handlers/longformHandler.ts';
+import {type Fetcher, type ResponseHook} from '../../lib/store.ts';
 import {format} from 'prettier';
-import { setIsBrowserRender } from '../../lib/consts.ts';
 
 
 class Scheduler {
@@ -34,6 +34,8 @@ class Scheduler {
 export function domTest() {
   // setIsBrowserRender(true);
 
+  console.log('CREATING TEST UTILS');
+
   const rootIRI = 'http://example.com';
   const vocab = 'http://schema.example.com/';
   const dom = new JSDOM(`
@@ -54,12 +56,12 @@ export function domTest() {
   });
   const scope = registry.scope('/actions');
   let promises: Array<Promise<Response>> = [];
-  const fetcher: StoreArgs['fetcher'] = async (iri, args) => {
+  const fetcher: Fetcher = async (iri, args) => {
     const res = await registry.handleRequest(new Request(iri, args));
 
     return res;
   };
-  const responseHook: StoreArgs['responseHook'] = (res) => promises.push(res);
+  const responseHook: ResponseHook = (res) => promises.push(res);
   const store = new JSONLDContextStore({
     fetcher: (iri, init) => registry.handleRequest(new Request(iri, init)),
   });
@@ -112,3 +114,4 @@ export function domTest() {
     pretty,
   };
 }
+
