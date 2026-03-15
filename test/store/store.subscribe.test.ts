@@ -1,14 +1,14 @@
 import {contextBuilder, makeTypeDef, makeTypeDefs} from "@occultist/occultist";
-import {domTest} from "../utils/dom.ts";
 import type {SelectionDetails} from "../../lib/octiron.ts";
 import assert from "node:assert";
 import {describe, it} from 'node:test';
+import {createTestUtils} from "../utils/dom.ts";
 
 
 
 describe('store.subscribe()', () => {
   it('Calls listener on changes to primary entity changes', async () => {
-    const { registry, store, vocab } = domTest();
+    const { registry, store, vocab } = createTestUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),
@@ -64,7 +64,7 @@ describe('store.subscribe()', () => {
     assert.equal(callCount, 1);
     assert.deepEqual(selectionDetails.required, []);
     assert.deepEqual(selectionDetails.result[0], {
-      "key": "/http:~1~1example.com~1test",
+      "key": "http://example.com/test",
       "pointer": "/http:~1~1example.com~1test",
       "type": "entity",
       "iri": "http://example.com/test",
@@ -82,7 +82,7 @@ describe('store.subscribe()', () => {
     assert.equal(callCount, 2);
     assert.deepEqual(selectionDetails.required, []);
     assert.deepEqual(selectionDetails.result[0], {
-      "key": "/http:~1~1example.com~1test",
+      "key": "http://example.com/test",
       "pointer": "/http:~1~1example.com~1test",
       "type": "entity",
       "iri": "http://example.com/test",
@@ -108,7 +108,7 @@ describe('store.subscribe()', () => {
     assert.equal(callCount, 3);
     assert.deepEqual(selectionDetails.required, []);
     assert.deepEqual(selectionDetails.result[0], {
-      "key": "/http:~1~1example.com~1test",
+      "key": "http://example.com/test",
       "pointer": "/http:~1~1example.com~1test",
       "type": "entity",
       "iri": "http://example.com/test",
@@ -127,7 +127,7 @@ describe('store.subscribe()', () => {
   });
 
   it('Calls listener on changes to alternative entity changes', async () => {
-    const { registry, store, vocab } = domTest();
+    const { registry, store, vocab } = createTestUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),

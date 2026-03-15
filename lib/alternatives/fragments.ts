@@ -425,7 +425,7 @@ export const FragmentsIntegration = ((
       }
 
       const fragment = cache.get(hash);
-      
+
       if (fragment[1] !== 'text') {
         return;
       }
@@ -455,6 +455,8 @@ export const FragmentsIntegration = ((
       }
 
       const fragment = cache.get(hash);
+
+      if (fragment == null) return;
       
       return m(FragmentRenderer, {
         fragment,
@@ -483,6 +485,7 @@ export const FragmentsIntegration = ((
         iri: args.iri,
         method: args.method,
         contentType: args.contentType,
+        integrationType: 'fragments',
         rendered: renderedRoot,
         selector: content.selector,
         templates: content.templates,

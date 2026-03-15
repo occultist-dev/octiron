@@ -1,4 +1,4 @@
-import type { Store } from "../store.ts";
+import type { StoreType } from "../store.ts";
 export type SelectorObject = {
     subject?: string;
     filter?: string;
@@ -11,4 +11,4 @@ export type SelectorObject = {
  *
  * @param selector - The selector string to parse.
  */
-export declare function parseSelectorString(selector: string, store: Store): SelectorObject[];
+export declare function parseSelectorString(selector: string, store: StoreType): SelectorObject[];

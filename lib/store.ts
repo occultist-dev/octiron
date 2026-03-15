@@ -282,6 +282,7 @@ function handleJSONLD(
       loading: false,
       ok: true,
       contentType,
+      integrationType: 'jsonld',
       value: content,
       isProblem: false,
     })
@@ -295,6 +296,7 @@ function handleJSONLD(
       ok: false,
       value: content,
       contentType,
+      integrationType: 'jsonld',
       status: res.status,
       isProblem: false,
       reason,
@@ -316,6 +318,7 @@ function handleJSONLD(
       ok: true,
       value: entity,
       contentType,
+      integrationType: 'jsonld',
       isProblem: false,
     });
   }
@@ -368,7 +371,6 @@ async function handleResponse(
   if (handler?.integrationType === 'jsonld') {
     const content = await handler.handler({
       res,
-      store: this,
     });
 
     handleJSONLD(
@@ -385,7 +387,6 @@ async function handleResponse(
       store,
     );
   } else {
-    // TODO: Support problem details 
     const content = await handler.handler({
       res,
     });
@@ -940,7 +941,7 @@ export const makeStore = ((args) => {
 
       if (entity == null ||
           entity.type !== 'alternative-success' ||
-          entity.integration.text != null) {
+          entity.integration.text == null) {
         return;
       }
 
@@ -1099,13 +1100,13 @@ export const makeStore = ((args) => {
         Array.from(primary.entries()),
         Array.from(alternatives.entries())
           .map(([contentTypeKey, alternative]) => {
-            const altState = alternative.integration.getStateInfo();
+            const stateInfo = alternative.integration.getStateInfo();
             delete (alternative as any).integration;
-            return [contentTypeKey, alternative, altState] as [string, SSRAlternativeState, AlternativesStateInfo];
+            return [contentTypeKey, alternative, stateInfo] as [string, SSRAlternativeState, AlternativesStateInfo];
           }),
       ];
 
-      return initialState;
+      return `<script id="oct-state" type="application/json">${JSON.stringify(initialState)}</script>`
     },
   };
 
@@ -1123,7 +1124,7 @@ makeStore.fromInitialState = ({
   enableLogs,
 }) => {
   performance.mark('octiron:from-initial-state:start')
-  
+
   const storeArgs: MakeStoreArgs = {
     rootIRI,
     vocab,

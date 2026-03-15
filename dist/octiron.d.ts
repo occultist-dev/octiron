@@ -1,9 +1,8 @@
 import type { OctironRoot, TypeHandler } from "./types/octiron.ts";
-import { Store } from "./store.ts";
+import { makeStore, type MakeStoreArgs } from "./store.ts";
 export * from './types/common.ts';
 export * from './types/store.ts';
 export * from './types/octiron.ts';
-export * from './store.ts';
 export * from './utils/classes.ts';
 export * from './utils/makeTypeHandler.ts';
 export * from './utils/makeTypeHandlers.ts';
@@ -15,14 +14,15 @@ export * from './components/OctironDebug.ts';
 export * from './components/OctironExplorer.ts';
 export * from './components/OctironForm.ts';
 export * from './components/OctironSubmitButton.ts';
+export type OctironArgs = {
+    typeHandlers?: TypeHandler<any>[];
+} & MakeStoreArgs;
 /**
  * Creates a root octiron instance.
  */
-export declare function octiron({ typeHandlers, ...storeArgs }: ConstructorParameters<typeof Store>[0] & {
-    typeHandlers?: TypeHandler<any>[];
-}): OctironRoot;
+export declare function octiron({ typeHandlers, ...storeArgs }: OctironArgs): OctironRoot;
 export declare namespace octiron {
-    var fromInitialState: ({ typeHandlers, ...storeArgs }: Parameters<typeof Store.fromInitialState>[0] & {
+    var fromInitialState: ({ typeHandlers, ...storeArgs }: Parameters<typeof makeStore.fromInitialState>[0] & {
         typeHandlers?: TypeHandler<any>[];
     }) => OctironRoot;
 }

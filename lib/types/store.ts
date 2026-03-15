@@ -564,6 +564,11 @@ export type SuccessEntityState = {
   readonly contentType: string;
 
   /**
+   * The integration type.
+   */
+  readonly integrationType: 'jsonld';
+
+  /**
    * Response etag value if present.
    */
   readonly etag?: string;
@@ -674,6 +679,11 @@ export type FailureEntityState = {
    * Response content type value if present.
    */
   readonly contentType?: string;
+
+  /**
+   * The integration type.
+   */
+  readonly integrationType: 'jsonld';
 
   /**
    * Response etag value if present.

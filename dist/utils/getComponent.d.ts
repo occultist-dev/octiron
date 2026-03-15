@@ -18,7 +18,7 @@ import type { AnyComponent, EditComponent, PresentComponent, TypeHandlers } from
  * @param args.fallbackComponent - The component to use if no other component
  *                                 is picked.
  */
-export declare function getComponent<Style extends 'present' | 'edit', Component extends (Style extends 'present' ? PresentComponent | AnyComponent : EditComponent | AnyComponent)>({ style, propType, type, firstPickComponent, typeHandlers, fallbackComponent, }: {
+export declare function getComponent<Style extends 'present' | 'edit', Component extends (Style extends 'present' ? PresentComponent<any> | AnyComponent<any> : EditComponent<any> | AnyComponent<any>)>({ style, propType, type, firstPickComponent, typeHandlers, fallbackComponent, }: {
     style: Style;
     propType?: string;
     type?: string | string[];

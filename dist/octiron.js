@@ -2,7 +2,6 @@ import m from 'mithril';
 import { isJSONObject as isJSONObject$1 } from '@occultist/mini-jsonld';
 import { JsonPointer } from 'json-ptr';
 import uriTemplates from 'uri-templates';
-import { processTemplate } from '@longform/longform';
 
 /**
   * Creates an Octiron selection instance.
@@ -605,7 +604,7 @@ class CircularSelectionError extends Error {
  * @param {JSONObject} [args.value]         Context object to begin the selection from.
  * @param {JSONObject} [args.actionValue]   The action, or point in the action definition which describes this value.
  * @param {JSONValue} [args.defaultValue]   A default value when used to select action values.
- * @param {Store} args.store                Octiron store to search using.
+ * @param {StoreType} args.store                Octiron store to search using.
  * @returns {SelectionDetails}              Selection contained in a details object.
  */
 function getSelection({ selector: selectorStr, value, fragment, accept, actionValue, defaultValue, store, }) {
@@ -1415,7 +1414,9 @@ const ActionStateRenderer3 = () => {
             if (!render)
                 return;
             if (integration != null) {
-                return integration.render(vnode.attrs.parentArgs.parent, fragment);
+                return integration.render(
+                //vnode.attrs.parentArgs.parent,
+                fragment);
             }
             else if (vnode.attrs.selector != null && octiron != null) {
                 return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
@@ -1574,7 +1575,6 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             payload = next;
         }
         childArgs.value = self.value = value;
-        console.log('SUBMIT?', args2, args);
         if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
@@ -2227,7 +2227,9 @@ const SelectionRenderer2 = () => {
                 }
                 else {
                     child.push(m.fragment({ key: '@value' }, [
-                        l2[i].selectionResult.integration.render(vnode.attrs.parentArgs.parent, vnode.attrs.args.fragment),
+                        l2[i].selectionResult.integration.render(
+                        //vnode.attrs.parentArgs.parent,
+                        vnode.attrs.args.fragment),
                     ]));
                 }
                 children.push(m.fragment({ key: l2[i].selectionResult.key }, child));
@@ -2237,6 +2239,16 @@ const SelectionRenderer2 = () => {
         },
     };
 };
+
+let counter = 0;
+/**
+ * Generates a unique key.
+ */
+function key() {
+    const key = `oct-${counter.toString().padStart(8, '0')}`;
+    counter++;
+    return key;
+}
 
 const TypeKeys = {
     'root': 0,
@@ -2267,7 +2279,7 @@ function octironFactory(octironType, refs) {
             }
             return null;
         } })[name];
-    self.id = refs.parentArgs.store.key();
+    self.id = key();
     self.isOctiron = true;
     self.octironType = octironType;
     self.readonly = true;
@@ -2436,410 +2448,467 @@ function rootFactory(parentArgs) {
     return res;
 }
 
-function fragmentToHTML(fragment) {
-    let html = '';
-    for (let i = 0; i < fragment.length; i++) {
-        html += fragment[i].outerHTML;
-    }
-    return html;
-}
-const HTMLFragmentsIntegrationComponent = () => {
-    let fragment = null;
-    let html;
-    let prevIRI;
-    let prevFragment;
-    function setDomServer(attrs) {
-        if (fragment === attrs.fragment) {
-            return;
-        }
-        fragment = attrs.fragment;
-        if (attrs.fragment == null) {
-            html = attrs.output.root;
-            return;
-        }
-        const [id, rest] = attrs.fragment.split('?');
-        if (rest == null) {
-            html = attrs.output.fragments[id]?.html;
-            return;
-        }
-        const template = attrs.output.templates[id];
-        if (template == null) {
-            return;
-        }
-        try {
-            const args = Object.fromEntries(new URLSearchParams(rest));
-            html = processTemplate(template, args, (fragment) => {
-                return attrs.output.fragments[fragment]?.html;
-            });
-        }
-        catch (err) {
-            console.error(err);
-        }
-    }
-    function setDomClient(attrs) {
-        if (attrs.fragment == null) {
-            if (attrs.output.root != null && attrs.output.dom == null) {
-                const template = document.createElement('template');
-                template.innerHTML = attrs.output.root;
-                attrs.output.dom = Array.from(template.content.children);
-            }
-            html = attrs.output.dom;
-            return;
-        }
-        const [id, rest] = attrs.fragment.split('?');
-        const isTemplate = rest != null || attrs.output.templates[id] != null;
-        if (!isTemplate) {
-            const fragment = attrs.output.fragments[id];
-            if (fragment == null) {
-                return;
-            }
-            else if (fragment.type === 'text') {
-                html = fragment.html;
-                return;
-            }
-            else if (fragment.dom == null && fragment.html != null) {
-                const template = document.createElement('template');
-                template.innerHTML = fragment.html;
-                fragment.dom = Array.from(template.content.children);
-            }
-            else if (fragment.dom == null) {
-                return;
-            }
-            html = fragment.dom;
-            return;
-        }
-        const template = attrs.output.templates[id];
-        if (template == null) {
-            return;
-        }
-        try {
-            const args = Object.fromEntries(new URLSearchParams(rest));
-            html = processTemplate(template, args, (ref) => {
-                if (attrs.output.fragments[ref] != null &&
-                    attrs.output.fragments[ref].html == null &&
-                    attrs.output.fragments[ref].dom != null) {
-                    attrs.output.fragments[ref].html = fragmentToHTML(attrs.output.fragments[ref].dom);
-                }
-                return attrs.output.fragments[ref]?.html;
-            });
-        }
-        catch (err) {
-            console.error(err);
-        }
-    }
-    return {
-        oninit({ attrs }) {
-            if (isBrowserRender) {
-                setDomClient(attrs);
+/**
+ * @description
+ * Aggregates a list of type handlers into an easier to access
+ * type handler config object.
+ *
+ * @param typeHandlers The type handlers to aggregate.
+ */
+function makeTypeHandlers(
+// deno-lint-ignore no-explicit-any
+storeOrTypeHandler, ...typeHandlers) {
+    const config = {};
+    if (storeOrTypeHandler.type === 'octiron-store') {
+        for (const typeHandler of typeHandlers) {
+            if (typeHandler.type === '@id') {
+                config['@id'] = typeHandler;
             }
             else {
-                setDomServer(attrs);
+                // deno-lint-ignore no-explicit-any
+                config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
             }
-            prevIRI = attrs.integration.iri;
-            prevFragment = attrs.fragment;
-        },
-        onbeforeupdate({ attrs }) {
-            if (prevIRI !== attrs.integration.iri ||
-                prevFragment !== attrs.fragment) {
-                if (isBrowserRender) {
-                    setDomClient(attrs);
-                }
-                else {
-                    setDomServer(attrs);
-                }
-            }
-            prevIRI = attrs.integration.iri;
-            prevFragment = attrs.fragment;
-        },
-        view(vnode) {
-            if (isBrowserRender && Array.isArray(html)) {
-                return m.dom(html);
-            }
-            else if (typeof html === 'string') {
-                return m.trust(html);
-            }
-            return null;
-        },
-    };
-};
-class HTMLFragmentsIntegration {
-    static type = 'html-fragments';
-    integrationType = 'html-fragments';
-    #rootRendered = false;
-    #rendered = new Set();
-    #iri;
-    #method;
-    #contentType;
-    #handler;
-    #output;
-    constructor(handler, { iri, method, contentType, output, }) {
-        this.#handler = handler;
-        this.#iri = iri;
-        this.#method = method;
-        this.#contentType = contentType;
-        this.#output = output;
-    }
-    get iri() {
-        return this.#iri;
-    }
-    get method() {
-        return this.#method;
-    }
-    get contentType() {
-        return this.#contentType;
-    }
-    get output() {
-        return this.#output;
-    }
-    getFragment(fragment) {
-        return fragment != null
-            ? this.#output.fragments[fragment]?.html ?? null
-            : this.#output.root ?? null;
-    }
-    #fragmentHTML(fragment) {
-        let html = '';
-        for (let i = 0; i < fragment.length; i++) {
-            html += fragment[i].outerHTML;
-        }
-        return html;
-    }
-    /**
-     * Returns a text representaion of a fragment.
-     */
-    text(fragment) {
-        if (fragment == null) {
-            if (this.output.root == null && this.#output.dom) {
-                this.output.root = this.#fragmentHTML(this.#output.dom);
-            }
-            return this.output.root;
-        }
-        const [id, rest] = fragment.split('?');
-        if (rest == null) {
-            const fragment = this.#output.fragments[id];
-            if (fragment == null) {
-                return;
-            }
-            if (fragment.html == null && fragment.dom) {
-                fragment.html = this.#fragmentHTML(fragment.dom);
-            }
-            return fragment.html;
-        }
-        const template = this.#output.templates[id];
-        if (template == null) {
-            return;
-        }
-        try {
-            const args = Object.fromEntries(new URLSearchParams(rest));
-            return processTemplate(template, args, (ref) => {
-                const fragment = this.#output.fragments[ref];
-                if (fragment == null)
-                    return;
-                if (fragment.html == null && fragment.dom != null) {
-                    fragment.html = this.#fragmentHTML(fragment.dom);
-                }
-                return fragment.html;
-            });
-        }
-        catch (err) {
-            console.error(err);
         }
     }
-    /**
-     * Renders a HTML fragment.
-     *
-     * @param o         The octiron instance.
-     * @param fragment  A fragment identifier to use when selecting the fragment
-     *                  to render and for providing template args. If no fragment
-     *                  identifier is provided the root fragment will be rendered.
-     */
-    render(o, fragment) {
-        if (!isBrowserRender) {
-            if (fragment == null) {
-                this.#rootRendered = true;
-            }
-            else {
-                this.#rendered.add(fragment);
-            }
+    else {
+        // deno-lint-ignore no-explicit-any
+        config[storeOrTypeHandler.type] = storeOrTypeHandler;
+        for (const typeHandler of typeHandlers) {
+            // deno-lint-ignore no-explicit-any
+            config[typeHandler.type] = typeHandler;
         }
-        return m(HTMLFragmentsIntegrationComponent, {
-            o,
-            integration: this,
-            fragment,
-            output: this.#output,
-        });
     }
-    getStateInfo() {
-        const texts = {};
-        const fragments = [];
-        const entries = Object.values(this.#output.fragments);
-        for (let i = 0, l = entries.length; i < l; i++) {
-            if (entries[i].type === 'text') {
-                texts[entries[i].id] = entries[i].html;
-            }
-            else {
-                fragments.push({
-                    id: entries[i].id,
-                    type: entries[i].type,
-                    selector: entries[i].selector,
-                    rendered: this.#rendered.has(entries[i].id),
-                });
-            }
-        }
-        return {
-            iri: this.#iri,
-            method: this.#method,
-            contentType: this.#contentType,
-            rendered: this.#rootRendered,
-            selector: this.#output.selector,
-            templates: this.#output.templates,
-            texts,
-            fragments,
-        };
-    }
-    toInitialState() {
-        let html = '';
-        const entries = Object.values(this.#output.fragments);
-        if (this.#output.root != null && !this.#rootRendered) {
-            html += `<template id="htmlfrag:${this.#iri}|${this.#method}|${this.#contentType}">${this.#output.root}</template>\n`;
-        }
-        for (let i = 0; i < entries.length; i++) {
-            if (entries[i].type === 'text') {
-                continue;
-            }
-            if (!this.#rendered.has(entries[i].id)) {
-                html += `<template data-htmlfrag="${entries[i].id}">${entries[i].html}</template>\n`;
-            }
-        }
-        return html;
-    }
-    static fromInitialState({ iri, method, contentType, rendered, selector, texts, fragments, templates, }, handler) {
-        const output = Object.create(null);
-        output.fragments = Object.create(null);
-        output.templates = templates;
-        if (selector != null && rendered) {
-            const element = document.querySelector(selector);
-            if (element != null) {
-                output.root = element.outerHTML;
-            }
-        }
-        else if (selector != null) {
-            const template = document.getElementById(`htmlfrag:${iri}|${contentType}`);
-            output.root = template?.textContent;
-        }
-        const textEntries = Object.entries(texts);
-        for (let i = 0; i < textEntries.length; i++) {
-            output.fragments[textEntries[i][0]] = {
-                id: textEntries[i][0],
-                type: 'text',
-                html: textEntries[i][1],
-                selector: '',
-            };
-        }
-        for (let i = 0; i < fragments.length; i++) {
-            const fragment = fragments[i];
-            if (fragment.rendered) {
-                let element;
-                switch (fragment.type) {
-                    case 'embed': {
-                        element = document.getElementById(fragment.id);
-                        if (element == null) {
-                            break;
-                        }
-                        output.fragments[fragment.id] = {
-                            id: fragment.id,
-                            type: fragment.type,
-                            dom: [element],
-                            selector: fragment.selector,
-                        };
-                        break;
-                    }
-                    case 'bare': {
-                        element = document.querySelector(fragment.selector);
-                        if (element == null) {
-                            break;
-                        }
-                        output.fragments[fragment.id] = {
-                            id: fragment.id,
-                            type: fragment.type,
-                            dom: [element],
-                            selector: fragment.selector,
-                        };
-                        break;
-                    }
-                    case 'range': {
-                        const elements = document.querySelectorAll(fragment.selector);
-                        output.fragments[fragment.id] = {
-                            id: fragment.id,
-                            type: fragment.type,
-                            selector: fragment.selector,
-                            dom: Array.from(elements),
-                        };
-                    }
-                }
-            }
-            else {
-                const template = document.querySelector(`[data-htmlfrag="${fragment.id}"]`);
-                if (template == null) {
-                    continue;
-                }
-                output.fragments[fragment.id] = {
-                    id: fragment.id,
-                    type: fragment.type,
-                    dom: Array.from(template.content.children),
-                    selector: fragment.selector,
-                };
-            }
-        }
-        return new HTMLFragmentsIntegration(handler, {
-            contentType,
-            iri,
-            method,
-            output,
-        });
-    }
+    return config;
 }
 
-/**
- * Handles all responses where the content type is not
- * configured.
- */
-class UnrecognizedIntegration {
-    static type = 'unrecognized';
-    integrationType = 'unrecognized';
-    #iri;
-    #method;
-    #contentType;
-    constructor(args) {
-        this.#iri = args.iri;
-        this.#method = args.method;
-        this.#contentType = args.contentType;
-    }
-    error(view) {
-        if (typeof view === 'function') {
-            return view({ type: 'unrecognized-content-type' });
+const ElementRenderer = {
+    oninit(vnode) {
+        if (!isBrowserRender) {
+            vnode.attrs.onRendered();
         }
-        return view;
+    },
+    oncreate(vnode) {
+        if (vnode.attrs.createHandler != null) {
+            const fragmentValue = vnode.attrs.hashParser !== null
+                ? vnode.attrs.hashParser(vnode.attrs.fragment)
+                : '';
+            vnode.state.context = {
+                dom: vnode.dom,
+                fragment: vnode.attrs.fragment,
+                fragmentValue,
+            };
+            const result = vnode.attrs.createHandler(vnode.state.context);
+            if (result?.onFragmentChange != null) {
+                vnode.state.onFragmentChange = result.onFragmentChange;
+            }
+            if (result?.onRemove != null) {
+                vnode.state.onRemove = result.onRemove;
+            }
+        }
+    },
+    onbeforeupdate(vnode) {
+        if (vnode.state.onFragmentChange != null &&
+            vnode.attrs.fragment !== vnode.attrs.fragment) {
+            const fragmentValue = vnode.attrs.hashParser !== null
+                ? vnode.attrs.hashParser(vnode.attrs.fragment)
+                : '';
+            vnode.state.context.fragment = vnode.attrs.fragment;
+            vnode.state.context.fragmentValue = fragmentValue;
+            vnode.state.onFragmentChange(fragmentValue, vnode.attrs.fragment);
+            vnode.state.fragment = vnode.attrs.fragment;
+        }
+    },
+    onbeforeremove(vnode) {
+        if (vnode.state.onRemove != null)
+            vnode.state.onRemove();
+    },
+    view(vnode) {
+        return m.dom(vnode.attrs.dom);
+    },
+};
+const ElementIntegration = ((args, handler) => {
+    let rendered = false;
+    const hashParser = handler.hashParser;
+    const createHandler = handler.createHandler;
+    const html = args.content.html;
+    let dom = args.content.dom;
+    const onRendered = () => {
+        rendered = true;
+    };
+    const integration = {
+        iri: args.iri,
+        method: args.method,
+        contentType: args.contentType,
+        integrationType: 'element',
+        render(hash) {
+            if (dom === undefined) {
+                const template = document.createElement('template');
+                template.innerHTML = html;
+                dom = template.content.children[0] ?? null;
+            }
+            if (dom === null)
+                return;
+            return m(ElementRenderer, {
+                dom: dom,
+                fragment: hash,
+                hashParser,
+                createHandler,
+                onRendered,
+            });
+        },
+        getStateInfo() {
+            return {
+                iri: args.iri,
+                method: args.method,
+                contentType: args.contentType,
+                integrationType: 'element',
+                rendered,
+                selector: args.content.selector,
+            };
+        },
+        toInitialState() {
+            if (!rendered) {
+                return `<template id="element:${args.iri}|${args.method}|${args.contentType}">${html}</template>`;
+            }
+            return '';
+        },
+    };
+    return Object.freeze(integration);
+});
+ElementIntegration.type = 'element';
+ElementIntegration.fromInitialState = (stateInfo, handler) => {
+    const content = {
+        selector: stateInfo.selector,
+        html: '',
+        dom: undefined,
+    };
+    if (stateInfo.rendered) {
+        content.dom = document.querySelector(stateInfo.selector) ?? null;
     }
-    get iri() {
-        return this.#iri;
+    else {
+        const template = document.getElementById(`element:${stateInfo.iri}|${stateInfo.method}|${stateInfo.contentType}`);
+        if (template != null || !(template instanceof HTMLTemplateElement)) {
+            content.dom = template.children[0] ?? null;
+        }
     }
-    get method() {
-        return this.#method;
+    return ElementIntegration({
+        iri: stateInfo.iri,
+        method: stateInfo.method,
+        contentType: stateInfo.contentType,
+        content,
+    }, handler);
+};
+Object.freeze(ElementIntegration);
+
+/**
+ * Populates the dom value in a fragment.
+ *
+ * @param fragment The fragment cache entry.
+ */
+function populateDOM(fragment) {
+    const template = document.createElement('template');
+    template.innerHTML = fragment[2];
+    fragment[3] = Array.from(template.content.children);
+}
+/**
+ * Finds the fragment relating to a URL hash and caches the it.
+ * If the fragment is a template it is processed before being
+ * cached against the hash.
+ *
+ * @param hash The URL fragment.
+ * @param hashParser Parser function that can separate the fragment identifier from any template args.
+ * @param content The HTML fragments content.
+ * @param cache A map of URL fragments to the processed fragment.
+ */
+function cacheFragment(hash, hashParser, templateParser, fragmentHook, content, cache) {
+    let fragmentCache = null;
+    if (hashParser == null) {
+        const fragment = content.fragments[hash];
+        if (fragment != null) {
+            fragmentCache = [fragment.id, fragment.type, fragment.html, fragment.dom];
+        }
     }
-    get contentType() {
-        return this.#contentType;
+    else {
+        const result = hashParser(hash);
+        if (result?.args != null && templateParser != null) {
+            const template = content.templates != null ? content.templates[result.identifier] : undefined;
+            if (template != null) {
+                const html = templateParser(template, result.args, fragmentHook);
+                fragmentCache = [result.identifier, undefined, html];
+            }
+        }
+        else if (result != null && result.args == null) {
+            const fragment = content.fragments[result.identifier];
+            fragmentCache = [result.identifier, fragment.type, fragment.html, fragment.dom];
+        }
     }
-    getStateInfo() {
-        return {
-            iri: this.#iri,
-            method: this.#method,
-            contentType: this.#contentType,
+    cache.set(hash, fragmentCache);
+}
+const FragmentRenderer = {
+    oninit(vnode) {
+        vnode.state.fragment = vnode.attrs.fragment;
+        if (!isBrowserRender) {
+            // used for SSR to determine if a fragment has been
+            // written to the HTML document or should be appended
+            // as a template.
+            vnode.attrs.onRendered(vnode.attrs.fragment[0]);
+        }
+        if (isBrowserRender && vnode.attrs.fragment[3] == null) {
+            populateDOM(vnode.attrs.fragment);
+        }
+    },
+    oncreate(vnode) {
+        if (vnode.attrs.handler != null) {
+            vnode.state.onRemove = vnode.attrs.handler(vnode.dom);
+        }
+    },
+    onbeforeupdate(vnode) {
+        if (vnode.attrs.fragment !== vnode.state.fragment) {
+            vnode.state.didChange = true;
+            vnode.state.fragment = vnode.attrs.fragment;
+            if (vnode.attrs.fragment[3] == null) {
+                populateDOM(vnode.attrs.fragment);
+            }
+            if (vnode.state.onRemove != null) {
+                vnode.state.onRemove();
+            }
+        }
+    },
+    onupdate(vnode) {
+        if (vnode.state.didChange && vnode.attrs.handler != null) {
+            vnode.state.didChange = false;
+            if (vnode.attrs.handler != null) {
+                vnode.state.onRemove = vnode.attrs.handler(vnode.dom);
+            }
+        }
+    },
+    onbeforeremove(vnode) {
+        if (vnode.state.onRemove != null)
+            vnode.state.onRemove();
+    },
+    view(vnode) {
+        if (vnode.attrs.fragment[1] === 'text' || !isBrowserRender) {
+            return m.trust(vnode.attrs.fragment[2]);
+        }
+        return m.dom(vnode.attrs.fragment[3]);
+    },
+};
+const FragmentsIntegration = ((args, handler) => {
+    let root;
+    let renderedRoot = false;
+    const cache = new Map();
+    const rendered = [];
+    const hashParser = handler.hashParser;
+    const templateParser = handler.templateParser;
+    const content = args.content;
+    const fragmentHook = (fragmentIdentifier) => {
+        const fragment = content.fragments[fragmentIdentifier];
+        return fragment?.html;
+    };
+    const onRendered = (identifier) => {
+        if (identifier == null) {
+            renderedRoot = true;
+        }
+        else {
+            rendered.push(identifier);
+        }
+    };
+    const integration = {
+        iri: args.iri,
+        method: args.method,
+        contentType: args.contentType,
+        text(hash) {
+            if (hash == null)
+                return;
+            if (!cache.has(hash)) {
+                cacheFragment(hash, hashParser, templateParser, fragmentHook, content, cache);
+            }
+            const fragment = cache.get(hash);
+            if (fragment[1] !== 'text') {
+                return;
+            }
+            return fragment[2];
+        },
+        render(hash) {
+            if (hash == null) {
+                if (Array.isArray(root)) {
+                    return m(FragmentRenderer, {
+                        fragment: root,
+                        onRendered,
+                    });
+                }
+                else if (args.content.root == null) {
+                    return;
+                }
+                root = [undefined, undefined, args.content.root, args.content.dom];
+                return m(FragmentRenderer, {
+                    fragment: root,
+                    onRendered,
+                });
+            }
+            if (!cache.has(hash)) {
+                cacheFragment(hash, hashParser, templateParser, fragmentHook, content, cache);
+            }
+            const fragment = cache.get(hash);
+            if (fragment == null)
+                return;
+            return m(FragmentRenderer, {
+                fragment,
+                onRendered,
+            });
+        },
+        getStateInfo() {
+            const text = {};
+            const fragments = [];
+            const entries = Object.values(content.fragments);
+            for (let i = 0, l = entries.length; i < l; i++) {
+                if (entries[i].type === 'text') {
+                    text[entries[i].id] = entries[i].html;
+                }
+                else {
+                    fragments.push({
+                        id: entries[i].id,
+                        type: entries[i].type,
+                        selector: entries[i].selector,
+                        rendered: rendered.includes(entries[i].id),
+                    });
+                }
+            }
+            return {
+                iri: args.iri,
+                method: args.method,
+                contentType: args.contentType,
+                integrationType: 'fragments',
+                rendered: renderedRoot,
+                selector: content.selector,
+                templates: content.templates,
+                text,
+                fragments,
+            };
+        },
+        toInitialState() {
+            let html = '';
+            const entries = Object.values(content.fragments);
+            if (content.root != null && !renderedRoot) {
+                html += `<template id="fragment:${args.iri}|${args.method}|${args.contentType}">${content.root}</template>\n`;
+            }
+            for (let i = 0, l = entries.length; i < l; i++) {
+                if (entries[i].type === 'text') {
+                    continue;
+                }
+                if (!rendered.includes(entries[i].id)) {
+                    html += `<template data-fragment="${entries[i].id}">${entries[i].html}</template>\n`;
+                }
+            }
+            return html;
+        },
+    };
+    return Object.freeze(integration);
+});
+FragmentsIntegration.type = 'fragments';
+FragmentsIntegration.fromInitialState = (stateInfo, handler) => {
+    const content = Object.create(null);
+    content.fragments = Object.create(null);
+    content.templates = stateInfo.templates;
+    if (stateInfo.selector != null && stateInfo.rendered) {
+        const element = document.querySelector(stateInfo.selector);
+        if (element != null) {
+            content.root = element.outerHTML;
+        }
+    }
+    else if (stateInfo.selector != null) {
+        const template = document.getElementById(`fragment:${stateInfo.iri}|${stateInfo.contentType}`);
+        content.root = template?.textContent;
+    }
+    const textEntries = Object.entries(stateInfo.text);
+    for (let i = 0, l = textEntries.length; i < l; i++) {
+        content.fragments[textEntries[i][0]] = {
+            id: textEntries[i][0],
+            type: 'text',
+            html: textEntries[i][1],
         };
     }
-    static fromInitialState({ iri, method, contentType, }) {
-        return new UnrecognizedIntegration({ iri, method, contentType });
+    for (let i = 0, l = stateInfo.fragments.length; i < l; i++) {
+        const fragment = stateInfo.fragments[i];
+        if (fragment.rendered) {
+            let element;
+            switch (fragment.type) {
+                case 'embed': {
+                    element = document.getElementById(fragment.id);
+                    if (element == null) {
+                        break;
+                    }
+                    content.fragments[fragment.id] = {
+                        id: fragment.id,
+                        type: fragment.type,
+                        dom: [element],
+                        selector: fragment.selector,
+                    };
+                    break;
+                }
+                case 'bare': {
+                    element = document.querySelector(fragment.selector);
+                    if (element == null) {
+                        break;
+                    }
+                    content.fragments[fragment.id] = {
+                        id: fragment.id,
+                        type: fragment.type,
+                        dom: [element],
+                        selector: fragment.selector,
+                    };
+                    break;
+                }
+                case 'range': {
+                    const elements = document.querySelectorAll(fragment.selector);
+                    content.fragments[fragment.id] = {
+                        id: fragment.id,
+                        type: fragment.type,
+                        selector: fragment.selector,
+                        dom: Array.from(elements),
+                    };
+                }
+            }
+        }
+        else {
+            const template = document.querySelector(`[data-fragment="${fragment.id}"]`);
+            if (template == null) {
+                continue;
+            }
+            content.fragments[fragment.id] = {
+                id: fragment.id,
+                type: fragment.type,
+                dom: Array.from(template.content.children),
+                selector: fragment.selector,
+            };
+        }
     }
-}
+    return FragmentsIntegration({
+        iri: stateInfo.iri,
+        method: stateInfo.method,
+        contentType: stateInfo.contentType,
+        content,
+    }, handler);
+};
+Object.freeze(FragmentsIntegration);
+
+const UnrecognisedIntegration = ((args) => {
+    const integration = {
+        iri: args.iri,
+        method: args.method,
+        contentType: args.contentType,
+        getStateInfo() {
+            return {
+                iri: args.iri,
+                method: args.method,
+                contentType: args.contentType,
+            };
+        },
+    };
+    return Object.freeze(integration);
+});
+UnrecognisedIntegration.type = 'unrecognised';
+UnrecognisedIntegration.fromInitialState = UnrecognisedIntegration;
 
 class HTTPFailure {
     #status;
@@ -2882,6 +2951,9 @@ class HTTPFailure {
  *              function and isn't required by upstream callers.
  */
 function flattenIRIObjects(value, agg = []) {
+    if (Array.isArray(value) || isJSONObject(value)) {
+        Object.freeze(value);
+    }
     if (Array.isArray(value)) {
         for (const item of value) {
             flattenIRIObjects(item, agg);
@@ -2912,758 +2984,606 @@ function flattenIRIObjects(value, agg = []) {
     return agg;
 }
 
+/**
+ * The accept header used for requests by the store if none is provided.
+ */
 const defaultAccept = 'application/problem+json, application/ld+json';
-const integrationClasses = {
-    [HTMLFragmentsIntegration.type]: HTMLFragmentsIntegration,
-    [UnrecognizedIntegration.type]: UnrecognizedIntegration,
+/**
+ * Integration factories.
+ */
+const integrations = {
+    unrecognised: UnrecognisedIntegration,
+    element: ElementIntegration,
+    fragments: FragmentsIntegration,
 };
-function makeEntityKey(iri, method) {
-    const url = new URL(iri).toString();
-    return `${method.toLowerCase()}|${url}`;
+/**
+ * The accept key is used to locate the last content type
+ * value that was returned for an equivalent request.
+ *
+ * For Octiron an equivalent request is one that has
+ * the same method, IRI (less the fragment) and accept header value.
+ *
+ * TODO: Determine handling of requests with bodies.
+ */
+function makeContentTypeKey(iri, args) {
+    let url = new URL(iri);
+    url.hash = '';
+    url = url.toString();
+    const method = args?.method?.toLowerCase() ?? 'get';
+    const accept = args?.accept ?? '';
+    return `${method}|${url}|${accept}`;
 }
-function getJSONLDValues(vocab, aliases) {
-    const aliasMap = new Map();
-    const context = {};
-    if (vocab != null) {
-        context['@vocab'] = vocab;
-    }
-    if (aliases == null) {
-        return [aliasMap, context];
-    }
-    for (const [key, value] of Object.entries(aliases)) {
-        context[key] = value;
-        aliasMap.set(key, value);
-    }
-    return [aliasMap, context];
+/**
+ * Creates the primary key as well as the content type key since
+ * they are often used together if the primary key is used.
+ *
+ * The primary cache is shared by JSONLD content types (theoretically
+ * including any RDF type if one wanted to used them) and the problem
+ * detail types. The primary cache is not varied by content type since
+ * it should either have a current JSONLD equiv state (this could be
+ * an bad response) or hold problem details (which should be a bad
+ * response).
+ *
+ * TODO: Redesign the sharing of the primary cache for JSONLD and
+ * problem details responses. Bad alternative responses would cause
+ * overwrites on JSONLD responses, even if they were for an
+ * incompatible content type.
+ */
+function makePrimaryKey(iri, args) {
+    let url = new URL(iri);
+    url.hash = '';
+    url = url.toString();
+    const method = args?.method?.toLowerCase() ?? 'get';
+    const accept = args?.accept ?? defaultAccept;
+    const primaryKey = `${method}|${url}`;
+    return [
+        primaryKey,
+        `${primaryKey}|${accept}`,
+        url,
+    ];
 }
-function getInternalHeaderValues(headers, origins) {
-    const internalHeaders = new Headers([['accept', defaultAccept]]);
-    const internalOrigins = new Map();
-    if (headers != null) {
-        for (const [key, value] of Object.entries(headers)) {
-            internalHeaders.set(key, value);
-        }
-    }
-    if (origins != null) {
-        for (const [origin, headers] of Object.entries(origins)) {
-            const internalHeaders = new Headers([['accept', defaultAccept]]);
-            for (const [key, value] of Object.entries(headers)) {
-                internalHeaders.set(key, value);
-            }
-            internalOrigins.set(origin, internalHeaders);
-        }
-    }
-    return [internalHeaders, internalOrigins];
+/**
+ * The alternative type key is used to locate a entity state from
+ * the alternative cache.
+ */
+function makeAlternativeKey(iri, contentType, args) {
+    let url = new URL(iri);
+    url.hash = '';
+    url = url.toString();
+    const method = args?.method?.toLowerCase() ?? 'get';
+    return `${method}|${url}|${contentType ?? ''}`;
 }
-class Store {
-    #httpStatus;
-    #rootIRI;
-    #rootOrigin;
-    #headers;
-    #origins;
-    #vocab;
-    #aliases;
-    #primary = new Map();
-    #loading = new Set();
-    #integrations = new Map();
-    #handlers = new Map();
-    #keys = new Set();
-    #context;
-    #termExpansions = new Map();
-    #fetcher;
-    #responseHook;
-    #dependencies = new Map();
-    #listeners = new Map();
-    #primaryContentTypes = new Set();
-    // iri => accept => [loading, contentType]
-    #acceptMap = new Map();
-    constructor(args) {
-        this.#rootIRI = args.rootIRI;
-        this.#rootOrigin = new URL(args.rootIRI).origin;
-        this.#vocab = args.vocab;
-        this.#fetcher = args.fetcher;
-        this.#responseHook = args.responseHook;
-        [this.#headers, this.#origins] = getInternalHeaderValues(args.headers, args.origins);
-        [this.#aliases, this.#context] = getJSONLDValues(args.vocab, args.aliases);
-        if (args.handlers != null) {
-            for (let i = 0, l = args.handlers.length; i < l; i++) {
-                this.#handlers.set(args.handlers[i].contentType, args.handlers[i]);
-                if (args.handlers[i].integrationType === 'jsonld' ||
-                    args.handlers[i].integrationType === 'problem-details') {
-                    this.#primaryContentTypes.add(args.handlers[i].contentType);
-                }
-            }
-        }
-        if (args.primary != null) {
-            this.#primary = new Map(Object.entries(args.primary));
-        }
-        if (!this.#headers.has('accept')) {
-            this.#headers.set('accept', defaultAccept);
-        }
-        for (const origin of Object.values(this.#origins)) {
-            if (!origin.has('accept')) {
-                origin.set('accept', defaultAccept);
-            }
-        }
-        if (args.acceptMap != null) {
-            for (const [accept, entries] of Object.entries(args.acceptMap)) {
-                this.#acceptMap.set(accept, new Map(entries));
-            }
-        }
-        if (args.alternatives != null) {
-            this.#integrations = args.alternatives;
-        }
-    }
-    /**
-     * Used only in SSR for reporting the HTTP status of the
-     * main entity of the page.
-     */
-    get httpStatus() {
-        return this.#httpStatus;
-    }
-    /**
-     * The root IRI this store is configured to work with.
-     */
-    get rootIRI() {
-        return this.#rootIRI;
-    }
-    isLoading(iri, args) {
-        const keys = this.#getKeys(iri, args);
-        return this.#loading.has(keys[1]);
-    }
-    /**
-     * Retrieves an entity state object relating to an IRI.
-     *
-     * @param iri The IRI of the entity.
-     * @param args.method The method used for the request.
-     * @param args.accept Accept headers used for the request.
-     */
-    entity(iri, args) {
-        const normalizedURL = new URL(iri).toString();
-        const [entityKey, loadingKey] = this.#getKeys(iri, args);
-        const loading = this.#loading.has(loadingKey);
-        if (loading) {
-            return {
-                type: 'entity-loading',
-                iri: normalizedURL,
-                loading: true,
-                isProblem: false,
-            };
-        }
-        if (args?.accept == null) {
-            return this.#primary.get(entityKey);
-        }
-        const contentType = this.#acceptMap.get(entityKey)?.get(args.accept);
-        if (contentType == null) {
-            return;
-        }
-        else if (this.#primaryContentTypes.has(contentType)) {
-            return this.#primary.get(entityKey);
-        }
-        const integration = this.#integrations.get(contentType)?.get(entityKey);
-        if (integration == null) {
-            return;
-        }
-        return {
-            type: 'alternative-success',
-            iri: normalizedURL,
-            fragment: args?.fragment,
-            loading: false,
-            ok: true,
-            contentType,
-            isProblem: false,
-            integration,
-        };
-    }
-    /**
-     * Retrieves the integration class used for a content type.
-     */
-    integration(contentType) {
-        const integrationType = this.#handlers.get(contentType)?.integrationType;
-        return integrationClasses[integrationType];
-    }
-    /**
-     * Retrieves a text representation of a value in the store
-     * if it is supported by the integration.
-     */
-    text(iri, args) {
-        const [key, fragment] = iri.split('#');
-        const entity = this.entity(key, args);
-        if (entity == null) {
-            return;
-        }
-        if (entity?.type === 'alternative-success' &&
-            entity.integration.text != null) {
-            return entity.integration.text(fragment);
-        }
-    }
-    get vocab() {
-        return this.#vocab;
-    }
-    get aliases() {
-        return Object.fromEntries(Array.from(this.#aliases.entries())
-            .map(([key, value]) => [key.replace(/^/, ''), value]));
-    }
-    get context() {
-        return this.#context;
-    }
-    /**
-     * Expands a term to a type.
-     *
-     * If an already expanded JSON-ld type is given it will
-     * return the input value.
-     */
-    expand(termOrType) {
-        const sym = Symbol.for(termOrType);
-        const cached = this.#termExpansions.get(sym);
-        if (cached != null) {
-            return cached;
-        }
-        let expanded;
-        if (this.#vocab != null && !/^[\w\d]+\:/.test(termOrType)) {
-            expanded = this.#vocab + termOrType;
-        }
-        else if (/https?:\/\//.test(termOrType)) {
-            // is a type
-            expanded = termOrType;
-        }
-        else {
-            for (const [key, value] of this.#aliases) {
-                const reg = new RegExp(`^${key}:`);
-                if (reg.test(termOrType)) {
-                    expanded = termOrType.replace(reg, value);
-                    break;
-                }
-            }
-        }
-        this.#termExpansions.set(sym, expanded ?? termOrType);
-        return expanded ?? termOrType;
-    }
-    select(selector, value, { accept, } = {}) {
-        return getSelection({
-            selector,
-            value,
-            accept,
-            store: this,
-        });
-    }
-    /**
-     * Generates a unique key for server rendering only.
-     */
-    key() {
-        while (true) {
-            const key = `oct-${Math.random().toString(36).slice(2, 7)}`;
-            if (!this.#keys.has(key)) {
-                this.#keys.add(key);
-                return key;
-            }
-        }
-    }
-    /**
-     * Creates a cleanup function which should be called
-     * when a subscriber unlistens.
-     */
-    #makeCleanupFn(key, details) {
-        return () => {
-            this.#listeners.delete(key);
-            for (const dependency of details.dependencies) {
-                const normalizedURL = new URL(dependency).toString();
-                this.#dependencies.delete(normalizedURL);
-                if (isBrowserRender) {
-                    setTimeout(() => {
-                        if (this.#dependencies.get(normalizedURL)?.size === 0) {
-                            const [entityKey] = this.#getKeys(dependency);
-                            this.#primary.delete(entityKey);
-                        }
-                    }, 5000);
-                }
-            }
-        };
-    }
-    #getKeys(iri, args) {
-        const url = new URL(iri).toString();
-        const method = args?.method?.toLowerCase() ?? 'get';
-        const accept = args?.accept ?? '';
-        const entityKey = `${method}|${url}`;
-        return [
-            entityKey,
-            `${entityKey}|${accept}`,
-        ];
-    }
-    /**
-     * Called on change to an entity. All listeners with dependencies in their
-     * selection for this entity have the latest selection result pushed to
-     * their listener functions.
-     */
-    #publish(iri, contentType, entityKey) {
-        const keys = this.#dependencies.get(iri);
-        if (keys == null) {
-            return;
-        }
-        for (const key of keys) {
-            const listenerDetails = this.#listeners.get(key);
-            if (listenerDetails == null) {
-                continue;
-            }
-            // construct a new url to normalize the iri. Eg add a trailing
-            // slash to an iri with no pathname part.
-            const mappedType = this.#acceptMap.get(entityKey)
-                ?.get(listenerDetails.accept ?? defaultAccept);
-            // TODO: A more sophisticated check might be required 
-            // to correctly check the content type matches the
-            // listener's accept header
-            if (contentType !== mappedType)
-                continue;
-            const details = getSelection({
-                selector: listenerDetails.selector,
-                value: listenerDetails.value,
-                fragment: listenerDetails.fragment,
-                accept: listenerDetails.accept,
-                store: this,
-            });
-            const cleanup = this.#makeCleanupFn(key, details);
-            for (const dependency of details.dependencies) {
-                const normalizedURL = new URL(dependency).toString();
-                let depSet = this.#dependencies.get(normalizedURL);
-                if (depSet == null) {
-                    depSet = new Set([key]);
-                    this.#dependencies.set(normalizedURL, depSet);
-                }
-                else {
-                    depSet.add(key);
-                }
-            }
-            listenerDetails.cleanup = cleanup;
-            listenerDetails.listener(details);
-        }
-    }
-    #handleJSONLD({ iri, res, contentType, output, entityKey, }) {
-        const iris = [iri];
-        if (res.ok) {
-            this.#primary.set(entityKey, {
-                type: 'entity-success',
-                iri,
-                loading: false,
-                ok: true,
-                contentType,
-                value: output.jsonld,
-                isProblem: false,
-            });
-        }
-        else {
-            const reason = new HTTPFailure(res.status, res);
-            this.#primary.set(entityKey, {
-                type: 'entity-failure',
-                iri,
-                loading: false,
-                ok: false,
-                value: output.jsonld,
-                contentType,
-                status: res.status,
-                isProblem: false,
-                reason,
-            });
-        }
-        for (const entity of flattenIRIObjects(output.jsonld)) {
-            const normalizedURL = new URL(entity['@id']).toString();
-            const [entityKey] = this.#getKeys(entity['@id']);
-            if (iris.includes(normalizedURL)) {
-                continue;
-            }
-            this.#primary.set(entityKey, {
-                type: 'entity-success',
-                iri: entity['@id'],
-                loading: false,
-                ok: true,
-                value: entity,
-                contentType,
-                isProblem: false,
-            });
-        }
-        for (const iri of iris) {
-            const normalizedURL = new URL(iri).toString();
-            this.#publish(normalizedURL, contentType, entityKey);
-        }
-    }
-    async handleResponse(res, iri, method, entityKey) {
-        const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
-        if (contentType == null) {
-            throw new Error('Content type not specified in response');
-        }
-        const handler = this.#handlers.get(contentType);
-        if (handler == null) {
-            const integration = new UnrecognizedIntegration({
-                iri,
-                method,
-                contentType,
-            });
-            let integrations = this.#integrations.get(contentType);
-            if (integrations == null) {
-                integrations = new Map();
-                this.#integrations.set(contentType, integrations);
-            }
-            integrations.set(iri, integration);
-        }
-        else if (handler.integrationType === 'jsonld') {
-            const output = await handler.handler({
-                res,
-                store: this,
-            });
-            this.#handleJSONLD({
-                iri,
-                res,
-                contentType,
-                output,
-                entityKey,
-            });
-        }
-        else if (handler.integrationType === 'problem-details') {
-            const output = await handler.handler({
-                res,
-                store: this,
-            });
-            this.#primary.set(entityKey, {
-                type: 'entity-failure',
-                iri,
-                loading: false,
-                ok: false,
-                value: output,
-                status: res.status,
-                isProblem: true,
-                reason: new HTTPFailure(res.status, res),
-            });
-        }
-        else if (handler.integrationType === 'html-fragments') {
-            const output = await handler.handler({
-                res,
-                store: this,
-            });
-            let integrations = this.#integrations.get(contentType);
-            if (integrations == null) {
-                integrations = new Map();
-                this.#integrations.set(contentType, integrations);
-            }
-            integrations.set(entityKey, new HTMLFragmentsIntegration(handler, {
-                iri,
-                method,
-                contentType,
-                output,
-            }));
-        }
-        if (handler?.integrationType !== 'jsonld') {
-            this.#publish(iri, contentType, entityKey);
-        }
-    }
-    async #callFetcher(iri, args = {}) {
-        let headers;
-        const url = new URL(iri);
-        url.hash = '';
-        const method = args.method || 'get';
-        const accept = args.accept ?? this.#headers.get('accept') ?? defaultAccept;
-        const dispatchURL = url.toString();
-        const [entityKey, loadingKey] = this.#getKeys(url, {
-            method,
-            accept,
-        });
-        if (this.#loading.has(loadingKey)) {
-            return;
-        }
-        if (url.origin === this.#rootOrigin) {
-            headers = new Headers(this.#headers);
-        }
-        else if (this.#origins.has(url.origin)) {
-            headers = new Headers(this.#origins.get(url.origin));
-        }
-        else {
-            throw new Error(`Unconfigured origin "${url.origin}"`);
-        }
-        headers.set('accept', accept);
-        if (args.body != null && args.contentType != null) {
-            headers.set('content-type', args.contentType);
-        }
-        this.#loading.add(loadingKey);
-        mithrilRedraw();
-        // This promise wrapping is so SSR can hook in and await the promise.
-        const promise = new Promise(async (resolve) => {
-            let res;
-            if (this.#fetcher != null) {
-                res = await this.#fetcher(dispatchURL, {
-                    method,
-                    headers,
-                    body: args.body,
-                });
-            }
-            else {
-                res = await fetch(dispatchURL, {
-                    method,
-                    headers,
-                    body: args.body,
-                });
-            }
-            if (args?.mainEntity &&
-                !isBrowserRender &&
-                (this.#httpStatus == null || this.#httpStatus < 400) &&
-                !res.status.toString().startsWith('3')) {
-                // if SSR store the first 400+ status for the final HTTP response
-                this.#httpStatus = res.status;
-            }
-            if (this.#acceptMap.has(entityKey)) {
-                this.#acceptMap
-                    .get(entityKey)?.set(accept, res.headers.get('content-type'));
-            }
-            else {
-                this.#acceptMap.set(entityKey, new Map([[accept, res.headers.get('content-type')]]));
-            }
-            // Loading state must be reset before handling responses.
-            this.#loading.delete(loadingKey);
-            await this.handleResponse(res, dispatchURL, method, entityKey);
-            mithrilRedraw();
-            resolve(res);
-        });
-        if (this.#responseHook != null) {
-            this.#responseHook(promise);
-        }
-        await promise;
-    }
-    subscribe({ key, selector, fragment, accept, value, listener, mainEntity, }) {
-        const details = getSelection({
-            selector,
-            fragment,
-            accept,
-            value,
-            store: this,
-        });
-        const cleanup = this.#makeCleanupFn(key, details);
+/**
+ * Creates a function that cleans up when a listener unsubscribes.
+ */
+function makeCleanupFn(key, details, primary, dependencies, listeners) {
+    return () => {
+        listeners.delete(key);
         for (const dependency of details.dependencies) {
             const normalizedURL = new URL(dependency).toString();
-            const depSet = this.#dependencies.get(normalizedURL);
+            dependencies.delete(normalizedURL);
+            if (isBrowserRender) {
+                // TODO: Make this configurable and support deleting alternatives
+                setTimeout(() => {
+                    if (dependencies.get(normalizedURL)?.size === 0) {
+                        const [primaryKey] = makePrimaryKey(dependency);
+                        primary.delete(primaryKey);
+                    }
+                }, 5000);
+            }
+        }
+    };
+}
+/**
+ * Loops over all listeners registers against an entity,
+ * calling them with an updated selection.
+ */
+function publish(normalizedURL, contentType, contentTypeKey, acceptMap, primary, dependencies, listeners, store) {
+    const keys = dependencies.get(normalizedURL);
+    if (keys == null) {
+        return;
+    }
+    for (const key of keys) {
+        const listenerDetails = listeners.get(key);
+        if (listenerDetails == null) {
+            continue;
+        }
+        const mappedType = acceptMap.get(contentTypeKey);
+        // TODO: A more sophisticated check might be required 
+        // to correctly check the content type matches the
+        // listener's accept header
+        // TODO: Review this is required. The accept map should be
+        // source of truth.
+        if (contentType !== mappedType)
+            continue;
+        const details = getSelection({
+            selector: listenerDetails.selector,
+            value: listenerDetails.value,
+            fragment: listenerDetails.fragment,
+            accept: listenerDetails.accept,
+            store,
+        });
+        const cleanup = makeCleanupFn(key, details, primary, dependencies, listeners);
+        for (const dependency of details.dependencies) {
+            const normalizedURL = new URL(dependency).toString();
+            let depSet = dependencies.get(normalizedURL);
             if (depSet == null) {
-                this.#dependencies.set(normalizedURL, new Set([key]));
+                depSet = new Set([key]);
+                dependencies.set(normalizedURL, depSet);
             }
             else {
                 depSet.add(key);
             }
         }
-        this.#listeners.set(key, {
-            key,
-            selector,
-            value,
-            fragment,
-            accept,
-            required: details.required,
-            dependencies: details.dependencies,
-            listener,
-            cleanup,
-        });
-        // If this is the main entity and the details has
-        // missing deps simulate a 404 if no other bad
-        // status code has been set
-        if (!isBrowserRender &&
-            mainEntity &&
-            details.hasMissing &&
-            this.#httpStatus < 400) {
-            this.#httpStatus = 404;
-        }
-        return details;
-    }
-    unsubscribe(key) {
-        this.#listeners.get(key)?.cleanup();
-    }
-    async fetch(iri, args = {}) {
-        const [entityKey] = this.#getKeys(iri, args);
-        await this.#callFetcher(iri.toString(), args);
-        return this.#primary.get(entityKey);
-    }
-    /**
-     * Submits an action. Like fetch this will overwrite
-     * entities in the store with any entities returned
-     * in the response.
-     *
-     * @param {string} iri                The iri of the request.
-     * @param {SubmitArgs} [args]         Arguments to pass to the fetch call.
-     * @param {string} [args.method]      The http submit method.
-     * @param {string} [args.contentType] The content type header value.
-     * @param {string} [args.body]        The body of the request.
-     */
-    async submit(iri, args) {
-        const url = new URL(iri);
-        const fragment = url.hash === '' ? undefined : url.hash.substring(1, url.hash.length);
-        url.hash = '';
-        await this.#callFetcher(url.toString(), args);
-        const entity = this.entity(url.toString(), {
-            fragment,
-            method: args.method,
-            accept: args.accept,
-        });
-        if (entity.loading) {
-            const key = Symbol('submit');
-            const { promise, resolve } = Promise.withResolvers();
-            this.subscribe({
-                key,
-                selector: url.toString(),
-                // fragment,
-                accept: args.accept,
-                listener: () => {
-                    resolve(this.entity(url.toString(), {
-                        fragment,
-                        method: args.method,
-                        accept: args.accept,
-                    }));
-                }
-            });
-            return promise;
-        }
-        return entity;
-    }
-    /**
-     * Creates an Octiron store from initial state written to the page's HTML.
-     *
-     * @param rootIRI       The root endpoint of the API.
-     * @param [disableLogs] Disables warning and error logs if the initial state
-     *                      is not present or corrupt.
-     * @param [vocab]       The JSON-ld @vocab to use for Octiron selectors.
-     * @param [aliases]     The JSON-ld aliases to use for Octiron selectors.
-     * @param [headers]     Headers to send when making requests to endpoints sharing
-     *                      origins with the `rootIRI`.
-     * @param [origins]     A map of origins and the headers to use when sending
-     *                      requests to them. Octiron will only send requests
-     *                      to endpoints which share origins with the `rootIRI`
-     *                      or are configured in the origins object. Aside
-     *                      from the accept header, which has a common default
-     *                      value, headers are not shared between origins.
-     */
-    static fromInitialState({ disableLogs, rootIRI, vocab, aliases, headers, origins, handlers = [], }) {
-        performance.mark('octiron:from-initial-state:start');
-        const storeArgs = {
-            rootIRI,
-            vocab,
-            aliases,
-            handlers,
-            headers,
-            origins,
-        };
-        try {
-            const el = document.getElementById('oct-state');
-            if (el == null) {
-                if (!disableLogs) {
-                    console.warn('Failed to construct Octiron state from initial state');
-                }
-                return new Store(storeArgs);
-            }
-            const stateInfo = JSON.parse(el.innerText);
-            const alternatives = new Map();
-            const handlersMap = handlers.reduce((acc, handler) => ({
-                ...acc,
-                [handler.contentType]: handler,
-            }), {});
-            for (const [integrationType, entities] of Object.entries(stateInfo.alternatives)) {
-                for (const stateInfo of entities) {
-                    const handler = handlersMap[stateInfo.contentType];
-                    const cls = integrationClasses[integrationType];
-                    if (cls === null || cls.type !== handler?.integrationType) {
-                        continue;
-                    }
-                    const state = cls.fromInitialState(stateInfo, handler);
-                    if (state == null) {
-                        continue;
-                    }
-                    let integrations = alternatives.get(state.contentType);
-                    if (integrations == null) {
-                        integrations = new Map();
-                        alternatives.set(state.contentType, integrations);
-                    }
-                    const entityKey = makeEntityKey(state.iri, state.method);
-                    integrations.set(entityKey, state);
-                }
-            }
-            const store = new Store({
-                ...storeArgs,
-                alternatives,
-                primary: stateInfo.primary,
-                acceptMap: stateInfo.acceptMap,
-            });
-            performance.mark('octiron:from-initial-state:end');
-            performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
-            return store;
-        }
-        catch (err) {
-            if (!disableLogs) {
-                console.warn('Failed to construct Octiron state from initial state');
-                console.error(err);
-            }
-            const store = new Store(storeArgs);
-            performance.mark('octiron:from-initial-state:end');
-            performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
-            return store;
-        }
-    }
-    /**
-     * Writes the Octiron store's state to a string to be embedded
-     * near the end of a HTML document. Ideally this is placed before
-     * the closing of the document's body tag. Octiron uses ids prefixed
-     * with `oct-`, avoid using these ids to prevent id collision.
-     */
-    toInitialState() {
-        let html = '';
-        const stateInfo = {
-            primary: Object.fromEntries(this.#primary),
-            alternatives: {},
-            acceptMap: {},
-        };
-        for (const [accept, map] of this.#acceptMap.entries()) {
-            stateInfo.acceptMap[accept] = Array.from(map.entries());
-        }
-        for (const alternative of this.#integrations.values()) {
-            for (const integration of alternative.values()) {
-                if (stateInfo.alternatives[integration.integrationType] == null) {
-                    stateInfo.alternatives[integration.integrationType] = [
-                        integration.getStateInfo(),
-                    ];
-                }
-                else {
-                    stateInfo.alternatives[integration.integrationType].push(integration.getStateInfo());
-                }
-                if (integration.toInitialState != null)
-                    html += integration.toInitialState();
-            }
-        }
-        html += `<script id="oct-state" type="application/json">${JSON.stringify(stateInfo)}</script>`;
-        return html;
+        listenerDetails.cleanup = cleanup;
+        listenerDetails.listener(details);
     }
 }
-
-/**
- * @description
- * Aggregates a list of type handlers into an easier to access
- * type handler config object.
- *
- * @param typeHandlers The type handlers to aggregate.
- */
-function makeTypeHandlers(
-// deno-lint-ignore no-explicit-any
-storeOrTypeHandler, ...typeHandlers) {
-    const config = {};
-    if (storeOrTypeHandler instanceof Store) {
-        for (const typeHandler of typeHandlers) {
-            if (typeHandler.type === '@id') {
-                config['@id'] = typeHandler;
-            }
-            else {
-                // deno-lint-ignore no-explicit-any
-                config[storeOrTypeHandler.expand(typeHandler.type)] = typeHandler;
-            }
-        }
+function handleJSONLD(res, content, normalizedURL, contentType, contentTypeKey, primaryKey, acceptMap, primary, dependencies, listeners, store) {
+    const iris = [normalizedURL];
+    if (res.ok) {
+        primary.set(primaryKey, {
+            type: 'entity-success',
+            iri: normalizedURL,
+            fragment: undefined,
+            loading: false,
+            ok: true,
+            contentType,
+            integrationType: 'jsonld',
+            value: content,
+            isProblem: false,
+        });
     }
     else {
-        // deno-lint-ignore no-explicit-any
-        config[storeOrTypeHandler.type] = storeOrTypeHandler;
-        for (const typeHandler of typeHandlers) {
-            // deno-lint-ignore no-explicit-any
-            config[typeHandler.type] = typeHandler;
+        const reason = new HTTPFailure(res.status, res);
+        primary.set(primaryKey, {
+            type: 'entity-failure',
+            iri: normalizedURL,
+            loading: false,
+            ok: false,
+            value: content,
+            contentType,
+            integrationType: 'jsonld',
+            status: res.status,
+            isProblem: false,
+            reason,
+        });
+    }
+    for (const entity of flattenIRIObjects(content)) {
+        const [primaryKey, , normalizedURL] = makePrimaryKey(entity['@id']);
+        if (iris.includes(normalizedURL)) {
+            continue;
+        }
+        primary.set(primaryKey, {
+            type: 'entity-success',
+            iri: normalizedURL,
+            fragment: undefined,
+            loading: false,
+            ok: true,
+            value: entity,
+            contentType,
+            integrationType: 'jsonld',
+            isProblem: false,
+        });
+    }
+    for (const iri of iris) {
+        publish(iri, contentType, contentTypeKey, acceptMap, primary, dependencies, listeners, store);
+    }
+}
+/**
+ * Handles a resolved response object, parsing the content and
+ * caching the results in the correct store.
+ *
+ * TODO: Support responses with no content / no content-type.
+ */
+async function handleResponse(res, method, normalizedURL, contentTypeKey, primaryKey, handlers, acceptMap, primary, alternatives, dependencies, listeners, store, args) {
+    const contentType = res.headers.get('Content-Type')?.split?.(';')?.[0];
+    const etag = res.headers.get('Etag');
+    if (contentType == null) {
+        throw new Error('Content type not specified in response');
+    }
+    const handler = handlers.get(contentType);
+    const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
+    if (handler?.integrationType === 'jsonld') {
+        const content = await handler.handler({
+            res,
+        });
+        handleJSONLD(res, content, normalizedURL, contentType, contentTypeKey, primaryKey, acceptMap, primary, dependencies, listeners, store);
+    }
+    else {
+        const content = await handler.handler({
+            res,
+        });
+        const integration = integrations[handler?.integrationType ?? 'unrecognised']({
+            iri: normalizedURL,
+            method,
+            contentType,
+            content,
+        }, handler);
+        alternatives.set(alternativeKey, {
+            type: 'alternative-success',
+            ok: res.ok,
+            status: res.status,
+            iri: normalizedURL,
+            contentType,
+            integrationType: handler?.integrationType ?? 'unrecognised',
+            isProblem: false,
+            etag,
+            integration,
+        });
+        publish(normalizedURL, contentType, contentTypeKey, acceptMap, primary, dependencies, listeners, store);
+    }
+}
+async function performFetch(iri, args, rootOrigin, headers, origins, inflight, fetcher, handlers, acceptMap, primary, alternatives, dependencies, listeners, responseHook, store) {
+    let status;
+    const url = new URL(iri);
+    const method = args?.method || 'get';
+    const accept = args?.accept ?? headers.get('Accept') ?? defaultAccept;
+    const [primaryKey, contentTypeKey, normalizedURL] = makePrimaryKey(iri, {
+        method,
+        accept,
+    });
+    if (inflight.has(contentTypeKey)) {
+        return;
+    }
+    if (url.origin === rootOrigin) {
+        headers = new Headers(headers);
+    }
+    else if (origins.has(url.origin)) {
+        headers = new Headers(origins.get(url.origin));
+    }
+    else {
+        throw new Error(`Un-configured origin "${url.origin}"`);
+    }
+    headers.set('Accept', accept);
+    if (args?.body != null && args?.contentType != null) {
+        headers.set('Content-Type', args.contentType);
+    }
+    inflight.add(contentTypeKey);
+    mithrilRedraw();
+    // This promise wrapping is so SSR can hook in and await the promise.
+    const promise = new Promise(async (resolve) => {
+        let res;
+        if (fetcher != null) {
+            res = await fetcher(normalizedURL, {
+                method,
+                headers,
+                body: args?.body,
+            });
+        }
+        else {
+            res = await fetch(normalizedURL, {
+                method,
+                headers,
+                body: args?.body,
+            });
+        }
+        const contentType = res.headers.get('Content-Type');
+        acceptMap.set(contentTypeKey, contentType);
+        // Loading state must be reset before handling responses.
+        inflight.delete(contentTypeKey);
+        await handleResponse(res, method, normalizedURL, contentTypeKey, primaryKey, handlers, acceptMap, primary, alternatives, dependencies, listeners, store, args);
+        mithrilRedraw();
+        resolve(res);
+    });
+    if (responseHook != null) {
+        responseHook(promise);
+    }
+    await promise;
+    return status;
+}
+const makeStore = ((args) => {
+    let status;
+    const rootIRI = args.rootIRI;
+    const rootOrigin = new URL(rootIRI).origin;
+    const headers = new Headers(args.headers);
+    const vocab = args.vocab;
+    const aliases = Object.create(null);
+    const context = Object.create(null);
+    const termExpansions = new Map();
+    const fetcher = args.fetcher ?? fetch;
+    const origins = args.origins ?? Object.create(null);
+    const handlers = new Map();
+    /**
+     * The primary cache behaves differently to the alternatives.
+     * JSONLD is a concrete implementation of RDF. In theory other
+     * RDF implementations can map to JSONLD, and Octiron can
+     * in theory be configured to have them use the JSONLD integration
+     * type push their representations into the primary cache as an
+     * alternative to JSONLD. The primary cache COULD be used as a cache
+     * for all RDF media-types, but their handlers would have to parse
+     * their content into the JSONLD data model for that to work.
+     */
+    const primary = new Map(args.primary);
+    /**
+     * The alternatives cache.
+     * This stores all non-JSONLD equiv content types.
+     */
+    const alternatives = new Map(args.alternatives);
+    // Set of accept keys which currently have requests inflight.
+    const inflight = new Set();
+    // Maps the accept key to the resolved content type
+    // of the last response for that representation.
+    const acceptMap = new Map(args.acceptMap);
+    // Content types that are used in the primary store.
+    // Typically this will be JSONLD compat types.
+    const primaryContentTypes = new Set();
+    const dependencies = new Map();
+    const listeners = new Map();
+    const responseHook = args.responseHook;
+    if (vocab != null) {
+        context['@vocab'] = vocab;
+    }
+    if (args.aliases != null) {
+        for (const [key, value] of Object.entries(args.aliases)) {
+            aliases[key] = value;
+            context[key] = value;
         }
     }
-    return config;
-}
+    if (args.origins != null) {
+        for (const [origin, headers] of Object.entries(args.origins)) {
+            origins.set(origin, new Headers(headers));
+        }
+    }
+    if (args.handlers != null) {
+        for (let i = 0, l = args.handlers.length; i < l; i++) {
+            handlers.set(args.handlers[i].contentType, args.handlers[i]);
+            if (args.handlers[i].integrationType === 'jsonld') {
+                primaryContentTypes.add(args.handlers[i].contentType);
+            }
+        }
+    }
+    Object.freeze(aliases);
+    Object.freeze(context);
+    const store = {
+        type: 'octiron-store',
+        rootIRI,
+        vocab,
+        aliases,
+        context,
+        get status() {
+            return status;
+        },
+        expand(termOrType) {
+            const cached = termExpansions.get(termOrType);
+            if (cached != null) {
+                return cached;
+            }
+            let expanded;
+            if (vocab != null && !/^[\w\d]+\:/.test(termOrType)) {
+                expanded = vocab + termOrType;
+            }
+            else if (/https?:\/\//.test(termOrType)) {
+                // is a type
+                expanded = termOrType;
+            }
+            else {
+                for (const [key, value] of Object.entries(aliases)) {
+                    const reg = new RegExp(`^${key}:`);
+                    if (reg.test(termOrType)) {
+                        expanded = termOrType.replace(reg, value);
+                        break;
+                    }
+                }
+            }
+            termExpansions.set(termOrType, expanded ?? termOrType);
+            return expanded ?? termOrType;
+        },
+        inflight(iri, args) {
+            return inflight.has(makeContentTypeKey(iri, args));
+        },
+        entity(iri, args) {
+            const [primaryKey, contentTypeKey, normalizedURL,] = makePrimaryKey(iri, args);
+            if (inflight.has(contentTypeKey)) {
+                return {
+                    type: 'entity-loading',
+                    iri: normalizedURL,
+                    loading: true,
+                    isProblem: false,
+                };
+            }
+            const contentType = acceptMap.get(contentTypeKey);
+            if (contentType == null) {
+                return;
+            }
+            else if (primaryContentTypes.has(contentType)) {
+                return primary.get(primaryKey);
+            }
+            const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
+            return alternatives.get(alternativeKey);
+        },
+        text(iri, args) {
+            const [key, fragment] = iri.toString().split('#');
+            const entity = this.entity(key, args);
+            if (entity == null ||
+                entity.type !== 'alternative-success' ||
+                entity.integration.text == null) {
+                return;
+            }
+            return entity.integration.text(fragment);
+        },
+        select(selector, value, args) {
+            return getSelection({
+                selector: selector.toString(),
+                value,
+                accept: args?.accept,
+                store: this,
+            });
+        },
+        async fetch(iri, args) {
+            const responseStatus = await performFetch(iri, args, rootOrigin, headers, origins, inflight, fetcher, handlers, acceptMap, primary, alternatives, dependencies, listeners, responseHook, store);
+            if (args?.mainEntity &&
+                !isBrowserRender &&
+                (status == null || status < 400) &&
+                (responseStatus < 300 || responseStatus <= 400)) {
+                status = responseStatus;
+            }
+            return this.entity(iri, args);
+        },
+        async submit(iri, args) {
+            const url = new URL(iri);
+            args.fragment = url.hash === '' ? undefined : url.hash.substring(1, url.hash.length);
+            const responseStatus = await performFetch(iri, args, rootOrigin, headers, origins, inflight, fetcher, handlers, acceptMap, primary, alternatives, dependencies, listeners, responseHook, store);
+            if (args?.mainEntity &&
+                !isBrowserRender &&
+                (status == null || status < 400) &&
+                (responseStatus < 300 || responseStatus <= 400)) {
+                // if SSR store the first 400+ status for the final HTTP response
+                status = responseStatus;
+            }
+            const loading = this.inflight(iri, args);
+            if (loading && !isBrowserRender) {
+                const key = Symbol();
+                const { promise, resolve } = Promise.withResolvers();
+                this.subscribe({
+                    key,
+                    selector: iri.toString(),
+                    // fragment,
+                    accept: args.accept,
+                    listener: () => {
+                        this.unsubscribe(key);
+                        resolve(this.entity(iri, args));
+                    }
+                });
+                return promise;
+            }
+            return this.entity(iri, args);
+        },
+        subscribe(args) {
+            const selector = args.selector.toString();
+            const details = getSelection({
+                selector,
+                value: args.value,
+                accept: args.accept,
+                fragment: args.fragment,
+                store,
+            });
+            const cleanup = makeCleanupFn(args.key, details, primary, dependencies, listeners);
+            for (const dependency of details.dependencies) {
+                const normalizedURL = new URL(dependency).toString();
+                const depSet = dependencies.get(normalizedURL);
+                if (depSet == null) {
+                    dependencies.set(normalizedURL, new Set([args.key]));
+                }
+                else {
+                    depSet.add(args.key);
+                }
+            }
+            listeners.set(args.key, {
+                selector,
+                key: args.key,
+                value: args.value,
+                fragment: args.fragment,
+                accept: args.accept,
+                required: details.required,
+                dependencies: details.dependencies,
+                listener: args.listener,
+                cleanup,
+            });
+            // If this is the main entity and the details has
+            // missing deps simulate a 404 if no other bad
+            // status code has been set
+            if (!isBrowserRender &&
+                args.mainEntity &&
+                details.hasMissing &&
+                status < 400) {
+                status = 404;
+            }
+            return details;
+        },
+        unsubscribe(key) {
+            listeners.get(key)?.cleanup();
+        },
+        toInitialState() {
+            const initialState = [
+                Array.from(acceptMap.entries()),
+                Array.from(primary.entries()),
+                Array.from(alternatives.entries())
+                    .map(([contentTypeKey, alternative]) => {
+                    const stateInfo = alternative.integration.getStateInfo();
+                    delete alternative.integration;
+                    return [contentTypeKey, alternative, stateInfo];
+                }),
+            ];
+            return `<script id="oct-state" type="application/json">${JSON.stringify(initialState)}</script>`;
+        },
+    };
+    return Object.freeze(store);
+});
+makeStore.fromInitialState = ({ rootIRI, vocab, aliases, headers, origins, handlers, enableLogs, }) => {
+    performance.mark('octiron:from-initial-state:start');
+    const storeArgs = {
+        rootIRI,
+        vocab,
+        aliases,
+        handlers,
+        headers,
+        origins,
+    };
+    try {
+        let initialState;
+        const el = document.getElementById('oct-state');
+        if (el == null) {
+            if (enableLogs) {
+                console.warn('Could not locate initial state');
+            }
+            return makeStore(storeArgs);
+        }
+        try {
+            initialState = JSON.parse(el.innerText);
+        }
+        catch {
+            if (enableLogs) {
+                console.warn('Failed to construct store from initial state');
+                console.info(el);
+            }
+            return makeStore(storeArgs);
+        }
+        if (!Array.isArray(initialState) ||
+            initialState.length !== 3) {
+            if (enableLogs) {
+                console.warn('Invalid initial state');
+                console.info(el);
+                console.info(initialState);
+            }
+            return makeStore(storeArgs);
+        }
+        const stateInfo = JSON.parse(el.innerText);
+        const alternatives = [];
+        const handlersMap = handlers.reduce((acc, handler) => {
+            acc[handler.contentType] = handler;
+            return acc;
+        }, {});
+        for (let i = 0, l = stateInfo[2].length; i < l; i++) {
+            const [contentTypeKey, alternative, altInfo] = stateInfo[2][i];
+            const factory = integrations[altInfo.integrationType];
+            const handler = handlersMap[altInfo.contentType];
+            if (factory == null)
+                continue;
+            alternative.integration = factory.fromInitialState(altInfo, handler);
+            alternatives.push([contentTypeKey, alternative]);
+        }
+        const store = makeStore({
+            ...storeArgs,
+            alternatives,
+            acceptMap: stateInfo[0],
+            primary: stateInfo[1],
+        });
+        performance.mark('octiron:from-initial-state:end');
+        performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
+        return store;
+    }
+    catch (err) {
+        if (enableLogs) {
+            console.warn('Failed to construct Octiron state from initial state');
+            console.error(err);
+        }
+        const store = makeStore(storeArgs);
+        performance.mark('octiron:from-initial-state:end');
+        performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');
+        return store;
+    }
+};
 
 /**
  * Merges arguments into a single css class string
@@ -3717,20 +3637,29 @@ const makeJSONLDHandler = (args) => {
                 store = new JSONLDContextStore({ cacheMethod: 'cache' });
             }
             const json = await res.json();
-            const jsonld = await expand(json, { store, url: res.url });
-            return {
-                jsonld,
-            };
+            return expand(json, { store, url: res.url });
         },
     };
 };
 
 const longformHandler = {
-    integrationType: 'html-fragments',
+    integrationType: 'fragments',
     contentType: 'text/longform',
     handler: async ({ res }) => {
         const { longform } = await import('@longform/longform');
         return longform(await res.text());
+    },
+    hashParser(hash) {
+        const [identifier, templateArgs] = hash.split('?');
+        if (templateArgs == null) {
+            return {
+                identifier,
+            };
+        }
+        return {
+            identifier,
+            args: Object.fromEntries(new URLSearchParams(templateArgs).entries()),
+        };
     },
 };
 
@@ -4120,7 +4049,7 @@ const OctironSubmitButton = () => {
  * Creates a root octiron instance.
  */
 function octiron({ typeHandlers, ...storeArgs }) {
-    const store = new Store(storeArgs);
+    const store = makeStore(storeArgs);
     const config = typeHandlers != null
         ? makeTypeHandlers(store, ...typeHandlers)
         : {};
@@ -4130,7 +4059,7 @@ function octiron({ typeHandlers, ...storeArgs }) {
     })[0];
 }
 octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
-    const store = Store.fromInitialState({
+    const store = makeStore.fromInitialState({
         ...storeArgs,
     });
     const config = typeHandlers != null
@@ -4142,5 +4071,5 @@ octiron.fromInitialState = ({ typeHandlers, ...storeArgs }) => {
     })[0];
 };
 
-export { Debug, OctironDebug, OctironExplorer, OctironForm, OctironJSON, OctironSubmitButton, Store, classes, longformHandler, makeJSONLDHandler, makeTypeHandler, makeTypeHandlers, octiron, problemDetailsJSONHandler };
+export { Debug, OctironDebug, OctironExplorer, OctironForm, OctironJSON, OctironSubmitButton, classes, longformHandler, makeJSONLDHandler, makeTypeHandler, makeTypeHandlers, octiron, problemDetailsJSONHandler };
 //# sourceMappingURL=octiron.js.map

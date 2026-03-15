@@ -1,4 +1,4 @@
-import type { Store } from '../store.ts';
+import type { StoreType } from '../store.ts';
 import type { JSONObject, JSONValue } from '../types/common.ts';
 import type { SelectionDetails, SelectionResult } from '../types/store.ts';
 /**
@@ -27,7 +27,7 @@ export declare class CircularSelectionError extends Error {
  * @param {JSONObject} [args.value]         Context object to begin the selection from.
  * @param {JSONObject} [args.actionValue]   The action, or point in the action definition which describes this value.
  * @param {JSONValue} [args.defaultValue]   A default value when used to select action values.
- * @param {Store} args.store                Octiron store to search using.
+ * @param {StoreType} args.store                Octiron store to search using.
  * @returns {SelectionDetails}              Selection contained in a details object.
  */
 export declare function getSelection<T extends SelectionResult>({ selector: selectorStr, value, fragment, accept, actionValue, defaultValue, store, }: {
@@ -37,5 +37,5 @@ export declare function getSelection<T extends SelectionResult>({ selector: sele
     accept?: string;
     actionValue?: JSONObject;
     defaultValue?: JSONValue;
-    store: Store;
+    store: StoreType;
 }): SelectionDetails<T>;

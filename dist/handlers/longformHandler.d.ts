@@ -1,2 +1,2 @@
-import type { Handler } from "../types/store.ts";
+import type { Handler } from "../store.ts";
 export declare const longformHandler: Handler;

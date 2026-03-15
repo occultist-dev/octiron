@@ -8,4 +8,18 @@ export const longformHandler: Handler = {
 
     return longform(await res.text());
   },
+  hashParser(hash) {
+    const [identifier, templateArgs] = hash.split('?');
+
+    if (templateArgs == null) {
+      return {
+        identifier,
+      };
+    }
+
+    return {
+      identifier,
+      args: Object.fromEntries(new URLSearchParams(templateArgs).entries()),
+    };
+  },
 };

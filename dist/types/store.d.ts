@@ -1,117 +1,14 @@
-import type { Children, ComponentTypes } from 'mithril';
-import type { JSONObject, JSONValue } from './common.ts';
-import type { Store } from '../store.ts';
-import type { Octiron, Spec } from "./octiron.ts";
+import type { Children } from 'mithril';
 import type { HTMLFragmentsIntegration } from '../alternatives/htmlFragments.ts';
-export type Aliases = Record<string, string>;
-export type Origins = Record<string, Headers>;
-export type Context = {
-    '@vocab'?: string;
-} & {
-    [vocab: string]: string;
-};
-export type IntegrationType = 'html' | 'html-fragments' | 'unrecognized';
-export type HandlerArgs = {
-    res: Response;
-    store: Store;
-};
-export type RequestHandler<T extends Record<string, JSONValue>> = (args: HandlerArgs) => Promise<T> | T;
-export type JSONLDContentTypeResult = {
-    value: JSONObject;
-};
-export type JSONLDHandlerResult = {
-    jsonld: JSONObject;
-};
-export type JSONLDHandler = {
-    integrationType: 'jsonld';
-    contentType: string;
-    handler: RequestHandler<JSONLDHandlerResult>;
-};
-export type ProblemDetailsHandlerResult = {
-    problemDetails: JSONObject;
-};
-export type ProblemDetailsHandler = {
-    integrationType: 'problem-details';
-    contentType: string;
-    handler: RequestHandler<ProblemDetailsHandlerResult>;
-};
-export type HTMLHandlerResult = {
-    id?: string;
-    selector?: string;
-    html: string;
-};
-export type FragmentListener = (fragment: string) => void;
-export type AddFragmentListener = (listener: FragmentListener) => void;
-export type HTMLCleanupFn = () => void;
-export type HTMLOnCreateArgs = {
-    o: Octiron;
-    dom: Element;
-    fragment?: string;
-    addFragmentListener: AddFragmentListener;
-};
-export type HTMLOnCreate = (args: HTMLOnCreateArgs) => HTMLCleanupFn;
-export type HTMLHandler = {
-    integrationType: 'html';
-    contentType: string;
-    handler: RequestHandler<HTMLHandlerResult>;
-    onCreate?: HTMLOnCreate;
-};
-export type HTMLFragment<IsInternal extends boolean = false> = IsInternal extends false ? {
-    id: string;
-    type: 'embed' | 'bare' | 'text' | 'range';
-    html?: string;
-    selector: string;
-} : {
-    id: string;
-    type: 'embed' | 'bare' | 'text' | 'range';
-    html?: string;
-    dom?: Element[];
-    selector: string;
-};
-export type HTMLFragmentsHandlerResult<IsInternal extends boolean = false> = IsInternal extends false ? {
-    root?: string | null;
-    selector?: string;
-    fragments: Record<string, HTMLFragment<IsInternal>>;
-    templates: Record<string, string>;
-} : {
-    root?: string | null;
-    dom?: Element[];
-    selector?: string;
-    fragments: Record<string, HTMLFragment<IsInternal>>;
-    templates: Record<string, string>;
-};
-export type HTMLFragmentsCleanupFn = () => void;
-export type HTMLFragmentsOnCreateArgs = {
-    o: Octiron;
-    dom: Element;
-    fragment?: string;
-};
-export type HTMLFragmentsOnCreate = (args: HTMLFragmentsOnCreateArgs) => HTMLFragmentsCleanupFn;
-export type HTMLFragmentsHandler = {
-    integrationType: 'html-fragments';
-    contentType: string;
-    handler: RequestHandler<HTMLFragmentsHandlerResult<false>>;
-    onCreate?: HTMLFragmentsOnCreate;
-};
-export type UnrecognizedContentTypeHandler = {
-    integrationType: 'unrecognized';
-    contentType: string;
-};
-export type Handler = JSONLDHandler | ProblemDetailsHandler | HTMLHandler | HTMLFragmentsHandler | UnrecognizedContentTypeHandler;
+import type { JSONObject, JSONValue } from './common.ts';
+import type { Octiron, Spec } from "./octiron.ts";
 export type FetcherArgs = {
     method?: string;
     body?: string;
     headers?: Headers;
 };
-export type Fetcher = (iri: string, args: FetcherArgs) => Promise<Response>;
-export type ResponseHook = (res: Promise<Response>) => void;
 export type HTTPErrorView = (status: number) => Children;
 export type ContentParsingView = (error: Error) => Children;
-export type AlternativeContentProps = {
-    o: Octiron;
-    fragment?: string;
-};
-export type AlternativeContentComponent = ComponentTypes<AlternativeContentProps>;
 export interface Failure {
     /**
      * Returns the given children if the error is
@@ -552,6 +449,10 @@ export type SuccessEntityState = {
      */
     readonly contentType: string;
     /**
+     * The integration type.
+     */
+    readonly integrationType: 'jsonld';
+    /**
      * Response etag value if present.
      */
     readonly etag?: string;
@@ -561,17 +462,16 @@ export type SuccessEntityState = {
      */
     readonly integration?: undefined;
 };
-export type SuccessAlternativeState = {
+export type AlternativeState = {
     readonly type: 'alternative-success';
-    /**
-     * True if this entity has an in progress request.
-     */
-    readonly loading: false;
     /**
      * Indicates if the request responded with a success or error status.
      */
-    readonly ok: true;
-    readonly reason?: undefined;
+    readonly ok: boolean;
+    /**
+     * The response status. Only used for failure responses.
+     */
+    readonly status?: number;
     /**
      * The IRI of the entity less the fragment.
      */
@@ -585,13 +485,13 @@ export type SuccessAlternativeState = {
      */
     readonly value?: undefined;
     /**
-     * The response status. Only used for failure responses.
-     */
-    readonly status?: undefined;
-    /**
      * True if the response was of the problem details type
      */
     readonly isProblem: false;
+    /**
+     * A reason for this responses failure state.
+     */
+    readonly reason?: undefined;
     /**
      * Response content type value if present.
      */
@@ -600,9 +500,9 @@ export type SuccessAlternativeState = {
      * Response etag value if present.
      */
     readonly etag?: string;
+    readonly integrationType: string;
     /**
-     * Component to render if the returned content type is
-     * not jsonld or problem detail types.
+     * Alternative integration instance.
      */
     readonly integration: IntegrationState;
 };
@@ -641,6 +541,10 @@ export type FailureEntityState = {
      */
     readonly contentType?: string;
     /**
+     * The integration type.
+     */
+    readonly integrationType: 'jsonld';
+    /**
      * Response etag value if present.
      */
     readonly etag?: string;
@@ -657,7 +561,7 @@ export type FailureEntityState = {
 export type LoadingResult = {
     contentType: string;
 };
-export type EntityState = LoadingEntityState | SuccessEntityState | SuccessAlternativeState | FailureEntityState;
+export type EntityState = LoadingEntityState | SuccessEntityState | AlternativeState | FailureEntityState;
 export type IntegrationStateInfo = {
     contentType: string;
     [key: string]: JSONValue;

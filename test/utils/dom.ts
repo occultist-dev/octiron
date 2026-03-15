@@ -7,8 +7,10 @@ import render from 'mithril/render.js';
 import {makeJSONLDHandler} from '../../lib/handlers/jsonLDHandler.ts';
 import {octiron} from '../../lib/octiron.ts';
 import {longformHandler} from '../../lib/handlers/longformHandler.ts';
-import {type Fetcher, type ResponseHook} from '../../lib/store.ts';
+import type {Handler, Fetcher, ResponseHook} from '../../lib/store.ts';
 import {format} from 'prettier';
+import {HtmlRenderer, Parser} from 'commonmark';
+import type {ElementHandler} from '../../lib/alternatives/element.ts';
 
 
 class Scheduler {
@@ -31,7 +33,11 @@ class Scheduler {
 }
 
 
-export function createTest() {
+export function createTestUtils({
+  handlers = [],
+}: {
+  handlers?: Handler[];
+} = {}) {
   // setIsBrowserRender(true);
 
   const rootIRI = 'http://example.com';
@@ -63,12 +69,29 @@ export function createTest() {
   const store = new JSONLDContextStore({
     fetcher: (iri, init) => registry.handleRequest(new Request(iri, init)),
   });
+  const parser = new Parser()
+  const renderer = new HtmlRenderer();
+  const markdownHandler: ElementHandler = {
+    integrationType: 'element',
+    contentType: 'text/markdown',
+    async handler({ res }) {
+      const node = parser.parse(await res.text());
+      const html = renderer.render(node);
+
+      return {
+        selector: '#page-content',
+        html: `<div id="page-content">${html}</div>`,
+      };
+    },
+  };
   const o = octiron({
     rootIRI,
     vocab,
     handlers: [
       makeJSONLDHandler({ store }),
       longformHandler,
+      markdownHandler,
+      ...handlers,
     ],
     fetcher,
     responseHook,

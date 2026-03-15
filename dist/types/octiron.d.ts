@@ -1,6 +1,6 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts';
-import type { Store } from '../store.ts';
+import type { Store, StoreType } from '../store.ts';
 import type { ContentHandlingFailure, HTTPFailure, UndefinedFailure } from '../failures.ts';
 import type { EntityState, ReadonlySelectionResult, SelectionDetails } from './store.ts';
 /**
@@ -445,7 +445,7 @@ export interface OctironRoot extends Default, Origin, EntryPoint, Queryable, Sel
     /**
      * The octiron store used for this value.
      */
-    readonly store: Store;
+    readonly store: StoreType;
     /**
      * Expands a term into a type.
      */

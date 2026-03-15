@@ -1,5 +1,5 @@
 import type { JSONLDContextStore } from "@occultist/mini-jsonld";
-import type { JSONLDHandler } from "../types/store.ts";
+import type { JSONLDHandler } from "../store.ts";
 export type MakeJSONLDHandlerArgs = {
     store?: JSONLDContextStore;
 };

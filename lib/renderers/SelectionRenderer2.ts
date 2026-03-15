@@ -263,7 +263,7 @@ export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = ()
         } else {
           child.push(m.fragment({ key: '@value' }, [
             l2[i].selectionResult.integration.render(
-              vnode.attrs.parentArgs.parent,
+              //vnode.attrs.parentArgs.parent,
               vnode.attrs.args.fragment,
             ),
           ]));

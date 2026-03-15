@@ -1,11 +1,11 @@
-import type { EditComponent, PresentComponent } from "../../lib/types/octiron.ts";
-import { makeTypeDefs } from "../../lib/utils/makeTypeDefs.ts";
-import { getComponent } from "../../lib/utils/getComponent.ts";
-import { assertNotEquals } from "@std/assert/not-equals";
-import { assertEquals } from "@std/assert/equals";
+import {makeTypeHandler, makeTypeHandlers} from "../../lib/octiron.ts";
+import type { AnyComponent, EditComponent, PresentComponent } from "../../lib/types/octiron.ts";
+import {getComponent} from "../../lib/utils/getComponent.ts";
+import assert from 'node:assert/strict';
+import {describe, it} from "node:test";
 
 
-Deno.test('getComponent()', async (t) => {
+describe('getComponent()', async (t) => {
   const PresentFoo: PresentComponent<string> = () => {
     return {
       view() { return null },
@@ -16,7 +16,7 @@ Deno.test('getComponent()', async (t) => {
       view() { return null },
     };
   };
-  const PresentBaz: PresentComponent<string> = () => {
+  const PresentBaz: AnyComponent<string> = () => {
     return {
       view() { return null },
     };
@@ -47,11 +47,11 @@ Deno.test('getComponent()', async (t) => {
     };
   };
 
-  assertEquals(PresentFoo, PresentFoo);
-  assertNotEquals(PresentFoo, PresentBar);
-  assertNotEquals(PresentBar, PresentBaz);
+  assert.equal(PresentFoo, PresentFoo);
+  assert.notEqual(PresentFoo, PresentBar);
+  assert.notEqual(PresentBar, PresentBaz);
 
-  const typeDefs = makeTypeDefs(
+  const typeHandlers = makeTypeHandlers(
     {
       type: 'https://schema.example.com/fee',
       present: PresentFee,
@@ -68,111 +68,111 @@ Deno.test('getComponent()', async (t) => {
     },
   );
 
-  await t.step('It returns the first pick component if provided', () => {
+  it('It returns the first pick component if provided', () => {
     const component = getComponent({
       style: 'present',
       type: ['https://schema.example.com/foe', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/fee',
       firstPickComponent: PresentBar,
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentBar);
+    assert.equal(component, PresentBar);
   });
 
-  await t.step('It returns the propType on match when no first pick', () => {
+  it('It returns the propType on match when no first pick', () => {
     const component = getComponent({
       style: 'present',
       type: ['https://schema.example.com/fee', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/foe',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentFoe);
+    assert.equal(component, PresentFoe);
   });
 
-  await t.step('It returns the edit component for the propType on match when no first pick', () => {
+  it('It returns the edit component for the propType on match when no first pick', () => {
     const component = getComponent({
       style: 'edit',
       type: ['https://schema.example.com/fee', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/foe',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, EditFoe);
+    assert.equal(component, EditFoe);
   });
 
-  await t.step('It returns the first type on match when no better match', () => {
+  it('It returns the first type on match when no better match', () => {
     const component = getComponent({
       style: 'present',
       type: ['https://schema.example.com/fee', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/bar',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentFee);
+    assert.equal(component, PresentFee);
   });
 
-  await t.step('It returns the second type on match when no better match', () => {
+  it('It returns the second type on match when no better match', () => {
     const component = getComponent({
       style: 'present',
       type: ['https://schema.example.com/baz', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/bar',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentFum);
+    assert.equal(component, PresentFum);
   });
 
-  await t.step('It returns the second type on match when no better match', () => {
+  it('It returns the second type on match when no better match', () => {
     const component = getComponent({
       style: 'present',
       type: ['https://schema.example.com/baz', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/bar',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentFum);
+    assert.equal(component, PresentFum);
   });
 
-  await t.step('It returns the edit component for the second type on match when no better match', () => {
+  it('It returns the edit component for the second type on match when no better match', () => {
     const component = getComponent({
       style: 'edit',
       type: ['https://schema.example.com/baz', 'https://schema.example.com/fum'],
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/bar',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, EditFum);
+    assert.equal(component, EditFum);
   });
 
-  await t.step('It returns the fallback pick component when no other match', () => {
+  it('It returns the fallback pick component when no other match', () => {
     const component = getComponent({
       style: 'present',
       type: 'https://schema.example.com/baz',
-      typeDefs,
+      typeHandlers,
       propType: 'https://schema.example.com/bar',
       fallbackComponent: PresentBaz,
     });
 
-    assertEquals(component, PresentBaz);
+    assert.equal(component, PresentBaz);
   });
 
-    await t.step('It returns undefined when no fallback or other match', () => {
+    it('It returns undefined when no fallback or other match', () => {
       const component = getComponent({
         style: 'present',
         type: 'https://schema.example.com/baz',
-        typeDefs,
+        typeHandlers,
         propType: 'https://schema.example.com/bar',
       });
 
-      assertEquals(component, undefined);
+      assert.equal(component, undefined);
     });
 });

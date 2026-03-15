@@ -23,8 +23,8 @@ export function getComponent<
   Style extends 'present' | 'edit',
   Component extends (
     Style extends 'present'
-      ? PresentComponent | AnyComponent
-      : EditComponent | AnyComponent
+      ? PresentComponent<any> | AnyComponent<any>
+      : EditComponent<any> | AnyComponent<any>
   )
 >({
   style,

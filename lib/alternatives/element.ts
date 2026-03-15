@@ -267,6 +267,7 @@ export const ElementIntegration = ((
     iri: args.iri,
     method: args.method,
     contentType: args.contentType,
+    integrationType: 'element',
     render(hash: string): m.Children {
       if (dom === undefined) {
         const template = document.createElement('template');
@@ -289,6 +290,7 @@ export const ElementIntegration = ((
         iri: args.iri,
         method: args.method,
         contentType: args.contentType,
+        integrationType: 'element',
         rendered,
         selector: args.content.selector,
       };

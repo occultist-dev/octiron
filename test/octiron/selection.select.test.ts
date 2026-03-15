@@ -1,11 +1,11 @@
 import assert from 'node:assert';
 import {describe, it} from "node:test";
-import {createTest} from '../utils/dom.ts';
+import {createTestUtils} from '../utils/dom.ts';
 
 
 describe('o.select()', () => {
   it('Re-orders DOM children on updates to store data ordering', { only: true }, async () => {
-    const { m, o, document, registry, mount, pretty, redraw, vocab } = createTest();
+    const { m, o, document, registry, mount, pretty, redraw, vocab } = createTestUtils();
     let jsonld = {
       '@context': { '@vocab': vocab },
       members: [
