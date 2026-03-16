@@ -2,6 +2,7 @@ import m from 'mithril';
 import { isJSONObject as isJSONObject$1 } from '@occultist/mini-jsonld';
 import { JsonPointer } from 'json-ptr';
 import uriTemplates from 'uri-templates';
+import { processTemplate, longform } from '@longform/longform';
 
 /**
   * Creates an Octiron selection instance.
@@ -620,7 +621,7 @@ function getSelection({ selector: selectorStr, value, fragment, accept, actionVa
     };
     if (value == null) {
         const [{ subject, filter }, ...selector] = parseSelectorString(selectorStr, store);
-        const [iri, iriFragment] = subject.split('#');
+        const [iri, iriFragment] = subject.split(/#(.*)/, 2);
         selectEntity({
             pointer: '',
             iri,
@@ -1361,7 +1362,6 @@ const ActionStateRenderer3 = () => {
     let type;
     let octiron;
     let hooks;
-    let fragment;
     let integration;
     let args;
     let parentArgs;
@@ -1380,11 +1380,10 @@ const ActionStateRenderer3 = () => {
         if (submitResult.type === 'alternative-success') {
             octiron = null;
             hooks = null;
-            fragment = selectionDetails.result[0].fragment;
+            selectionDetails.result[0].fragment;
             integration = submitResult.integration;
         }
         else {
-            fragment = null;
             integration = null;
             [octiron, hooks] = selectionFactory(args, parentArgs, {
                 index: 0,
@@ -1414,9 +1413,7 @@ const ActionStateRenderer3 = () => {
             if (!render)
                 return;
             if (integration != null) {
-                return integration.render(
-                //vnode.attrs.parentArgs.parent,
-                fragment);
+                return integration.render(vnode.attrs.parentArgs.parent.fragment);
             }
             else if (vnode.attrs.selector != null && octiron != null) {
                 return octiron.select(vnode.attrs.selector, vnode.attrs.args, vnode.attrs.view);
@@ -1525,6 +1522,12 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         });
         self.submitting = true;
         self.url = new URL(url, self.store.rootIRI);
+        if (self.url.hash !== '' && self.url.hash !== '#') {
+            self.fragment = self.url.hash.replace(/^#/, '');
+        }
+        else {
+            self.fragment = undefined;
+        }
         mithrilRedraw();
         try {
             if (typeof args.onSubmit === 'function') {
@@ -1575,6 +1578,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             payload = next;
         }
         childArgs.value = self.value = value;
+        console.log('SUBMIT?', args2, args);
         if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
@@ -1610,6 +1614,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     self.action = parentArgs.parent;
     self.actionValue = rendererArgs.actionValue;
     self.url = undefined;
+    self.fragment = undefined;
     self.submitting = false;
     childArgs.action = self;
     childArgs.submitting = self.submitting;
@@ -3184,6 +3189,12 @@ async function handleResponse(res, method, normalizedURL, contentTypeKey, primar
     }
     const handler = handlers.get(contentType);
     const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
+    // TODO: Remove when problem details are supported
+    if (contentType === 'application/problem+json') {
+        console.debug('PROBLEM');
+        console.debug(normalizedURL);
+        console.debug(await res.json());
+    }
     if (handler?.integrationType === 'jsonld') {
         const content = await handler.handler({
             res,
@@ -3191,7 +3202,7 @@ async function handleResponse(res, method, normalizedURL, contentTypeKey, primar
         handleJSONLD(res, content, normalizedURL, contentType, contentTypeKey, primaryKey, acceptMap, primary, dependencies, listeners, store);
     }
     else {
-        const content = await handler.handler({
+        const content = await handler?.handler({
             res,
         });
         const integration = integrations[handler?.integrationType ?? 'unrecognised']({
@@ -3393,7 +3404,7 @@ const makeStore = ((args) => {
             return alternatives.get(alternativeKey);
         },
         text(iri, args) {
-            const [key, fragment] = iri.toString().split('#');
+            const [key, fragment] = iri.toString().split(/#(.*)/, 2);
             const entity = this.entity(key, args);
             if (entity == null ||
                 entity.type !== 'alternative-success' ||
@@ -3493,6 +3504,10 @@ const makeStore = ((args) => {
         },
         unsubscribe(key) {
             listeners.get(key)?.cleanup();
+        },
+        integration(contentType) {
+            const integrationType = handlers.get(contentType)?.integrationType;
+            return integrations[integrationType];
         },
         toInitialState() {
             const initialState = [
@@ -3645,12 +3660,12 @@ const makeJSONLDHandler = (args) => {
 const longformHandler = {
     integrationType: 'fragments',
     contentType: 'text/longform',
-    handler: async ({ res }) => {
-        const { longform } = await import('@longform/longform');
+    templateParser: processTemplate,
+    async handler({ res }) {
         return longform(await res.text());
     },
     hashParser(hash) {
-        const [identifier, templateArgs] = hash.split('?');
+        const [identifier, templateArgs] = hash.split(/\?(.*)/, 2);
         if (templateArgs == null) {
             return {
                 identifier,

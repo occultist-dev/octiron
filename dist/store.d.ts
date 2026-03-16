@@ -246,6 +246,11 @@ export interface StoreType {
      */
     fetch(iri: string | URL, args?: ResourceVaryArgs): Promise<EntityState>;
     /**
+     * Returns the integration which is configured to handle the
+     * given content type.
+     */
+    integration(contentType: string): Integration;
+    /**
      * Used in server side rendering to serialize the store's contents
      * to JSON for Octiron on the client to initialize with.
      */

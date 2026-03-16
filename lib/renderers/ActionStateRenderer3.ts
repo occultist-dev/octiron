@@ -94,8 +94,7 @@ export const ActionStateRenderer3: m.ClosureComponent<ActionStateRendererAttrs> 
 
       if (integration != null) {
         return integration.render(
-          //vnode.attrs.parentArgs.parent,
-          fragment,
+          vnode.attrs.parentArgs.parent.fragment,
         );
       } else if (vnode.attrs.selector != null && octiron != null) {
         return octiron.select(

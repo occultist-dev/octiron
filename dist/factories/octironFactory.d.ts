@@ -1,5 +1,4 @@
 import m from 'mithril';
-import type { Store } from "../store.ts";
 import type { Mutable } from "../types/common.ts";
 import type { ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, OctironAction, OctironActionSelection, OctironRoot, OctironSelection, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, TypeHandlers } from "../types/octiron.ts";
 export type CommonArgs = {

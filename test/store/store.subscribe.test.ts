@@ -2,13 +2,13 @@ import {contextBuilder, makeTypeDef, makeTypeDefs} from "@occultist/occultist";
 import type {SelectionDetails} from "../../lib/octiron.ts";
 import assert from "node:assert";
 import {describe, it} from 'node:test';
-import {createTestUtils} from "../utils/dom.ts";
+import {createScenarioUtils} from "../utils/dom.ts";
 
 
 
 describe('store.subscribe()', () => {
   it('Calls listener on changes to primary entity changes', async () => {
-    const { registry, store, vocab } = createTestUtils();
+    const { registry, store, vocab } = createScenarioUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),
@@ -127,7 +127,7 @@ describe('store.subscribe()', () => {
   });
 
   it('Calls listener on changes to alternative entity changes', async () => {
-    const { registry, store, vocab } = createTestUtils();
+    const { registry, store, vocab } = createScenarioUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),

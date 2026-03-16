@@ -1,6 +1,6 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts';
-import type { Store, StoreType } from '../store.ts';
+import type { StoreType } from '../store.ts';
 import type { ContentHandlingFailure, HTTPFailure, UndefinedFailure } from '../failures.ts';
 import type { EntityState, ReadonlySelectionResult, SelectionDetails } from './store.ts';
 /**
@@ -132,7 +132,7 @@ export type PresentableArgs<Attrs extends BaseAttrs = BaseAttrs> = {
     component?: PresentComponent<any, Attrs> | AnyComponent<any, Attrs>;
     fallbackComponent?: PresentComponent<any, Attrs>;
     typeHandlers?: TypeHandlers;
-    store?: Store;
+    store?: StoreType;
 };
 export type IterablePeridcate = (octiron: Octiron) => boolean;
 export type IterableArgs = {
@@ -154,7 +154,7 @@ export type EditableArgs = {
     minLength?: number;
     maxLength?: number;
     typeHandlers?: TypeHandlers;
-    store?: Store;
+    store?: StoreType;
 };
 export type OctironSelectArgs<Attrs extends BaseAttrs = BaseAttrs> = FetchableArgs & IterableArgs & PresentableArgs<Attrs> & SSRArgs;
 export type OctironPresentArgs<Attrs extends BaseAttrs = BaseAttrs> = PresentableArgs<Attrs>;
@@ -214,7 +214,7 @@ export type UpdateableArgs<Attrs extends BaseAttrs = BaseAttrs> = {
     component?: EditComponent<any, Attrs> | AnyComponent<any, Attrs>;
     fallbackComponent?: AnyComponent<any, Attrs>;
     typeHandlers?: TypeHandlers;
-    store?: Store;
+    store?: StoreType;
 };
 export interface OctironView {
     (octiron: Octiron): Children;
@@ -449,7 +449,7 @@ export interface OctironRoot extends Default, Origin, EntryPoint, Queryable, Sel
     /**
      * Expands a term into a type.
      */
-    readonly expand: Store['expand'];
+    readonly expand: StoreType['expand'];
 }
 export interface OctironSelection extends Default, Origin, EntryPoint, Queryable, Selectable, Filterable, Presentable, Performable {
     /**
@@ -492,11 +492,11 @@ export interface OctironSelection extends Default, Origin, EntryPoint, Queryable
     /**
      * The octiron store used for this value.
      */
-    readonly store: Store;
+    readonly store: StoreType;
     /**
      * Expands a term into a type.
      */
-    readonly expand: Store['expand'];
+    readonly expand: StoreType['expand'];
 }
 export interface OctironAction extends Default, Origin, EntryPoint, Queryable, ActionSelectable, Presentable, Submitable<JSONObject>, ActionFilterable, Performable, Appendable {
     /**
@@ -552,13 +552,17 @@ export interface OctironAction extends Default, Origin, EntryPoint, Queryable, A
      */
     readonly url?: URL;
     /**
+     * The URLs hash value without the leading number sign.
+     */
+    readonly fragment?: string;
+    /**
      * The octiron store used for this value.
      */
-    readonly store: Store;
+    readonly store: StoreType;
     /**
      * Expands a term into a type.
      */
-    readonly expand: Store['expand'];
+    readonly expand: StoreType['expand'];
     readonly action: Octiron;
     readonly actionValue: Octiron;
 }
@@ -614,11 +618,11 @@ export interface OctironActionSelection extends Default, Origin, EntryPoint, Que
     /**
      * The octiron store used for this value.
      */
-    readonly store: Store;
+    readonly store: StoreType;
     /**
      * Expands a term into a type.
      */
-    readonly expand: Store['expand'];
+    readonly expand: StoreType['expand'];
     readonly action: Octiron;
     readonly actionValue: Octiron;
 }
@@ -633,7 +637,7 @@ export type Octiron = {
     select<Attrs extends BaseAttrs = BaseAttrs>(selector: Selector, args: OctironSelectArgs<Attrs>, view: (o: Octiron) => Children): Children;
 } & (Omit<OctironRoot, 'select'> | Omit<OctironSelection, 'select'> | Omit<OctironAction, 'select'> | Omit<OctironActionSelection, 'select'>);
 export type CommonParentArgs = {
-    store: Store;
+    store: StoreType;
     typeHandlers: TypeHandlers;
     parent?: Octiron;
 };

@@ -1,15 +1,15 @@
+import {longform, processTemplate as templateParser} from '@longform/longform';
 import type {Handler} from "../store.ts";
 
 export const longformHandler: Handler = {
   integrationType: 'fragments',
   contentType: 'text/longform',
-  handler: async ({ res }) => {
-    const { longform } = await import('@longform/longform');
-
+  templateParser,
+  async handler({ res }) {
     return longform(await res.text());
   },
   hashParser(hash) {
-    const [identifier, templateArgs] = hash.split('?');
+    const [identifier, templateArgs] = hash.split(/\?(.*)/, 2);
 
     if (templateArgs == null) {
       return {

@@ -1,7 +1,7 @@
 import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
 import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
-import type {Store} from "../store.ts";
+import type {makeStore} from "../store.ts";
 import type {JSONArray, JSONObject, JSONValue, SCMAction} from "../types/common.ts";
 import type {ActionEvents, ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
 import type {EntityState} from "../types/store.ts";
@@ -53,6 +53,12 @@ export function actionFactory<
 
     self.submitting = true;
     self.url = new URL(url, self.store.rootIRI);
+
+    if (self.url.hash !== '' && self.url.hash !== '#') {
+      self.fragment = self.url.hash.replace(/^#/, '');
+    } else {
+      self.fragment = undefined;
+    }
 
     mithrilRedraw();
 
@@ -113,6 +119,8 @@ export function actionFactory<
 
     childArgs.value = self.value = value;
 
+    console.log('SUBMIT?', args2, args);
+
     if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
       submit();
     } else {
@@ -160,6 +168,7 @@ export function actionFactory<
   self.action = parentArgs.parent;
   self.actionValue = rendererArgs.actionValue;
   self.url = undefined;
+  self.fragment = undefined;
   self.submitting = false;
 
   childArgs.action = self as unknown as OctironAction;

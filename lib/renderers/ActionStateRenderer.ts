@@ -2,7 +2,7 @@ import type m from 'mithril';
 import { selectionFactory } from '../factories/selectionFactory.ts';
 import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.ts';
 import type { EntityState, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
-import type { Store } from "../store.ts";
+import type { makeStore } from "../store.ts";
 import type { Mutable } from "../types/common.ts";
 import type {InstanceHooks} from '../factories/octironFactory.ts';
 

@@ -89,7 +89,7 @@ export declare class Store {
      * retrieves a text representation of a value in the store
      * if it is supported by the integration.
      */
-    text(iri: string, args?: {
+    text(iri: string | URL, args?: {
         method?: string;
         accept?: string;
     }): string | undefined;

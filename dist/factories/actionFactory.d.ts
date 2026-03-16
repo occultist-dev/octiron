@@ -1,4 +1,3 @@
-import type { Store } from "../store.ts";
 import type { JSONObject } from "../types/common.ts";
 import type { ActionEvents, ActionParentArgs, OctironAction, OctironPerformArgs, PerformRendererArgs, TypeHandlers } from "../types/octiron.ts";
 import type { EntityState } from "../types/store.ts";

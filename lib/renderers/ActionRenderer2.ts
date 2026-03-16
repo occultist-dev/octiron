@@ -25,7 +25,7 @@ function applySubmission(
 ) {
   let selectionResult: SelectionResult;
   let selectionDetails: SelectionDetails<ReadonlySelectionResult>;
-  
+
   if (submitResult.type !== 'alternative-success' &&
     isIRIObject(submitResult.value)) {
     selectionDetails = store.subscribe({

@@ -298,10 +298,10 @@ export class Store {
         type: 'alternative-success',
         iri: normalizedURL,
         fragment: args?.fragment,
-        loading: false,
         ok: true,
         contentType,
         isProblem: false,
+        integrationType: integration.integrationType,
         integration,
       };
     }
@@ -319,11 +319,11 @@ export class Store {
      * retrieves a text representation of a value in the store
      * if it is supported by the integration.
      */
-    public text(iri: string, args?: {
+    public text(iri: string | URL, args?: {
       method?: string;
       accept?: string;
     }): string | undefined {
-      const [key, fragment] = iri.split('#');
+      const [key, fragment] = iri.toString().split(/#(.*)/, 2);
       const entity = this.entity(key, args);
 
       if (entity == null) {

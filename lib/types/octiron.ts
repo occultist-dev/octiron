@@ -1,6 +1,6 @@
 import type { Attributes, Children, ComponentTypes } from 'mithril';
 import type { JSONObject, JSONPrimitive, JSONValue } from './common.ts'
-import type { Store, StoreType } from '../store.ts';
+import type { makeStore, StoreType } from '../store.ts';
 import type {
   ContentHandlingFailure,
   HTTPFailure,
@@ -204,7 +204,7 @@ export type PresentableArgs<
   // deno-lint-ignore no-explicit-any
   fallbackComponent?: PresentComponent<any, Attrs>;
   typeHandlers?: TypeHandlers;
-  store?: Store;
+  store?: StoreType;
 };
 
 export type IterablePeridcate = (octiron: Octiron) => boolean;
@@ -229,7 +229,7 @@ export type EditableArgs = {
   minLength?: number;
   maxLength?: number;
   typeHandlers?: TypeHandlers;
-  store?: Store;
+  store?: StoreType;
 };
 
 export type OctironSelectArgs<
@@ -345,7 +345,7 @@ export type UpdateableArgs<
   // deno-lint-ignore no-explicit-any
   fallbackComponent?: AnyComponent<any, Attrs>;
   typeHandlers?: TypeHandlers;
-  store?: Store;
+  store?: StoreType;
 };
 export interface OctironView {
   (octiron: Octiron): Children;
@@ -674,7 +674,7 @@ export interface OctironRoot
   /**
    * Expands a term into a type.
    */
-  readonly expand: Store['expand'];
+  readonly expand: StoreType['expand'];
 }
 
 export interface OctironSelection
@@ -737,12 +737,12 @@ export interface OctironSelection
   /**
    * The octiron store used for this value.
    */
-  readonly store: Store;
+  readonly store: StoreType;
 
   /**
    * Expands a term into a type.
    */
-  readonly expand: Store['expand'];
+  readonly expand: StoreType['expand'];
 }
 
 export interface OctironAction
@@ -822,14 +822,19 @@ export interface OctironAction
   readonly url?: URL;
 
   /**
+   * The URLs hash value without the leading number sign.
+   */
+  readonly fragment?: string;
+
+  /**
    * The octiron store used for this value.
    */
-  readonly store: Store;
+  readonly store: StoreType;
 
   /**
    * Expands a term into a type.
    */
-  readonly expand: Store['expand'];
+  readonly expand: StoreType['expand'];
 
   readonly action: Octiron;
 
@@ -912,12 +917,12 @@ export interface OctironActionSelection
   /**
    * The octiron store used for this value.
    */
-  readonly store: Store;
+  readonly store: StoreType;
 
   /**
    * Expands a term into a type.
    */
-  readonly expand: Store['expand'];
+  readonly expand: StoreType['expand'];
 
   readonly action: Octiron;
 
@@ -951,7 +956,7 @@ export type Octiron =
 ;
 
 export type CommonParentArgs = {
-  store: Store;
+  store: StoreType;
   typeHandlers: TypeHandlers;
   parent?: Octiron;
 };

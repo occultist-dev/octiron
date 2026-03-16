@@ -73,7 +73,7 @@ export function getSelection<T extends SelectionResult>({
     const [{ subject, filter }, ...selector] =
       parseSelectorString(selectorStr, store);
 
-    const [iri, iriFragment] = subject.split('#');
+    const [iri, iriFragment] = subject.split(/#(.*)/, 2);
 
     selectEntity({
       pointer: '',

@@ -2,7 +2,7 @@ import m from 'mithril';
 import {PerformRenderer3} from "../renderers/PerformRenderer3.ts";
 import {PresentRenderer} from '../renderers/PresentRenderer.ts';
 import {SelectionRenderer2} from "../renderers/SelectionRenderer2.ts";
-import type {Store} from "../store.ts";
+import type {makeStore} from "../store.ts";
 import type {Mutable} from "../types/common.ts";
 import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeHandlers} from "../types/octiron.ts";
 import {getIterableValue} from "../utils/getIterableValue.ts";

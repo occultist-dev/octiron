@@ -2,7 +2,7 @@ import type m from "mithril";
 import {actionSelectionFactory} from '../factories/actionSelectionFactory.ts';
 import type {InstanceHooks} from "../factories/octironFactory.ts";
 import {selectionFactory} from '../factories/selectionFactory.ts';
-import type {Store} from "../store.ts";
+import type {makeStore} from "../store.ts";
 import type {JSONObject, JSONValue, Mutable} from '../types/common.ts';
 import type {ActionSelectionParentArgs, ActionSelectionRendererArgs, ActionSelectView, CommonRendererArgs, OctironActionSelection, OctironActionSelectionArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, Selector, Update} from '../types/octiron.ts';
 import type {ActionSelectionResult, SelectionDetails} from '../types/store.ts';

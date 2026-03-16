@@ -368,6 +368,13 @@ async function handleResponse(
   const handler = handlers.get(contentType);
   const alternativeKey = makeAlternativeKey(normalizedURL, contentType, args);
 
+  // TODO: Remove when problem details are supported
+  if (contentType === 'application/problem+json') {
+    console.debug('PROBLEM');
+    console.debug(normalizedURL);
+    console.debug(await res.json());
+  }
+
   if (handler?.integrationType === 'jsonld') {
     const content = await handler.handler({
       res,
@@ -387,7 +394,7 @@ async function handleResponse(
       store,
     );
   } else {
-    const content = await handler.handler({
+    const content = await handler?.handler({
       res,
     });
     const integration = integrations[handler?.integrationType ?? 'unrecognised']({
@@ -768,6 +775,12 @@ export interface StoreType {
   fetch(iri: string | URL, args?: ResourceVaryArgs): Promise<EntityState>;
 
   /**
+   * Returns the integration which is configured to handle the
+   * given content type.
+   */
+  integration(contentType: string): Integration;
+
+  /**
    * Used in server side rendering to serialize the store's contents
    * to JSON for Octiron on the client to initialize with.
    */
@@ -936,7 +949,7 @@ export const makeStore = ((args) => {
       return alternatives.get(alternativeKey);
     },
     text(this: StoreType, iri, args) {
-      const [key, fragment] = iri.toString().split('#');
+      const [key, fragment] = iri.toString().split(/#(.*)/, 2);
       const entity = this.entity(key, args);
 
       if (entity == null ||
@@ -1093,6 +1106,11 @@ export const makeStore = ((args) => {
     },
     unsubscribe(this: StoreType, key) {
       listeners.get(key)?.cleanup();
+    },
+    integration(this: StoreType, contentType) {
+      const integrationType = handlers.get(contentType)?.integrationType;
+
+      return integrations[integrationType];
     },
     toInitialState() {
       const initialState: InitialState = [

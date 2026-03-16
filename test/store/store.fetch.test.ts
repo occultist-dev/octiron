@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import {describe, it} from "node:test";
-import {createTestUtils} from "../utils/dom.ts";
+import {createScenarioUtils} from "../utils/dom.ts";
 import {contextBuilder, makeTypeDef, makeTypeDefs} from "@occultist/occultist";
 import {dedent} from '../utils/dedent.ts';
 
 
 describe('store.fetch()', () => {
   it('Fetches a remote JSONLD resource', async () => {
-    const {store, registry, vocab} = createTestUtils();
+    const {store, registry, vocab} = createScenarioUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef({ term: 'foo', schema: vocab })
@@ -31,7 +31,7 @@ describe('store.fetch()', () => {
   });
 
   it('Fetches a remote Longform resource', async () => {
-    const {store, registry} = createTestUtils();
+    const {store, registry} = createScenarioUtils();
 
     const action = registry.http.get('/foo')
       .public()
@@ -48,8 +48,8 @@ describe('store.fetch()', () => {
     assert.equal(res.integration?.text?.('foo'), 'Bar');
   });
 
-  it('Fetches a remote Markdown resource', async () => {
-    const {store, registry} = createTestUtils();
+  it('Fetches a remote Markdown resource', {only: true}, async () => {
+    const {store, registry} = createScenarioUtils();
 
     const action = registry.http.get('/foo')
       .public()

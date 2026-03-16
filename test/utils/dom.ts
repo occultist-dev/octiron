@@ -33,7 +33,7 @@ class Scheduler {
 }
 
 
-export function createTestUtils({
+export function createTestScenario({
   handlers = [],
 }: {
   handlers?: Handler[];
@@ -114,8 +114,8 @@ export function createTestUtils({
     }
   }
 
-  async function pretty() {
-    return format(dom.serialize(), { parser: 'html' });
+  async function prettyPrint() {
+    console.log(await format(dom.serialize(), { parser: 'html' }));
   }
 
   return {
@@ -132,7 +132,7 @@ export function createTestUtils({
     promises,
     mount,
     redraw: redrawAsync,
-    pretty,
+    prettyPrint,
   };
 }
 

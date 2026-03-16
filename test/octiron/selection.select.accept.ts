@@ -1,12 +1,12 @@
 import {contextBuilder, makeTypeDef, makeTypeDefs} from "@occultist/occultist";
 import {describe, it} from "node:test";
 import {dedent} from "../utils/dedent.ts";
-import {createTestUtils} from "../utils/dom.ts";
+import {createScenarioUtils} from "../utils/dom.ts";
 import assert from 'node:assert/strict';
 
 describe('store.subscribe()', () => {
   it('Calls listener on changes to primary entity changes', async () => {
-    const { registry, pretty, document, dom, store, redraw, vocab, mount, o, m } = createTestUtils();
+    const { registry, pretty, document, dom, store, redraw, vocab, mount, o, m } = createScenarioUtils();
 
     const typeDefs = makeTypeDefs([
       makeTypeDef('foo', vocab),
