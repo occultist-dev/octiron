@@ -156,14 +156,14 @@ function subscribe(
         value: parentArgs.parent.value as JSONObject,
       } satisfies ValueSelectionResult],
     }
-
-    createInstances(
-      instances,
-      args,
-      parentArgs,
-      selectionDetails,
-    );
   }
+
+  createInstances(
+    instances,
+    args,
+    parentArgs,
+    selectionDetails,
+  );
 
   return selectionDetails;
 }

@@ -1950,8 +1950,8 @@ function subscribe$1(key, listener, instances, store, selector, args, parentArgs
                     value: parentArgs.parent.value,
                 }],
         };
-        createInstances$1(instances, args, parentArgs, selectionDetails);
     }
+    createInstances$1(instances, args, parentArgs, selectionDetails);
     return selectionDetails;
 }
 const PerformRenderer3 = () => {
@@ -3564,7 +3564,6 @@ makeStore.fromInitialState = ({ rootIRI, vocab, aliases, headers, origins, handl
             }
             return makeStore(storeArgs);
         }
-        //const stateInfo = JSON.parse(el.innerText) as InitialState;
         const alternatives = [];
         const handlersMap = handlers.reduce((acc, handler) => {
             acc[handler.contentType] = handler;
