@@ -1186,7 +1186,6 @@ makeStore.fromInitialState = ({
       return makeStore(storeArgs);
     }
 
-    const stateInfo = JSON.parse(el.innerText) as InitialState;
     const alternatives: MakeStoreArgs['alternatives'] = [];
     const handlersMap: Record<string, Handler> = handlers.reduce((acc, handler) => {
       acc[handler.contentType] = handler;
@@ -1194,8 +1193,8 @@ makeStore.fromInitialState = ({
       return acc;
     }, {});
 
-    for (let i = 0, l = stateInfo[2].length; i < l; i++) {
-      const [contentTypeKey, alternative, altInfo] = stateInfo[2][i];
+    for (let i = 0, l = initialState[2].length; i < l; i++) {
+      const [contentTypeKey, alternative, altInfo] = initialState[2][i];
 
       const factory = integrations[altInfo.integrationType];
       const handler = handlersMap[altInfo.contentType];
@@ -1213,8 +1212,8 @@ makeStore.fromInitialState = ({
     const store = makeStore({
       ...storeArgs,
       alternatives,
-      acceptMap: stateInfo[0],
-      primary: stateInfo[1],
+      acceptMap: initialState[0],
+      primary: initialState[1],
     });
     performance.mark('octiron:from-initial-state:end')
     performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');

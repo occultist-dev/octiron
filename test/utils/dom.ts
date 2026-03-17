@@ -115,7 +115,7 @@ export function createTestScenario({
   }
 
   async function prettyPrint() {
-    console.log(await format(dom.serialize(), { parser: 'html' }));
+    console.debug(await format(dom.serialize(), { parser: 'html' }));
   }
 
   return {

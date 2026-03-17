@@ -1578,7 +1578,6 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
             payload = next;
         }
         childArgs.value = self.value = value;
-        console.log('SUBMIT?', args2, args);
         if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
@@ -2644,7 +2643,9 @@ function cacheFragment(hash, hashParser, templateParser, fragmentHook, content, 
         }
         else if (result != null && result.args == null) {
             const fragment = content.fragments[result.identifier];
-            fragmentCache = [result.identifier, fragment.type, fragment.html, fragment.dom];
+            if (fragment != null) {
+                fragmentCache = [result.identifier, fragment.type, fragment.html, fragment.dom];
+            }
         }
     }
     cache.set(hash, fragmentCache);
@@ -3563,14 +3564,14 @@ makeStore.fromInitialState = ({ rootIRI, vocab, aliases, headers, origins, handl
             }
             return makeStore(storeArgs);
         }
-        const stateInfo = JSON.parse(el.innerText);
+        //const stateInfo = JSON.parse(el.innerText) as InitialState;
         const alternatives = [];
         const handlersMap = handlers.reduce((acc, handler) => {
             acc[handler.contentType] = handler;
             return acc;
         }, {});
-        for (let i = 0, l = stateInfo[2].length; i < l; i++) {
-            const [contentTypeKey, alternative, altInfo] = stateInfo[2][i];
+        for (let i = 0, l = initialState[2].length; i < l; i++) {
+            const [contentTypeKey, alternative, altInfo] = initialState[2][i];
             const factory = integrations[altInfo.integrationType];
             const handler = handlersMap[altInfo.contentType];
             if (factory == null)
@@ -3581,8 +3582,8 @@ makeStore.fromInitialState = ({ rootIRI, vocab, aliases, headers, origins, handl
         const store = makeStore({
             ...storeArgs,
             alternatives,
-            acceptMap: stateInfo[0],
-            primary: stateInfo[1],
+            acceptMap: initialState[0],
+            primary: initialState[1],
         });
         performance.mark('octiron:from-initial-state:end');
         performance.measure('octiron:from-initial-state:duration', 'octiron:from-initial-state:start', 'octiron:from-initial-state:end');

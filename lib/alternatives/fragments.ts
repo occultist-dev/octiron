@@ -83,7 +83,9 @@ function cacheFragment(
     } else if (result != null && result.args == null) {
       const fragment = content.fragments[result.identifier];
       
-      fragmentCache = [result.identifier, fragment.type, fragment.html, fragment.dom];
+      if (fragment != null) {
+        fragmentCache = [result.identifier, fragment.type, fragment.html, fragment.dom];
+      }
     }
   }
 
