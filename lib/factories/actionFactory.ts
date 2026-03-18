@@ -95,9 +95,9 @@ export function actionFactory<
 
   function update(value: JSONObject, args2?: UpdateArgs): boolean | void {
     const prev = payload;
-    const next = {
+    let next = {
       ...prev,
-      ...value,
+      ...expandValue(parentArgs.store, value),
     };
 
     if (typeof args.interceptor === 'function') {
@@ -117,7 +117,7 @@ export function actionFactory<
       payload = next;
     }
 
-    childArgs.value = self.value = value;
+    childArgs.value = self.value = next;
 
     if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
       submit();

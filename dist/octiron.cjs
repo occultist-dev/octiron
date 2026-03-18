@@ -1560,9 +1560,9 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     }
     function update(value, args2) {
         const prev = payload;
-        const next = {
+        let next = {
             ...prev,
-            ...value,
+            ...expandValue(parentArgs.store, value),
         };
         if (typeof args.interceptor === 'function') {
             const res = args.interceptor({
@@ -1579,7 +1579,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
         else {
             payload = next;
         }
-        childArgs.value = self.value = value;
+        childArgs.value = self.value = next;
         if (args2?.submit !== false && (args2?.submit || args.submitOnChange)) {
             submit();
         }
