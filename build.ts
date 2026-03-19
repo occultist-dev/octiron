@@ -1,4 +1,5 @@
 import typescript from "@rollup/plugin-typescript";
+import { minify } from "rollup-plugin-esbuild";
 import {createReadStream, createWriteStream} from "node:fs";
 import {mkdir, readFile, writeFile, rm, cp} from "node:fs/promises";
 import {dirname, resolve} from "node:path";
@@ -72,6 +73,7 @@ await mkdir(dist);
         declaration: true,
         declarationDir: "dist",
       }),
+      minify(),
     ],
   });
   
@@ -91,11 +93,11 @@ const { code, map } = transform({
 });
 
 
-await gzip("./dist/octiron.js", "./dist/longform.js.gz");
-await gzip("./dist/octiron.min.js", "./dist/longform.min.js.gz");
+await gzip("./dist/octiron.js", "./dist/octiron.js.gz");
+await gzip("./dist/octiron.min.js", "./dist/octiron.min.js.gz");
 
-await brotli("./dist/octiron.js", "./dist/longform.js.br");
-await brotli("./dist/octiron.min.js", "./dist/longform.min.js.br");
+await brotli("./dist/octiron.js", "./dist/octiron.js.br");
+await brotli("./dist/octiron.min.js", "./dist/octiron.min.js.br");
 
 await cp('./lib/octiron.css', './dist/octiron.css');
 await writeFile('./dist/octiron.min.css', code);
