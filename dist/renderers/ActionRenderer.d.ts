@@ -8,4 +8,4 @@ export type ActionRendererAttrs = {
     selector?: Selector;
     view: PerformView;
 };
-export declare const ActionRenderer2: m.ClosureComponent<ActionRendererAttrs>;
+export declare const ActionRenderer: m.ClosureComponent<ActionRendererAttrs>;

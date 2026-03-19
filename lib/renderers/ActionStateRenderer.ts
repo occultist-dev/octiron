@@ -1,121 +1,107 @@
-import type m from 'mithril';
-import { selectionFactory } from '../factories/selectionFactory.ts';
-import type { CommonRendererArgs, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.ts';
-import type { EntityState, ReadonlySelectionResult, SelectionDetails } from '../types/store.ts';
-import type { makeStore } from "../store.ts";
-import type { Mutable } from "../types/common.ts";
+import m from 'mithril';
+import {selectionFactory} from '../factories/selectionFactory.ts';
+import type {ActionEvents, ActionSelectionDetailsListener, IntegrationState, OctironSelectArgs, OctironSelection, SelectionParentArgs, SelectView} from '../octiron.ts';
 import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
-export type ActionRendererRef = {
-  submitting: boolean;
-  submitResult?: EntityState;
-  store: Store;
-  typeHandlers: TypeHandlers;
-};
+export type ActionState =
+  | 'success'
+  | 'failure'
+;
 
 export type ActionStateRendererAttrs = {
   not?: boolean;
-  type: 'initial' | 'success' | 'failure';
-  children?: m.Children;
+  type: ActionState;
+  events: ActionEvents;
   selector?: string;
   args: OctironSelectArgs;
+  parentArgs: SelectionParentArgs;
   view?: SelectView;
-  submitResult?: EntityState;
-  parentArgs: SelectionParentArgs,
 };
 
 export const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs> = () => {
-  let key = Symbol('ActionStateRenderer');
-  let submitResult: EntityState | undefined;
+  let render!: boolean;
+  let not!: boolean;
+  let type!: ActionState;
   let octiron: OctironSelection | undefined;
   let hooks: InstanceHooks | undefined;
+  let fragment: string | undefined;
+  let integration: IntegrationState;
+  let args!: OctironSelectArgs;
+  let parentArgs!: SelectionParentArgs;
 
-  function setInstance(attrs: ActionStateRendererAttrs) {
-    if (attrs.submitResult == null) {
-      submitResult = undefined;
-      octiron = undefined;
-    } else if (
-      submitResult == null ||
-      attrs.submitResult.ok !== submitResult.ok ||
-      attrs.submitResult.status !== submitResult.status ||
-      attrs.submitResult.value !== submitResult.value
+  const listener: ActionSelectionDetailsListener = (
+    submitResult,
+    selectionDetails,
+  ) => {
+    if ((!not && type === 'failure' && submitResult.ok) ||
+        (not && type === 'failure' && !submitResult.ok) ||
+        (not && type === 'success' && submitResult.ok) ||
+        (!not && type === 'success' && !submitResult.ok)
     ) {
-      submitResult = attrs.submitResult;
+      render = false;
 
-      const rendererArgs: CommonRendererArgs = {
-        index: 0,
-        value: attrs.submitResult.value,
-      }
-      [octiron, hooks] = selectionFactory(
-        attrs.args,
-        attrs.parentArgs,
-        rendererArgs,
-      );
-    }
-  }
-
-  let unsubscribe;
-
-  function listener(next: SelectionDetails<ReadonlySelectionResult>) {
-    if (next.result.length === 1 && next.result[0].value != null) {
-      submitResult.value = next.result[0].value;
-    }
-  }
-
-  function updateSubscription(attrs: ActionStateRendererAttrs) {
-    if (attrs.submitResult == null || attrs.submitResult.loading) {
-      attrs.parentArgs.store.unsubscribe(key);
       return;
     }
-    
-    attrs.parentArgs.store.unsubscribe(key);
-    attrs.parentArgs.store.subscribe({
-      key,
-      listener,
-      selector: attrs.submitResult.iri,
-      accept: attrs.args.accept,
-      fragment: attrs.args.fragment,
-      mainEntity: attrs.args.mainEntity,
-    });
-  }
+
+    render = true;
+
+    if (submitResult.type === 'alternative-success') {
+      octiron = null;
+      hooks = null;
+      fragment = selectionDetails.result[0].fragment;
+      integration = submitResult.integration;
+    } else {
+      fragment = null;
+      integration = null;
+      [octiron, hooks] = selectionFactory(
+        args,
+        parentArgs,
+        {
+          index: 0,
+          value: selectionDetails.result[0].value,
+        },
+      );
+    }
+  };
 
   return {
-    oninit: ({ attrs }) => {
-      updateSubscription(attrs);
-      setInstance(attrs);
+    oninit(vnode) {
+      not = vnode.attrs.not ?? false;
+      type = vnode.attrs.type;
+      args = vnode.attrs.args;
+      parentArgs = vnode.attrs.parentArgs;
+      render = not &&
+        vnode.attrs.selector == null &&
+        vnode.attrs.view == null;
+
+      vnode.attrs.events.addListener(listener);
     },
-    onbeforeupdate: ({ attrs }) => {
-      updateSubscription(attrs);
-      setInstance(attrs);
+    onbeforeupdate(vnode) {
+      not = vnode.attrs.not ?? false;
+      type = vnode.attrs.type;
     },
-    view: ({ attrs: { type, selector, args, view, ...attrs }, children }) => {
-      if (type === 'initial' && submitResult == null) {
-        return children;
-      } else if (submitResult == null || octiron == null) {
-        return null;
+    onbeforeremove(vnode) {
+      vnode.attrs.events.removeListener(listener);
+    },
+    view(vnode) {
+      if (!render) return;
+
+      if (integration != null) {
+        return integration.render(
+          vnode.attrs.parentArgs.parent.fragment,
+        );
+      } else if (vnode.attrs.selector != null && octiron != null) {
+        return octiron.select(
+          vnode.attrs.selector,
+          vnode.attrs.args,
+          vnode.attrs.view,
+        );
+      } else if (vnode.attrs.view != null && octiron != null) {
+        return vnode.attrs.view(octiron);
       }
 
-      let shouldRender = (type === 'success' && submitResult.ok) ||
-        (type === 'failure' && !submitResult.ok);
-
-      if (attrs.not) {
-        shouldRender = !shouldRender;
-      }
-
-      (octiron as Mutable<OctironSelection>).position = 1;
-
-      if (shouldRender && selector != null) {
-        return octiron.select(selector, args as OctironSelectArgs, view as SelectView);
-      } else if (shouldRender && view != null) {
-        return view(octiron);
-      } else if (shouldRender && args != null) {
-        return octiron.present(args);
-      }
-
-      (octiron as Mutable<OctironSelection>).position = -1
-
-      return null;
+      return vnode.children;
     },
   };
-};
+}

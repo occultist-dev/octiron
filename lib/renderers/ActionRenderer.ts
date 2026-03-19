@@ -86,7 +86,7 @@ function applySubmission(
   return selectionDetails;
 }
 
-export const ActionRenderer2: m.ClosureComponent<ActionRendererAttrs> = () => {
+export const ActionRenderer: m.ClosureComponent<ActionRendererAttrs> = () => {
   const key = Symbol('ActionRenderer');
   let octiron!: OctironAction;
   let hooks!: InstanceHooks;

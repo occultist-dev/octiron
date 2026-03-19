@@ -1,20 +1,13 @@
-import type m from 'mithril';
-import type { OctironSelectArgs, SelectionParentArgs, SelectView, TypeHandlers } from '../types/octiron.ts';
-import type { EntityState } from '../types/store.ts';
-export type ActionRendererRef = {
-    submitting: boolean;
-    submitResult?: EntityState;
-    store: Store;
-    typeHandlers: TypeHandlers;
-};
+import m from 'mithril';
+import type { ActionEvents, OctironSelectArgs, SelectionParentArgs, SelectView } from '../octiron.ts';
+export type ActionState = 'success' | 'failure';
 export type ActionStateRendererAttrs = {
     not?: boolean;
-    type: 'initial' | 'success' | 'failure';
-    children?: m.Children;
+    type: ActionState;
+    events: ActionEvents;
     selector?: string;
     args: OctironSelectArgs;
-    view?: SelectView;
-    submitResult?: EntityState;
     parentArgs: SelectionParentArgs;
+    view?: SelectView;
 };
 export declare const ActionStateRenderer: m.ClosureComponent<ActionStateRendererAttrs>;

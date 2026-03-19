@@ -6,4 +6,4 @@ export type PerformRendererAttrs = {
     view: PerformView;
     parentArgs: ActionParentArgs;
 };
-export declare const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs>;
+export declare const PerformRenderer: m.ClosureComponent<PerformRendererAttrs>;

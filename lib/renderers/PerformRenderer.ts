@@ -2,7 +2,7 @@ import {isJSONObject} from '@occultist/mini-jsonld';
 import m from 'mithril';
 import {selectionFactory} from '../factories/selectionFactory.ts';
 import type {ActionParentArgs, CommonRendererArgs, JSONObject, Mutable, OctironPerformArgs, OctironSelection, PerformRendererArgs, PerformView, ReadonlySelectionResult, SelectionDetails, SelectionListener, SelectionParentArgs, Store, ValueSelectionResult} from '../octiron.ts';
-import {ActionRenderer2} from './ActionRenderer2.ts';
+import {ActionRenderer} from './ActionRenderer.ts';
 import type {InstanceHooks} from '../factories/octironFactory.ts';
 
 
@@ -168,7 +168,7 @@ function subscribe(
   return selectionDetails;
 }
 
-export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => {
+export const PerformRenderer: m.ClosureComponent<PerformRendererAttrs> = () => {
   let key = Symbol('PerformRenderer');
   let loading!: boolean;
   let store!: Store;
@@ -249,7 +249,7 @@ export const PerformRenderer3: m.ClosureComponent<PerformRendererAttrs> = () => 
             children.push(vnode.attrs.args.fallback);
           }
         } else {
-          children.push(m(ActionRenderer2, {
+          children.push(m(ActionRenderer, {
             args: vnode.attrs.args,
             parentArgs: vnode.attrs.parentArgs,
             rendererArgs: list[i].rendererArgs,

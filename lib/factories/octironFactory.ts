@@ -1,7 +1,7 @@
 import m from 'mithril';
-import {PerformRenderer3} from "../renderers/PerformRenderer3.ts";
+import {PerformRenderer} from "../renderers/PerformRenderer.ts";
 import {PresentRenderer} from '../renderers/PresentRenderer.ts';
-import {SelectionRenderer2} from "../renderers/SelectionRenderer2.ts";
+import {SelectionRenderer} from "../renderers/SelectionRenderer.ts";
 import type {makeStore} from "../store.ts";
 import type {Mutable} from "../types/common.ts";
 import type {ActionParentArgs, ActionSelectionParentArgs, AnyAttrs, AnyComponent, BaseAttrs, CommonParentArgs, CommonRendererArgs, EditAttrs, EditComponent, Octiron, OctironAction, OctironActionSelection, OctironActionSelectionArgs, OctironDefaultArgs, OctironPerformArgs, OctironPresentArgs, OctironRoot, OctironSelectArgs, OctironSelection, PerformView, Predicate, PresentAttrs, PresentComponent, SelectionParentArgs, Selector, SelectView, TypeHandlers} from "../types/octiron.ts";
@@ -195,7 +195,7 @@ export function octironFactory<O extends Octiron>(
       arg3,
     );
 
-    return m(SelectionRenderer2, {
+    return m(SelectionRenderer, {
       entity: true,
       selector,
       args,
@@ -225,7 +225,7 @@ export function octironFactory<O extends Octiron>(
       selector = `${refs.parentArgs.store.rootIRI} ${childSelector}`;
     }
 
-    return m(SelectionRenderer2, {
+    return m(SelectionRenderer, {
       entity: true,
       selector,
       args,
@@ -252,7 +252,7 @@ export function octironFactory<O extends Octiron>(
         }
 
         return m(
-          SelectionRenderer2,
+          SelectionRenderer,
           {
             selector,
             args,
@@ -311,7 +311,7 @@ export function octironFactory<O extends Octiron>(
       ) => {
         const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-        return m(PerformRenderer3, {
+        return m(PerformRenderer, {
           selector,
           args,
           view,

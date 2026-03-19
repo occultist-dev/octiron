@@ -2,12 +2,13 @@ import type { JSONObject } from "../types/common.ts";
 import type { ActionEvents, ActionParentArgs, OctironAction, OctironPerformArgs, PerformRendererArgs, TypeHandlers } from "../types/octiron.ts";
 import type { EntityState } from "../types/store.ts";
 import { type InstanceHooks } from "./octironFactory.ts";
+import type { StoreType } from '../store.ts';
 export type ActionRefs = {
     url?: string;
     method?: string;
     submitting: boolean;
     payload: JSONObject;
-    store: Store;
+    store: StoreType;
     typeHandlers: TypeHandlers;
     submitResult?: EntityState;
 };

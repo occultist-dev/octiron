@@ -1,7 +1,7 @@
 
-import type { makeStore } from "../store.ts";
-import type { JSONObject, SCMPropertyValueSpecification } from '../types/common.ts';
-import type { Spec } from '../types/octiron.ts';
+import type {StoreType} from "../store.ts";
+import type {JSONObject, SCMPropertyValueSpecification} from '../types/common.ts';
+import type {Spec} from '../types/octiron.ts';
 
 const httpRe = /^https?\:\/\//;
 const scmCtxRe = /^https?\:\/\/schema\.org/;
@@ -12,7 +12,7 @@ export function resolvePropertyValueSpecification({
   store,
 }: {
   spec: JSONObject;
-  store: Store;
+  store: StoreType;
 }): Spec {
   const pvs: SCMPropertyValueSpecification = {
     readonlyValue: false,

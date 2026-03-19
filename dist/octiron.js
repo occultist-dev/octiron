@@ -1356,7 +1356,7 @@ function getSubmitDetails({ payload, action, }) {
     };
 }
 
-const ActionStateRenderer3 = () => {
+const ActionStateRenderer = () => {
     let render;
     let not;
     let type;
@@ -1366,9 +1366,6 @@ const ActionStateRenderer3 = () => {
     let args;
     let parentArgs;
     const listener = (submitResult, selectionDetails) => {
-        if (submitResult.loading) {
-            return;
-        }
         if ((!not && type === 'failure' && submitResult.ok) ||
             (not && type === 'failure' && !submitResult.ok) ||
             (not && type === 'success' && submitResult.ok) ||
@@ -1426,7 +1423,7 @@ const ActionStateRenderer3 = () => {
     };
 };
 
-const ActionStateRenderer = () => {
+const ActionInitialStateRenderer = () => {
     let key = Symbol('ActionStateRenderer');
     let submitResult;
     let octiron;
@@ -1666,7 +1663,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     };
     const makeInitialStateMethod = (not) => {
         return (children) => {
-            return m(ActionStateRenderer, {
+            return m(ActionInitialStateRenderer, {
                 not,
                 type: 'initial',
                 args: {},
@@ -1678,7 +1675,7 @@ function actionFactory(args, parentArgs, rendererArgs, events) {
     const makeActionStateMethod = (type, not) => {
         return (arg1, arg2, arg3) => {
             const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-            return m(ActionStateRenderer3, {
+            return m(ActionStateRenderer, {
                 not,
                 type,
                 selector,
@@ -1791,7 +1788,7 @@ function applySubmission(key, listener, store, args, submitResult, listeners) {
     }
     return selectionDetails;
 }
-const ActionRenderer2 = () => {
+const ActionRenderer = () => {
     const key = Symbol('ActionRenderer');
     let octiron;
     let hooks;
@@ -1954,7 +1951,7 @@ function subscribe$1(key, listener, instances, store, selector, args, parentArgs
     createInstances$1(instances, args, parentArgs, selectionDetails);
     return selectionDetails;
 }
-const PerformRenderer3 = () => {
+const PerformRenderer = () => {
     let key = Symbol('PerformRenderer');
     let loading;
     let store;
@@ -2016,7 +2013,7 @@ const PerformRenderer3 = () => {
                     }
                 }
                 else {
-                    children.push(m(ActionRenderer2, {
+                    children.push(m(ActionRenderer, {
                         args: vnode.attrs.args,
                         parentArgs: vnode.attrs.parentArgs,
                         rendererArgs: list[i].rendererArgs,
@@ -2034,20 +2031,10 @@ const PerformRenderer3 = () => {
 const PresentRenderer = ({ attrs: { args, factoryArgs, parentArgs, rendererArgs, }, }) => {
     let [attrs, component] = selectComponentFromArgs('present', parentArgs, rendererArgs, args, factoryArgs);
     return {
-        //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
-        // [attrs, component] = selectComponentFromArgs(
-        //   'present',
-        //   parentArgs,
-        //   rendererArgs,
-        //   args,
-        //   factoryArgs,
-        // );
-        //},
         view({ attrs: { o, rendererArgs }, children }) {
             if (component == null) {
                 return null;
             }
-            // deno-lint-ignore no-explicit-any
             return m(component, {
                 o,
                 renderType: "present",
@@ -2135,7 +2122,7 @@ function subscribe(key, listener, instances, store, entity, selector, args, pare
     createInstances(instances, args, parentArgs, selectionDetails);
     return selectionDetails;
 }
-const SelectionRenderer2 = () => {
+const SelectionRenderer = () => {
     let key = Symbol('SelectionRenderer');
     let loading;
     let store;
@@ -2329,7 +2316,7 @@ function octironFactory(octironType, refs) {
     });
     self.enter = (arg1, arg2, arg3) => {
         const [selector, args, view] = unravelArgs(arg1 instanceof URL ? arg1.toString() : arg1, arg2, arg3);
-        return m(SelectionRenderer2, {
+        return m(SelectionRenderer, {
             entity: true,
             selector,
             args,
@@ -2352,7 +2339,7 @@ function octironFactory(octironType, refs) {
         else {
             selector = `${refs.parentArgs.store.rootIRI} ${childSelector}`;
         }
-        return m(SelectionRenderer2, {
+        return m(SelectionRenderer, {
             entity: true,
             selector,
             args,
@@ -2371,7 +2358,7 @@ function octironFactory(octironType, refs) {
                 if (!isJSONObject(refs.rendererArgs.value)) {
                     return null;
                 }
-                return m(SelectionRenderer2, {
+                return m(SelectionRenderer, {
                     selector,
                     args,
                     view,
@@ -2410,7 +2397,7 @@ function octironFactory(octironType, refs) {
         default: {
             self.perform = (arg1, arg2, arg3) => {
                 const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
-                return m(PerformRenderer3, {
+                return m(PerformRenderer, {
                     selector,
                     args,
                     view,

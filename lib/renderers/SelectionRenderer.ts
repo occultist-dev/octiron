@@ -149,7 +149,7 @@ function subscribe(
 }
 
 
-export const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs> = () => {
+export const SelectionRenderer: m.ClosureComponent<SelectionRendererAttrs> = () => {
   let key = Symbol('SelectionRenderer');
   let loading!: boolean;
   let store!: Store;

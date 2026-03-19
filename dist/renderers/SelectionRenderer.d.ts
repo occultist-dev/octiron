@@ -7,4 +7,4 @@ export type SelectionRendererAttrs = {
     view: SelectView;
     parentArgs: SelectionParentArgs;
 };
-export declare const SelectionRenderer2: m.ClosureComponent<SelectionRendererAttrs>;
+export declare const SelectionRenderer: m.ClosureComponent<SelectionRendererAttrs>;

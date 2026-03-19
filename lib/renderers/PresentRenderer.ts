@@ -28,21 +28,11 @@ export const PresentRenderer: m.ComponentTypes<PresentRendererAttrs> = ({
   );
 
   return {
-    //onbeforeupdate({ attrs: { args, factoryArgs, parentArgs, rendererArgs }}) {
-      // [attrs, component] = selectComponentFromArgs(
-      //   'present',
-      //   parentArgs,
-      //   rendererArgs,
-      //   args,
-      //   factoryArgs,
-      // );
-    //},
     view({ attrs: { o, rendererArgs }, children }) {
       if (component == null) {
         return null;
       }
 
-      // deno-lint-ignore no-explicit-any
       return m(component as any, {
         o,
         renderType: "present",

@@ -1,7 +1,6 @@
 import {JsonPointer} from 'json-ptr';
 import m from 'mithril';
 import {ActionSelectionRenderer} from "../renderers/ActionSelectionRenderer.ts";
-import type {makeStore} from "../store.ts";
 import type {JSONArray, JSONObject, JSONValue, SCMAction} from "../types/common.ts";
 import type {ActionEvents, ActionParentArgs, ActionSelectionParentArgs, ActionSelectView, OctironAction, OctironActionSelectionArgs, OctironPerformArgs, OctironSelectArgs, PayloadValueMapper, PerformRendererArgs, SelectionParentArgs, Selector, SelectView, TypeHandlers, UpdateArgs, UpdatePointer} from "../types/octiron.ts";
 import type {EntityState} from "../types/store.ts";
@@ -12,15 +11,16 @@ import {mithrilRedraw} from "../utils/mithrilRedraw.ts";
 import {unravelArgs} from "../utils/unravelArgs.ts";
 import {type FactoryRefs, type InstanceHooks, octironFactory} from "./octironFactory.ts";
 import {isBrowserRender} from '../consts.ts';
-import {ActionStateRenderer3} from '../renderers/ActionStateRenderer3.ts';
-import { ActionStateRenderer } from '../renderers/ActionStateRenderer.ts';
+import {ActionStateRenderer} from '../renderers/ActionStateRenderer.ts';
+import {ActionInitialStateRenderer} from '../renderers/ActionInitialStateRenderer.ts';
+import type {StoreType} from '../store.ts';
 
 export type ActionRefs = {
   url?: string;
   method?: string;
   submitting: boolean;
   payload: JSONObject;
-  store: Store;
+  store: StoreType;
   typeHandlers: TypeHandlers;
   submitResult?: EntityState;
 };
@@ -248,7 +248,7 @@ export function actionFactory<
       children: m.Children,
     ) => {
       return m(
-        ActionStateRenderer,
+        ActionInitialStateRenderer,
         {
           not,
           type: 'initial',
@@ -272,7 +272,7 @@ export function actionFactory<
     ) => {
       const [selector, args, view] = unravelArgs(arg1, arg2, arg3);
 
-      return m(ActionStateRenderer3, {
+      return m(ActionStateRenderer, {
         not,
         type,
         selector,
