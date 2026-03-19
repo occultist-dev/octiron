@@ -1,5 +1,4 @@
 import m from 'mithril';
-import type {RequestHandler} from '../store.ts';
 import {isBrowserRender} from '../consts.ts';
 
 
