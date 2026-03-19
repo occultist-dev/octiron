@@ -317,6 +317,11 @@ export interface FragmentsIntegrationType {
   contentType: string;
 
   /**
+   * The Octiron integration type.
+   */
+  integrationType: 'fragments';
+
+  /**
    * Returns a text fragment as text.
    * The root fragment cannot be accessed as text.
    *

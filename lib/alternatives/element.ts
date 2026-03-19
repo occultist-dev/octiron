@@ -123,8 +123,20 @@ export type ElementHandlerFn = (args: ElementHandlerFnArgs) => Promise<Serializa
 export type ElementHandler<
   ParsedHash extends unknown = '',
 > = {
+  
+  /**
+   * The Handler's integration type.
+   */
   integrationType: 'element',
+
+  /**
+   * The response content type handled by this handler.
+   */
   contentType: string;
+
+  /**
+   * Handler function that processes the response body.
+   */
   handler: ElementHandlerFn;
 
   /**
@@ -233,19 +245,19 @@ export interface ElementIntegrationFactory {
    * as according to the configured media-type rules and dynamically
    * update the contents of the rendered HTML.
    *
-   * @param args The fragments integration args.
+   * @param args The element integration args.
    * @param handler The content type's handler configuration.
    */
   (args: ElementIntegrationArgs, handler: ElementHandler): ElementIntegrationType;
 
   /**
-   * Creates a elements integration from initial state rendered into a
+   * Creates a element integration from initial state rendered into a
    * HTML document.
    *
    * @param stateInfo 
    * @param handler The content type's handler configuration.
    */
-  fromInitialState: (stateInfo: ElementStateInfo, handler: ElementHandler) => ElementIntegrationType;
+  fromInitialState(stateInfo: ElementStateInfo, handler: ElementHandler): ElementIntegrationType;
 };
 
 export const ElementIntegration = ((

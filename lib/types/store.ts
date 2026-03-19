@@ -1,7 +1,11 @@
-import type {Children, ComponentTypes} from 'mithril';
+import type {Children} from 'mithril';
 import type {HTMLFragmentsIntegration} from '../alternatives/htmlFragments.ts';
 import type {JSONObject, JSONValue} from './common.ts';
 import type {Octiron, Spec} from "./octiron.ts";
+import type {UnrecognisedIntegrationType} from '../alternatives/unrecognised.ts';
+import type {ProblemIntegrationType} from '../alternatives/problem.ts';
+import type {ElementIntegrationType} from '../alternatives/element.ts';
+import type {FragmentsIntegrationType} from '../alternatives/fragments.ts';
 
 export type FetcherArgs = {
   method?: string;
@@ -634,7 +638,7 @@ export type AlternativeState = {
   /**
    * Alternative integration instance.
    */
-  readonly integration: IntegrationState;
+  readonly integration: UnrecognisedIntegrationType | ProblemIntegrationType | ElementIntegrationType | FragmentsIntegrationType;
 };
 
 export type FailureEntityState = {

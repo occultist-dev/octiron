@@ -15,6 +15,8 @@ import {ActionStateRenderer} from '../renderers/ActionStateRenderer.ts';
 import {ActionInitialStateRenderer} from '../renderers/ActionInitialStateRenderer.ts';
 import type {StoreType} from '../store.ts';
 
+const noProblem = Object.freeze(Object.create(null));
+
 export type ActionRefs = {
   url?: string;
   method?: string;
@@ -52,6 +54,7 @@ export function actionFactory<
 
 
     self.submitting = true;
+    self.problem = noProblem;
     self.url = new URL(url, self.store.rootIRI);
 
     if (self.url.hash !== '' && self.url.hash !== '#') {
@@ -74,6 +77,10 @@ export function actionFactory<
         contentType: contentType ?? 'application/ld+json',
         body,
       });
+
+      if (submitResult.integration?.integrationType === 'problem') {
+        self.problem = submitResult.integration.problem;
+      }
 
       if (submitResult != null) events.onSubmitResult(submitResult);
     } catch (err) {
@@ -168,6 +175,7 @@ export function actionFactory<
   self.url = undefined;
   self.fragment = undefined;
   self.submitting = false;
+  self.problem = noProblem;
 
   childArgs.action = self as unknown as OctironAction;
   childArgs.submitting = self.submitting;
@@ -290,6 +298,10 @@ export function actionFactory<
   self.not.success = makeActionStateMethod('success', true);
   self.failure = makeActionStateMethod('failure');
   self.not.failure = makeActionStateMethod('failure', true);
+
+  self.clearProblems = () => {
+    self.problem = noProblem;
+  };
 
   try {
     const submitDetails = getSubmitDetails({

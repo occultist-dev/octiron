@@ -7,6 +7,7 @@ import type {
   UndefinedFailure,
 } from '../failures.ts';
 import type {EntityState, ReadonlySelectionResult, SelectionDetails} from './store.ts';
+import {Problem} from '../alternatives/problem.ts';
 
 /**
  * An iri (see url) to an entity.
@@ -522,13 +523,15 @@ export interface Submitable<
    * Returns the human readable problem detail value for the last unsuccessful
    * submission if it resulted in a problem details response.
    */
-  problems(): string;
+  problem: Readonly<Problem>;
 
   /**
-   * Returns the full problem detail value for the last unsuccessful
-   * submission if it resulted in a problem details response.
+   * Clears the current problem value from this Octiron instance.
+   *
+   * TODO: Support deep clearing when support Octiron instances can
+   * message their parents.
    */
-  details(): JSONObject;
+  clearProblems(): void;
 }
 
 export interface ActionSelectable {

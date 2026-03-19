@@ -8,17 +8,19 @@ import type {AlternativeSelectionResult, AlternativeState, EntitySelectionResult
 import {flattenIRIObjects} from "./utils/flattenIRIObjects.ts";
 import {getSelection} from './utils/getSelection.ts';
 import {mithrilRedraw} from "./utils/mithrilRedraw.ts";
+import {ProblemHandler, ProblemHandlerFn, ProblemIntegration} from "./alternatives/problem.ts";
 
 /**
  * The accept header used for requests by the store if none is provided.
  */
-export const defaultAccept = 'application/problem+json, application/ld+json' as const;
+export const defaultAccept = 'application/ld+json, application/problem+json' as const;
 
 /**
  * Integration factories.
  */
 const integrations = {
   unrecognised: UnrecognisedIntegration,
+  problem: ProblemIntegration,
   element: ElementIntegration,
   fragments: FragmentsIntegration,
 } as const;
@@ -40,11 +42,13 @@ export type JSONLDHandler = {
 
 export type HandlerFn =
   | JSONLDHandlerFn
+  | ProblemHandlerFn
   | ElementHandlerFn
   | FragmentsHandlerFn
 
 export type Handler =
   | JSONLDHandler
+  | ProblemHandler
   | ElementHandler
   | FragmentsHandler
 ;
@@ -757,7 +761,7 @@ export interface StoreType {
   /**
    * Submits an action.
    */
-  submit(iri: string | URL, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState>;
+  submit(iri: string | URL, args?: SubmitArgs): Promise<SuccessEntityState | FailureEntityState | AlternativeState>;
 
   /**
    * Fetches an entity.
